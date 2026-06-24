@@ -320,15 +320,122 @@ app.get(['/admin','/admin/','/admin/*'], (_req, res) =>
 app.get('/api/health', (_req, res) => res.json({ ok:true, ts:Date.now() }));
 
 // ---------- runtime.js ----------
-const RUNTIME_JS = `/* Blue Ferret CMS runtime v2 */
+const RUNTIME_JS = `/* Blue Ferret CMS runtime v3 */
 (function(){
 'use strict';
-var ESC={};
 function escHtml(x){return String(x||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+/* ---------- mobile navigation ---------- */
+var NAV_LINKS=[
+  {href:'/',label:'Головна',emoji:'🏠'},
+  {href:'/igry',label:'Ігри',emoji:'🎲'},
+  {href:'/kik',label:'КІК',emoji:'🚀'},
+  {href:'/kontakty',label:'Контакти',emoji:'✉️'}
+];
+var NAV_CONTACTS=null;
+
+function injectNavStyle(){
+  if(document.getElementById('bf-nav-style')) return;
+  var st=document.createElement('style'); st.id='bf-nav-style';
+  st.textContent=
+    'header{position:sticky!important;top:0!important;z-index:9000}'+
+    '#bf-drawer-bg{position:fixed;inset:0;z-index:99990;background:rgba(11,31,51,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transition:opacity .28s ease;pointer-events:none}'+
+    '#bf-drawer-bg.open{opacity:1;pointer-events:auto}'+
+    '#bf-drawer{position:fixed;top:0;right:0;bottom:0;z-index:99991;width:320px;max-width:88vw;background:#fff;'+
+      'box-shadow:-12px 0 40px rgba(11,31,51,.28);transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);'+
+      'display:flex;flex-direction:column;font-family:Comfortaa,system-ui,sans-serif;overflow-y:auto}'+
+    '#bf-drawer.open{transform:none}'+
+    '#bf-drawer .bf-dr-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid rgba(15,23,42,.08)}'+
+    '#bf-drawer .bf-dr-logo{display:flex;align-items:center;gap:10px;font-family:"Playfair Display","Libre Baskerville",serif;font-weight:700;font-size:18px;color:#0f172a}'+
+    '#bf-drawer .bf-dr-logo i{width:28px;height:28px;border-radius:9px;background:var(--bf-accent,#009fe3);display:block;box-shadow:0 3px 12px rgba(0,159,227,.4)}'+
+    '#bf-drawer .bf-dr-x{border:none;background:rgba(15,23,42,.05);width:38px;height:38px;border-radius:11px;cursor:pointer;'+
+      'font-size:20px;line-height:1;color:#334155;display:flex;align-items:center;justify-content:center;transition:.15s}'+
+    '#bf-drawer .bf-dr-x:hover{background:rgba(15,23,42,.1)}'+
+    '#bf-drawer nav{padding:14px 12px;flex:1}'+
+    '#bf-drawer nav a{display:flex;align-items:center;gap:13px;padding:14px 16px;border-radius:12px;text-decoration:none;'+
+      'color:#1e293b;font-size:16px;font-weight:600;transition:.15s}'+
+    '#bf-drawer nav a:hover{background:rgba(0,159,227,.09);color:var(--bf-accent,#009fe3)}'+
+    '#bf-drawer nav a .bf-em{font-size:19px;width:24px;text-align:center}'+
+    '#bf-drawer .bf-dr-foot{padding:20px 22px;border-top:1px solid rgba(15,23,42,.08);font-size:13px;color:#64748b}'+
+    '#bf-drawer .bf-dr-foot a{color:var(--bf-accent,#009fe3);text-decoration:none;display:block;margin-top:6px;font-weight:600}'+
+    'button[aria-controls="mobile-site-nav"].bf-x-active{position:relative}'+
+    'button[aria-controls="mobile-site-nav"].bf-x-active>*{opacity:0}';
+  document.head.appendChild(st);
+}
+
+function closeDrawer(){
+  var bg=document.getElementById('bf-drawer-bg'), dr=document.getElementById('bf-drawer');
+  if(bg) bg.classList.remove('open');
+  if(dr) dr.classList.remove('open');
+  document.documentElement.style.overflow='';
+  var btn=document.querySelector('button[aria-controls="mobile-site-nav"]');
+  if(btn) btn.classList.remove('bf-x-active');
+}
+
+function openDrawer(){
+  var bg=document.getElementById('bf-drawer-bg'), dr=document.getElementById('bf-drawer');
+  if(!bg||!dr) buildDrawer();
+  bg=document.getElementById('bf-drawer-bg'); dr=document.getElementById('bf-drawer');
+  requestAnimationFrame(function(){
+    bg.classList.add('open'); dr.classList.add('open');
+  });
+  document.documentElement.style.overflow='hidden';
+  var btn=document.querySelector('button[aria-controls="mobile-site-nav"]');
+  if(btn) btn.classList.add('bf-x-active');
+}
+
+function buildDrawer(){
+  if(document.getElementById('bf-drawer')) return;
+  var c=NAV_CONTACTS||{};
+  var bg=document.createElement('div'); bg.id='bf-drawer-bg';
+  var dr=document.createElement('aside'); dr.id='bf-drawer';
+  dr.setAttribute('role','dialog'); dr.setAttribute('aria-label','Меню');
+  var links=NAV_LINKS.map(function(l){
+    return '<a href="'+escHtml(l.href)+'"><span class="bf-em">'+l.emoji+'</span>'+escHtml(l.label)+'</a>';
+  }).join('');
+  var foot='';
+  if(c.email) foot+='<a href="mailto:'+escHtml(c.email)+'">'+escHtml(c.email)+'</a>';
+  if(c.telegram) foot+='<a href="'+escHtml(c.telegram)+'" target="_blank" rel="noopener">Telegram</a>';
+  if(c.instagram) foot+='<a href="'+escHtml(c.instagram)+'" target="_blank" rel="noopener">Instagram</a>';
+  dr.innerHTML=
+    '<div class="bf-dr-head"><span class="bf-dr-logo"><i></i>Blue Ferret</span>'+
+      '<button class="bf-dr-x" type="button" aria-label="Закрити">&times;</button></div>'+
+    '<nav>'+links+'</nav>'+
+    '<div class="bf-dr-foot">Зв\\'язатися з нами:'+(foot||'')+'</div>';
+  document.body.appendChild(bg);
+  document.body.appendChild(dr);
+  bg.addEventListener('click',closeDrawer);
+  dr.querySelector('.bf-dr-x').addEventListener('click',closeDrawer);
+  Array.prototype.forEach.call(dr.querySelectorAll('nav a'),function(a){
+    a.addEventListener('click',function(){ setTimeout(closeDrawer,40); });
+  });
+}
+
+function fixMobileNav(){
+  injectNavStyle();
+  var header=document.querySelector('header');
+  if(header){ header.style.position='sticky'; header.style.top='0'; }
+  var btn=document.querySelector('button[aria-controls="mobile-site-nav"]');
+  if(btn && !btn.__bfBound){
+    btn.__bfBound=1;
+    btn.addEventListener('click',function(e){
+      e.preventDefault(); e.stopPropagation();
+      var dr=document.getElementById('bf-drawer');
+      if(dr && dr.classList.contains('open')) closeDrawer(); else openDrawer();
+    },true);
+  }
+  if(!window.__bfEsc){
+    window.__bfEsc=1;
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeDrawer(); });
+  }
+}
 
 function applySettings(s){
   if(!s) return;
-  var g=s.general||{}, b=s.banner||{}, m=s.maintenance||{}, ig=s.integrations||{}, ap=s.appearance||{}, hp=s.homepage||{};
+  var g=s.general||{}, b=s.banner||{}, m=s.maintenance||{}, ig=s.integrations||{}, ap=s.appearance||{}, hp=s.homepage||{}, ct=s.contacts||{};
+
+  NAV_CONTACTS=ct;
+  fixMobileNav();
 
   // Theme color
   if(g.primaryColor) document.documentElement.style.setProperty('--bf-accent',g.primaryColor);

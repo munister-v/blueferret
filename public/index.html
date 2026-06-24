@@ -16,7 +16,7 @@
   --border:rgba(15,23,42,.1);--border-s:rgba(15,23,42,.06);
   --txt:#1e293b;--muted:#64748b;
   --red:#e11d48;--green:#16a34a;
-  --sb:240px;
+  --sb:240px;--pv:380px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -76,6 +76,9 @@ a{color:var(--acc)}
 .sb-btn.active{background:rgba(0,159,227,.16);color:var(--acc)}
 .sb-btn svg{flex-shrink:0;opacity:.65}
 .sb-btn.active svg{opacity:1}
+.sb-badge{margin-left:auto;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);
+  font-size:10.5px;font-weight:700;min-width:20px;text-align:center;padding:2px 7px;border-radius:99px}
+.sb-btn.active .sb-badge{background:rgba(0,159,227,.28);color:#fff}
 .sb-footer{padding:10px 8px 16px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}
 .sb-site-link{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;
   color:rgba(255,255,255,.4);font-size:12.5px;font-family:'Comfortaa',sans-serif;
@@ -96,7 +99,31 @@ a{color:var(--acc)}
 .breadcrumb svg{opacity:.35}
 .topbar-right{display:flex;align-items:center;gap:12px}
 .saved-stamp{font-size:12px;color:var(--muted)}
+.save-wrap{position:relative}
+.save-dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;
+  background:#facc15;border:2px solid var(--bg);box-shadow:0 0 0 2px rgba(250,204,21,.3);display:none}
+.save-wrap.dirty .save-dot{display:block}
 .main-body{padding:28px;max-width:920px;width:100%}
+
+/* ── Preview panel ── */
+.preview-pane{width:var(--pv);flex-shrink:0;background:var(--dark);
+  border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
+.preview-pane.collapsed{display:none}
+.pv-head{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;
+  align-items:center;justify-content:space-between;flex-shrink:0}
+.pv-head h3{font-family:'Comfortaa',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:rgba(255,255,255,.55)}
+.pv-head .pv-tag{font-size:10px;color:rgba(255,255,255,.32);font-weight:600}
+.pv-body{flex:1;overflow-y:auto;padding:18px}
+.pv-frame{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.3);
+  font-family:'Comfortaa',sans-serif}
+.pv-browserbar{background:#e2e8f0;padding:8px 12px;display:flex;align-items:center;gap:6px}
+.pv-browserbar i{width:9px;height:9px;border-radius:50%;background:#cbd5e1;display:block}
+.pv-browserbar .pv-url{margin-left:8px;background:#fff;border-radius:6px;font-size:10.5px;
+  color:#94a3b8;padding:3px 10px;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pv-content{padding:18px}
+.pv-empty{color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:40px 20px;line-height:1.7}
+.pv-hint{margin-top:14px;font-size:11px;color:rgba(255,255,255,.3);text-align:center;line-height:1.6}
 
 /* ── Cards ── */
 .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px;
@@ -105,6 +132,29 @@ a{color:var(--acc)}
 .card-head h2{font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:var(--dark-8)}
 .card-head p{margin-top:5px;color:var(--muted);font-size:12.5px}
 
+/* ── Inline preview blocks inside cards ── */
+.inline-pv{margin-top:18px;border-top:1px dashed var(--border);padding-top:16px}
+.inline-pv-label{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.inline-pv-label::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--acc)}
+.pv-banner-strip{padding:10px 16px;text-align:center;font-weight:600;font-size:13px;border-radius:8px}
+.pv-color-row{display:flex;align-items:center;gap:14px}
+.pv-color-dot{width:48px;height:48px;border-radius:12px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.pv-color-hex{font-family:ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--dark-8)}
+.pv-color-sample{font-size:14px;font-weight:700;margin-top:4px}
+.pv-hero{border-radius:14px;padding:26px 22px;color:#fff;
+  background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);position:relative;overflow:hidden}
+.pv-hero::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 80% 10%,rgba(0,159,227,.35),transparent 60%);pointer-events:none}
+.pv-hero h4{font-family:'Libre Baskerville',serif;font-size:22px;line-height:1.2;margin-bottom:8px;position:relative}
+.pv-hero p{font-size:13px;color:rgba(255,255,255,.65);margin-bottom:16px;position:relative}
+.pv-hero .pv-cta{display:inline-block;background:var(--acc);color:#fff;font-weight:700;font-size:13px;
+  padding:9px 20px;border-radius:9px;position:relative}
+.pv-maint{border-radius:14px;padding:30px 22px;text-align:center;
+  background:#0b1f33;color:#fff}
+.pv-maint .pv-otter{font-size:40px;margin-bottom:12px}
+.pv-maint p{font-size:14px;color:rgba(255,255,255,.85);line-height:1.6}
+.pv-css-demo{border:1px solid var(--border);border-radius:12px;padding:18px;background:#fff}
+
 /* ── Form ── */
 .field{margin-bottom:16px}
 .field>label,.field-label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.05em;
@@ -112,6 +162,8 @@ a{color:var(--acc)}
 .field .note{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
 .row{display:flex;gap:14px;flex-wrap:wrap}
 .row>.field{flex:1;min-width:170px}
+.char-counter{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
+.char-counter.over{color:var(--red);font-weight:700}
 
 input[type=text],input[type=url],input[type=email],input[type=password],
 input[type=number],input[type=date],textarea,select{
@@ -171,6 +223,17 @@ textarea{min-height:100px;resize:vertical;
 .prog{height:6px;background:rgba(15,23,42,.08);border-radius:99px;overflow:hidden;margin-top:6px}
 .prog span{display:block;height:100%;background:var(--kik);border-radius:99px;transition:.3s}
 
+/* ── Drag handle ── */
+.drag-handle{cursor:grab;color:#cbd5e1;font-size:16px;line-height:1;user-select:none;
+  padding:0 4px;transition:.15s;touch-action:none}
+.drag-handle:hover{color:var(--muted)}
+.drag-handle:active{cursor:grabbing}
+.drag-row.dragging{opacity:.4}
+.drag-ghost{position:fixed;z-index:300;pointer-events:none;background:#fff;border-radius:12px;
+  box-shadow:0 16px 40px rgba(15,23,42,.25);border:1px solid var(--acc);
+  padding:12px 16px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:10px}
+.drop-line{height:2px;background:var(--acc);box-shadow:0 0 0 2px var(--acc-m)}
+
 /* ── Upload zone ── */
 .upload-zone{border:2px dashed rgba(0,159,227,.3);border-radius:12px;padding:20px;
   text-align:center;cursor:pointer;transition:.2s;color:var(--muted);font-size:13px}
@@ -205,13 +268,26 @@ textarea{min-height:100px;resize:vertical;
 code{background:rgba(0,159,227,.1);color:var(--acc);padding:2px 7px;border-radius:6px;font-size:11.5px}
 .sec-divider{height:1px;background:var(--border-s);margin:20px 0}
 
+/* ── Preview mini cards ── */
+.pvg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pvg-card{border:1px solid var(--border-s);border-radius:10px;overflow:hidden;background:#fff}
+.pvg-card .pvg-thumb{height:54px;background:rgba(0,159,227,.08);display:flex;align-items:center;justify-content:center;font-size:20px;background-size:cover;background-position:center}
+.pvg-card .pvg-meta{padding:7px 9px}
+.pvg-card .pvg-title{font-size:11.5px;font-weight:700;color:var(--dark-8);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pvg-card .pvg-sub{font-size:9.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pvk-item{margin-bottom:13px}
+.pvk-item .pvk-title{font-size:12px;font-weight:700;color:var(--dark-8)}
+.pvk-item .pvk-nums{font-size:10px;color:var(--muted);margin:3px 0 5px}
+
 /* ── Responsive ── */
+@media(max-width:1100px){.preview-pane{position:fixed;top:0;right:0;bottom:0;z-index:50;box-shadow:-12px 0 40px rgba(0,0,0,.3)}}
 @media(max-width:700px){
   .sidebar{display:none}
   .main-body{padding:16px}
   .row{flex-direction:column}
   .modal{padding:20px;border-radius:16px}
   .main-topbar{padding:12px 16px}
+  .preview-pane{width:100vw}
 }
 </style>
 </head>
@@ -239,7 +315,7 @@ code{background:rgba(0,159,227,.1);color:var(--acc);padding:2px 7px;border-radiu
   <aside class="sidebar">
     <div class="sb-brand">
       <div class="sb-dot"></div>
-      <div class="sb-name">Blue Ferret<small>CMS</small></div>
+      <div class="sb-name">Blue Ferret<small>CMS v3</small></div>
     </div>
     <nav class="sb-nav" id="sbNav"></nav>
     <div class="sb-footer">
@@ -267,13 +343,28 @@ code{background:rgba(0,159,227,.1);color:var(--acc);padding:2px 7px;border-radiu
         </svg>
         <b id="pageTitle">Загальне</b>
       </div>
-      <div class="topbar-right" id="topbarRight">
-        <span class="saved-stamp" id="savedAt"></span>
-        <button class="btn btn-primary btn-sm" id="saveBtn">Зберегти і опублікувати</button>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm" id="previewToggle">Превью ▸</button>
+        <div id="settingsControls" class="topbar-right">
+          <span class="saved-stamp" id="savedAt"></span>
+          <span class="save-wrap" id="saveWrap">
+            <button class="btn btn-primary btn-sm" id="saveBtn">Зберегти і опублікувати</button>
+            <span class="save-dot"></span>
+          </span>
+        </div>
       </div>
     </div>
     <div class="main-body" id="panels"></div>
   </div>
+
+  <!-- LIVE PREVIEW -->
+  <aside class="preview-pane collapsed" id="previewPane">
+    <div class="pv-head">
+      <h3>Live Preview</h3>
+      <span class="pv-tag" id="pvTag"></span>
+    </div>
+    <div class="pv-body" id="pvBody"></div>
+  </aside>
 </div>
 
 <!-- MODAL -->
@@ -298,6 +389,8 @@ const $ = (s, r = document) => r.querySelector(s);
 let S = null, activeTab = 'general';
 let gamesCache = [], kikCache = [];
 let editingType = null, editingId = null;
+let dirty = false;
+let previewOpen = false;
 
 // ── Sidebar nav config ──────────────────────────────────────────
 const NAV = [
@@ -308,8 +401,8 @@ const NAV = [
   { id: 'maintenance', label: 'Тех. режим', icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
   { id: 'contacts', label: 'Контакти', icon: '<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.64A2 2 0 012 .98h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>' },
   { group: 'Контент' },
-  { id: 'games', label: 'Ігри', icon: '<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>' },
-  { id: 'kik', label: 'КІК-проекти', icon: '<path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>' },
+  { id: 'games', label: 'Ігри', badge: 'games', icon: '<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>' },
+  { id: 'kik', label: 'КІК-проекти', badge: 'kik', icon: '<path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>' },
   { group: 'Просунуте' },
   { id: 'seo', label: 'SEO', icon: '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>' },
   { id: 'integrations', label: 'Аналітика', icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>' },
@@ -319,6 +412,7 @@ const NAV = [
 ];
 
 const SETTINGS_TABS = new Set(['general','homepage','banner','maintenance','contacts','seo','integrations','appearance']);
+const PREVIEWABLE = new Set(['general','homepage','banner','maintenance','appearance','games','kik']);
 
 // ── Utils ──────────────────────────────────────────────────────
 function esc(x){return String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -336,34 +430,41 @@ async function api(method, url, body){
   if (r.status === 401){ showLogin(); throw new Error('unauth'); }
   return r.json();
 }
+function setDirty(v){
+  dirty = v;
+  $('#saveWrap').classList.toggle('dirty', v);
+}
 
 // ── Sidebar render ─────────────────────────────────────────────
 function renderSidebar(){
   $('#sbNav').innerHTML = NAV.map(item => {
     if (item.group) return `<div class="sb-group-label">${item.group}</div>`;
+    let badge = '';
+    if (item.badge === 'games') badge = `<span class="sb-badge">${gamesCache.length}</span>`;
+    if (item.badge === 'kik') badge = `<span class="sb-badge">${kikCache.length}</span>`;
     return `<button class="sb-btn${item.id===activeTab?' active':''}" data-tab="${item.id}">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${item.icon}</svg>
-      ${item.label}
+      ${item.label}${badge}
     </button>`;
   }).join('');
   $('#pageTitle').textContent = NAV.find(n=>n.id===activeTab)?.label || '';
 }
 
-$('#sbNav' in document ? '#sbNav' : 'body').addEventListener('click', e => {
+$('#sbNav').addEventListener('click', e => {
   const b = e.target.closest('[data-tab]');
   if (b) switchTab(b.dataset.tab);
 });
-document.addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]');
-  if (b && $('#sbNav').contains(b)) switchTab(b.dataset.tab);
-});
 
 function switchTab(id){
+  if (dirty && SETTINGS_TABS.has(activeTab)) collectSettings();
   activeTab = id;
   const isSettings = SETTINGS_TABS.has(id);
-  $('#topbarRight').classList.toggle('hidden', !isSettings);
+  $('#settingsControls').classList.toggle('hidden', !isSettings);
+  // preview availability
+  $('#previewToggle').classList.toggle('hidden', !PREVIEWABLE.has(id));
   renderSidebar();
   draw();
+  if (previewOpen) renderPreview();
 }
 
 // ── Field helpers ──────────────────────────────────────────────
@@ -389,7 +490,7 @@ function card(title, hint, body){
   return `<div class="card"><div class="card-head"><h2>${title}</h2>${hint?`<p>${hint}</p>`:''}</div>${body}</div>`;
 }
 
-// ── Settings panels ────────────────────────────────────────────
+// ── Settings panels (with inline previews) ─────────────────────
 function renderSettings(id){
   const g=S.general||{}, b=S.banner||{}, m=S.maintenance||{}, c=S.contacts||{},
         seo=S.seo||{}, ig=S.integrations||{}, ap=S.appearance||{}, hp=S.homepage||{};
@@ -397,7 +498,15 @@ function renderSettings(id){
     case 'general': return card('Загальні налаштування','Назва сайту, гасло, основний колір',
       field('Назва сайту','',input('general.siteTitle',g.siteTitle,'text','Blue Ferret'))+
       field('Гасло (підзаголовок)','',input('general.tagline',g.tagline,'text','Незалежне видавництво настільних ігор'))+
-      field('Основний колір','CSS-змінна --bf-primary на всіх сторінках',colorField('general.primaryColor',g.primaryColor)));
+      field('Основний колір','CSS-змінна --bf-accent на всіх сторінках',colorField('general.primaryColor',g.primaryColor))+
+      `<div class="inline-pv"><div class="inline-pv-label">Прев'ю кольору</div>
+        <div class="pv-color-row">
+          <div class="pv-color-dot" id="ip_colorDot" style="background:${esc(g.primaryColor||'#009fe3')}"></div>
+          <div>
+            <div class="pv-color-hex" id="ip_colorHex">${esc(g.primaryColor||'#009fe3')}</div>
+            <div class="pv-color-sample" id="ip_colorSample" style="color:${esc(g.primaryColor||'#009fe3')}">${esc(g.siteTitle||'Blue Ferret')}</div>
+          </div>
+        </div></div>`);
 
     case 'homepage': return [
       card('Hero-секція','Головний заголовок і кнопка',
@@ -406,7 +515,13 @@ function renderSettings(id){
         `<div class="row">
           ${field('Текст кнопки CTA','',input('homepage.heroCta',hp.heroCta,'text','Переглянути ігри'))}
           ${field('Посилання кнопки','',input('homepage.heroCtaLink',hp.heroCtaLink,'url','/igry'))}
-        </div>`),
+        </div>`+
+        `<div class="inline-pv"><div class="inline-pv-label">Прев'ю hero</div>
+          <div class="pv-hero">
+            <h4 id="ip_hTitle">${esc(hp.heroTitle||g.siteTitle||'Blue Ferret')}</h4>
+            <p id="ip_hSub">${esc(hp.heroSubtitle||g.tagline||'Незалежне видавництво настільних ігор')}</p>
+            <span class="pv-cta" id="ip_hCta">${esc(hp.heroCta||'Переглянути ігри')}</span>
+          </div></div>`),
       card('Секція "Про нас"','Опис видавництва',
         field('Текст','Відображається в блоці "Про нас" на головній',textarea('homepage.aboutText',hp.aboutText,'Ми — маленьке незалежне видавництво...'))),
       card('Анонс / Featured','Довільний блок перед іграми',
@@ -422,11 +537,17 @@ function renderSettings(id){
       `<div class="row">
         ${field('Колір фону','',colorField('banner.bg',b.bg||'#009fe3'))}
         ${field('Колір тексту','',colorField('banner.fg',b.fg||'#ffffff'))}
+      </div>`+
+      `<div class="inline-pv"><div class="inline-pv-label">Прев'ю банера</div>
+        <div class="pv-banner-strip" id="ip_banner" style="background:${esc(b.bg||'#009fe3')};color:${esc(b.fg||'#ffffff')}">${esc(b.text||'Текст банера з\'явиться тут')}</div>
       </div>`);
 
     case 'maintenance': return card('Режим технічного обслуговування','Повна заглушка поверх сайту',
       field('','',toggle('maintenance.enabled',m.enabled,'Увімкнути режим обслуговування'))+
-      field('Повідомлення','',textarea('maintenance.message',m.message,'Сайт тимчасово на технічному обслуговуванні...')));
+      field('Повідомлення','',textarea('maintenance.message',m.message,'Сайт тимчасово на технічному обслуговуванні...'))+
+      `<div class="inline-pv"><div class="inline-pv-label">Прев'ю заглушки</div>
+        <div class="pv-maint"><div class="pv-otter">🦦</div><p id="ip_maint">${esc(m.message||'Сайт тимчасово на технічному обслуговуванні. Скоро повернемось!')}</p></div>
+      </div>`);
 
     case 'contacts': return card('Контакти та соцмережі','Контактна інформація видавництва',
       field('Email','',input('contacts.email',c.email,'email','rogachovanika@gmail.com'))+
@@ -450,7 +571,39 @@ function renderSettings(id){
       field('Скрипти у &lt;body&gt;','',textarea('integrations.bodyScripts',ig.bodyScripts)));
 
     case 'appearance': return card('Кастомний CSS','Стилі застосовуються поверх сайту миттєво',
-      field('CSS','',textarea('appearance.customCss',ap.customCss,'.hero-title { font-size: 3rem; }')));
+      field('CSS','',textarea('appearance.customCss',ap.customCss,'.hero-title { font-size: 3rem; }'))+
+      `<div class="inline-pv"><div class="inline-pv-label">Прев'ю з накладеним CSS</div>
+        <div class="pv-css-demo" id="ip_cssDemo">
+          <h3 class="hero-title" style="font-family:'Libre Baskerville',serif;font-size:18px;color:#1e293b;margin-bottom:6px">Заголовок сторінки</h3>
+          <p style="color:#64748b;font-size:13px">Абзац тексту для перегляду стилів.</p>
+          <a href="#" class="bf-cta" style="display:inline-block;margin-top:10px;background:#009fe3;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700" onclick="return false">Кнопка</a>
+        </div>
+        <style id="ip_cssStyle">${ap.customCss||''}</style>
+      </div>`);
+  }
+}
+
+// ── Live inline-preview updates while typing ───────────────────
+function updateInlinePreviews(path, val){
+  const set = (sel, fn) => { const e = $(sel); if (e) fn(e); };
+  switch(path){
+    case 'general.primaryColor':
+      set('#ip_colorDot', e=>e.style.background=val);
+      set('#ip_colorHex', e=>e.textContent=val);
+      set('#ip_colorSample', e=>e.style.color=val);
+      break;
+    case 'general.siteTitle':
+      set('#ip_colorSample', e=>e.textContent=val||'Blue Ferret');
+      set('#ip_hTitle', e=>{ if(!($('[data-path="homepage.heroTitle"]')||{}).value) e.textContent=val; });
+      break;
+    case 'banner.text': set('#ip_banner', e=>e.textContent=val||'Текст банера з\'явиться тут'); break;
+    case 'banner.bg': set('#ip_banner', e=>e.style.background=val); break;
+    case 'banner.fg': set('#ip_banner', e=>e.style.color=val); break;
+    case 'homepage.heroTitle': set('#ip_hTitle', e=>e.textContent=val||(S.general&&S.general.siteTitle)||'Blue Ferret'); break;
+    case 'homepage.heroSubtitle': set('#ip_hSub', e=>e.textContent=val||(S.general&&S.general.tagline)||''); break;
+    case 'homepage.heroCta': set('#ip_hCta', e=>e.textContent=val||'Переглянути ігри'); break;
+    case 'maintenance.message': set('#ip_maint', e=>e.textContent=val||'Сайт тимчасово на технічному обслуговуванні. Скоро повернемось!'); break;
+    case 'appearance.customCss': set('#ip_cssStyle', e=>e.textContent=val); break;
   }
 }
 
@@ -469,7 +622,8 @@ function collectSettings(){
 function renderGames(){
   const rows = gamesCache.length
     ? gamesCache.map(g=>`
-      <tr>
+      <tr class="drag-row" data-id="${g.id}">
+        <td style="width:26px"><span class="drag-handle" data-drag="game" title="Перетягніть для зміни порядку">⠿</span></td>
         <td>${g.cover_url?`<img class="thumb" src="${esc(g.cover_url)}" loading="lazy" onerror="this.style.opacity='.2'">`:
           `<div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:20px">🎲</div>`}</td>
         <td>
@@ -480,15 +634,15 @@ function renderGames(){
         <td style="color:var(--muted);font-size:12px">${[g.players,g.age,g.duration].filter(Boolean).join(' · ')||'—'}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="openGameModal(${g.id})">Редагувати</button></td>
       </tr>`).join('')
-    : `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Ігор ще немає — додайте першу</td></tr>`;
+    : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Ігор ще немає — додайте першу</td></tr>`;
   return `<div class="card">
     <div class="list-header">
-      <div><h2>Каталог ігор</h2><p>Усі ігри Blue Ferret, ${gamesCache.length} шт.</p></div>
+      <div><h2>Каталог ігор</h2><p>Усі ігри Blue Ferret, ${gamesCache.length} шт. Перетягуйте за ⠿ для зміни порядку.</p></div>
       <button class="btn btn-primary btn-sm" onclick="openGameModal(null)">+ Додати гру</button>
     </div>
     <table class="list-tbl">
-      <thead><tr><th style="width:60px"></th><th>Назва</th><th>Статус</th><th>Характеристики</th><th style="width:120px"></th></tr></thead>
-      <tbody>${rows}</tbody>
+      <thead><tr><th></th><th style="width:60px"></th><th>Назва</th><th>Статус</th><th>Характеристики</th><th style="width:120px"></th></tr></thead>
+      <tbody id="gamesBody">${rows}</tbody>
     </table>
   </div>`;
 }
@@ -499,13 +653,14 @@ function openGameModal(id){
   $('#modalTitle').textContent = id ? `Редагувати: ${g.title}` : 'Нова гра';
   $('#modalDelete').classList.toggle('hidden', !id);
   const coverPrev = g.cover_url ? `<img class="cover-preview" src="${esc(g.cover_url)}" id="coverPreview">` : `<div id="coverPreview"></div>`;
+  const descLen = (g.description||'').length;
   $('#modalBody').innerHTML = `
     <div class="row">
       ${field('Назва','',`<input type="text" id="mf_title" value="${esc(g.title||'')}" required>`)}
-      ${field('Slug','URL-ідентифікатор (латиниця, дефіс)',`<input type="text" id="mf_slug" value="${esc(g.slug||'')}" placeholder="trymaysia">`)}
+      ${field('Slug','Латиниця, дефіс. Згенерується з назви, якщо порожній',`<input type="text" id="mf_slug" value="${esc(g.slug||'')}" placeholder="trymaysia">`)}
     </div>
     ${field('Підзаголовок','',`<input type="text" id="mf_subtitle" value="${esc(g.subtitle||'')}">`)}
-    ${field('Опис','',`<textarea id="mf_description" style="min-height:90px">${esc(g.description||'')}</textarea>`)}
+    ${field('Опис','макс. 500 символів',`<textarea id="mf_description" maxlength="600" style="min-height:90px">${esc(g.description||'')}</textarea><div class="char-counter${descLen>500?' over':''}" id="mf_descCount">${descLen} / 500</div>`)}
     <div class="row">
       ${field('Статус','',`<select id="mf_status">
         <option value="published"${(g.status||'published')==='published'?' selected':''}>published</option>
@@ -529,7 +684,41 @@ function openGameModal(id){
     </div>
     ${field('Посилання «Купити»','',`<input type="url" id="mf_buy_url" value="${esc(g.buy_url||'')}" placeholder="https://rozetka.com.ua/...">`)}`;
   setupUploadZone();
+  setupGameModalAids();
   $('#modalBg').classList.remove('hidden');
+}
+
+function setupGameModalAids(){
+  const title = $('#mf_title'), slug = $('#mf_slug');
+  const desc = $('#mf_description'), count = $('#mf_descCount');
+  const coverUrl = $('#mf_cover_url');
+  // slug auto-gen from title if slug empty
+  if (title && slug){
+    title.addEventListener('input', () => {
+      if (!slug.value.trim() || slug.dataset.auto === '1'){
+        slug.dataset.auto = '1';
+        slug.value = slugify(title.value);
+      }
+    });
+    slug.addEventListener('input', () => { slug.dataset.auto = ''; });
+  }
+  // char counter
+  if (desc && count){
+    desc.addEventListener('input', () => {
+      const n = desc.value.length;
+      count.textContent = n + ' / 500';
+      count.classList.toggle('over', n > 500);
+    });
+  }
+  // cover preview on url change
+  if (coverUrl){
+    coverUrl.addEventListener('input', () => { if (coverUrl.value.trim()) showCoverPreview(coverUrl.value.trim()); });
+  }
+}
+
+function slugify(s){
+  return String(s||'').toLowerCase().trim()
+    .replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
 }
 
 function setupUploadZone(){
@@ -559,7 +748,9 @@ async function uploadFile(file){
 
 function showCoverPreview(url){
   let p = $('#coverPreview');
-  if (p){ p.src = url; p.className = 'cover-preview'; p.tagName !== 'IMG' && (p.outerHTML = `<img class="cover-preview" id="coverPreview" src="${esc(url)}">`); }
+  if (!p) return;
+  if (p.tagName === 'IMG'){ p.src = url; }
+  else { p.outerHTML = `<img class="cover-preview" id="coverPreview" src="${esc(url)}">`; }
 }
 
 // ── KIK panel ─────────────────────────────────────────────────
@@ -567,7 +758,8 @@ function renderKik(){
   const rows = kikCache.length
     ? kikCache.map(k => {
         const pct = k.goal ? Math.min(100, Math.round(k.raised / k.goal * 100)) : 0;
-        return `<tr>
+        return `<tr class="drag-row" data-id="${k.id}">
+          <td style="width:26px"><span class="drag-handle" data-drag="kik" title="Перетягніть для зміни порядку">⠿</span></td>
           <td>${k.cover_url?`<img class="thumb" src="${esc(k.cover_url)}" loading="lazy">`:
             `<div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:20px">🚀</div>`}</td>
           <td>
@@ -582,15 +774,15 @@ function renderKik(){
           <td><button class="btn btn-ghost btn-sm" onclick="openKikModal(${k.id})">Редагувати</button></td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Проектів ще немає</td></tr>`;
+    : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Проектів ще немає</td></tr>`;
   return `<div class="card">
     <div class="list-header">
-      <div><h2>КІК-проекти</h2><p>Краудфандингові кампанії, ${kikCache.length} шт.</p></div>
+      <div><h2>КІК-проекти</h2><p>Краудфандингові кампанії, ${kikCache.length} шт. Перетягуйте за ⠿ для зміни порядку.</p></div>
       <button class="btn btn-kik btn-sm" onclick="openKikModal(null)">+ Новий проект</button>
     </div>
     <table class="list-tbl">
-      <thead><tr><th style="width:60px"></th><th>Назва</th><th>Статус</th><th>Збори</th><th style="width:120px"></th></tr></thead>
-      <tbody>${rows}</tbody>
+      <thead><tr><th></th><th style="width:60px"></th><th>Назва</th><th>Статус</th><th>Збори</th><th style="width:120px"></th></tr></thead>
+      <tbody id="kikBody">${rows}</tbody>
     </table>
   </div>`;
 }
@@ -630,7 +822,7 @@ async function modalSave(){
   try {
     if (editingType === 'game'){
       const body = {
-        title: $('#mf_title').value, slug: $('#mf_slug').value,
+        title: $('#mf_title').value, slug: $('#mf_slug').value || slugify($('#mf_title').value),
         subtitle: $('#mf_subtitle').value, description: $('#mf_description').value,
         status: $('#mf_status').value, cover_url: $('#mf_cover_url').value,
         players: $('#mf_players').value, age: $('#mf_age').value,
@@ -659,7 +851,8 @@ async function modalSave(){
       kikCache = await api('GET','/api/admin/kik');
       toast(editingId ? 'Проект оновлено ✓' : 'Проект додано ✓');
     }
-    closeModal(); draw();
+    closeModal(); renderSidebar(); draw();
+    if (previewOpen) renderPreview();
   } catch(e){ if (e.message !== 'unauth') toast('Помилка: ' + e.message, true); }
   finally { $('#modalSave').disabled = false; }
 }
@@ -674,7 +867,8 @@ async function modalDelete(){
       await api('DELETE',`/api/admin/kik/${editingId}`);
       kikCache = await api('GET','/api/admin/kik');
     }
-    toast('Видалено'); closeModal(); draw();
+    toast('Видалено'); closeModal(); renderSidebar(); draw();
+    if (previewOpen) renderPreview();
   } catch(e){ if (e.message !== 'unauth') toast('Помилка', true); }
 }
 
@@ -689,6 +883,74 @@ $('#modalDelete').addEventListener('click', modalDelete);
 $('#modalBg').addEventListener('click', e => { if (e.target === $('#modalBg')) closeModal(); });
 window.openGameModal = openGameModal;
 window.openKikModal = openKikModal;
+window.$ = $;
+
+// ── Drag and drop reorder (pure JS) ────────────────────────────
+let drag = null;
+
+document.addEventListener('mousedown', e => {
+  const handle = e.target.closest('[data-drag]');
+  if (!handle) return;
+  e.preventDefault();
+  const row = handle.closest('.drag-row');
+  if (!row) return;
+  const tbody = row.parentNode;
+  const type = handle.dataset.drag;
+  const rows = Array.from(tbody.querySelectorAll('.drag-row'));
+  drag = { type, row, tbody, rows, startY: e.clientY, ghost: null, moved: false };
+  document.body.style.userSelect = 'none';
+});
+
+document.addEventListener('mousemove', e => {
+  if (!drag) return;
+  if (!drag.moved && Math.abs(e.clientY - drag.startY) < 4) return;
+  drag.moved = true;
+  drag.row.classList.add('dragging');
+  // ghost
+  if (!drag.ghost){
+    drag.ghost = document.createElement('div');
+    drag.ghost.className = 'drag-ghost';
+    const titleCell = drag.row.querySelector('td:nth-child(3)');
+    drag.ghost.innerHTML = `<span class="drag-handle">⠿</span>${titleCell ? titleCell.querySelector('div').textContent : 'Елемент'}`;
+    document.body.appendChild(drag.ghost);
+  }
+  drag.ghost.style.left = (e.clientX + 12) + 'px';
+  drag.ghost.style.top = (e.clientY - 12) + 'px';
+  // determine insertion point
+  const others = drag.rows.filter(r => r !== drag.row);
+  let placed = false;
+  for (const r of others){
+    const rect = r.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height/2){
+      drag.tbody.insertBefore(drag.row, r);
+      placed = true;
+      break;
+    }
+  }
+  if (!placed) drag.tbody.appendChild(drag.row);
+});
+
+document.addEventListener('mouseup', async () => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  document.body.style.userSelect = '';
+  if (d.ghost) d.ghost.remove();
+  d.row.classList.remove('dragging');
+  if (!d.moved) return;
+  // new order
+  const ids = Array.from(d.tbody.querySelectorAll('.drag-row')).map(r => Number(r.dataset.id));
+  try {
+    if (d.type === 'game'){
+      await Promise.all(ids.map((id, i) => api('PUT', `/api/admin/games/${id}`, { sort_order: i })));
+      gamesCache = await api('GET','/api/admin/games');
+    } else {
+      await Promise.all(ids.map((id, i) => api('PUT', `/api/admin/kik/${id}`, { sort_order: i })));
+      kikCache = await api('GET','/api/admin/kik');
+    }
+    toast('Порядок збережено ✓');
+    if (previewOpen) renderPreview();
+  } catch(e){ if (e.message !== 'unauth') toast('Помилка зміни порядку', true); }
+});
 
 // ── Draw ───────────────────────────────────────────────────────
 function draw(){
@@ -712,28 +974,165 @@ function draw(){
   });
 }
 
-// Color pair sync
+// Color pair sync + dirty + inline previews
 document.addEventListener('input', e => {
   const el = e.target;
-  if (!el.dataset.path) return;
+  if (!el.dataset || !el.dataset.path) return;
+  setDirty(true);
   if (el.type === 'color' || el.type === 'text'){
     document.querySelectorAll(`[data-path="${el.dataset.path}"]`).forEach(o => {
       if (o !== el) o.value = el.value;
     });
   }
+  const val = (el.type === 'checkbox') ? el.checked : el.value;
+  updateInlinePreviews(el.dataset.path, val);
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset && el.dataset.path) setDirty(true);
 });
 
+// ── Live Preview panel ─────────────────────────────────────────
+function togglePreview(){
+  previewOpen = !previewOpen;
+  $('#previewPane').classList.toggle('collapsed', !previewOpen);
+  $('#previewToggle').textContent = previewOpen ? '◂ Сховати' : 'Превью ▸';
+  if (previewOpen) renderPreview();
+}
+$('#previewToggle').addEventListener('click', togglePreview);
+
+function curVal(path, fallback){
+  const el = document.querySelector(`[data-path="${path}"]`);
+  if (el){ return el.type === 'checkbox' ? el.checked : el.value; }
+  const [k,f] = path.split('.');
+  return (S[k] && S[k][f] != null) ? S[k][f] : fallback;
+}
+
+function browserChrome(url, inner){
+  return `<div class="pv-frame">
+    <div class="pv-browserbar"><i></i><i></i><i></i><span class="pv-url">${esc(url)}</span></div>
+    <div class="pv-content">${inner}</div>
+  </div>`;
+}
+
+function renderPreview(){
+  const body = $('#pvBody'), tag = $('#pvTag');
+  tag.textContent = NAV.find(n=>n.id===activeTab)?.label || '';
+  let html = '';
+
+  if (activeTab === 'banner'){
+    const en = curVal('banner.enabled', false);
+    const txt = curVal('banner.text','');
+    const bg = curVal('banner.bg','#009fe3'), fg = curVal('banner.fg','#ffffff');
+    const strip = en && txt
+      ? `<div style="background:${esc(bg)};color:${esc(fg)};padding:10px;text-align:center;font-weight:600;font-size:12px">${esc(txt)}</div>`
+      : `<div style="background:#f1f5f9;color:#94a3b8;padding:10px;text-align:center;font-size:11px">Банер вимкнено</div>`;
+    html = browserChrome('blueferret.com.ua',
+      strip + `<div style="padding:24px 4px"><h4 style="font-family:'Libre Baskerville',serif;font-size:18px;color:#1e293b">Головна сторінка</h4>
+        <p style="color:#64748b;font-size:12px;margin-top:6px">Банер з'являється над усім вмістом сайту.</p></div>`);
+  }
+  else if (activeTab === 'general'){
+    const col = curVal('general.primaryColor','#009fe3');
+    const title = curVal('general.siteTitle','Blue Ferret');
+    html = browserChrome('blueferret.com.ua',
+      `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="width:40px;height:40px;border-radius:12px;background:${esc(col)};box-shadow:0 4px 14px ${esc(col)}55"></div>
+        <div><div style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:#1e293b">${esc(title)}</div>
+        <div style="font-family:ui-monospace,monospace;font-size:12px;color:${esc(col)};font-weight:700">${esc(col)}</div></div>
+      </div>
+      <p style="font-size:13px;color:#334155;line-height:1.6">Текст з <b style="color:${esc(col)}">основним кольором</b> акценту.</p>
+      <a href="#" onclick="return false" style="display:inline-block;margin-top:14px;background:${esc(col)};color:#fff;padding:9px 20px;border-radius:9px;font-weight:700;font-size:13px;text-decoration:none">Кнопка</a>`);
+  }
+  else if (activeTab === 'homepage'){
+    const col = curVal('general.primaryColor','#009fe3');
+    const t = curVal('homepage.heroTitle','') || curVal('general.siteTitle','Blue Ferret');
+    const sub = curVal('homepage.heroSubtitle','') || curVal('general.tagline','Незалежне видавництво настільних ігор');
+    const cta = curVal('homepage.heroCta','') || 'Переглянути ігри';
+    html = browserChrome('blueferret.com.ua',
+      `<div style="border-radius:12px;padding:26px 20px;color:#fff;background:linear-gradient(135deg,#0f172a,#1e293b);position:relative;overflow:hidden">
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 80% 10%,${esc(col)}55,transparent 60%)"></div>
+        <h4 style="font-family:'Libre Baskerville',serif;font-size:22px;line-height:1.2;position:relative">${esc(t)}</h4>
+        <p style="font-size:13px;color:rgba(255,255,255,.65);margin:8px 0 16px;position:relative">${esc(sub)}</p>
+        <a href="#" onclick="return false" style="display:inline-block;background:${esc(col)};color:#fff;font-weight:700;font-size:13px;padding:9px 20px;border-radius:9px;text-decoration:none;position:relative">${esc(cta)}</a>
+      </div>`);
+  }
+  else if (activeTab === 'maintenance'){
+    const en = curVal('maintenance.enabled', false);
+    const msg = curVal('maintenance.message','Сайт тимчасово на технічному обслуговуванні. Скоро повернемось!');
+    html = en
+      ? `<div class="pv-frame"><div class="pv-browserbar"><i></i><i></i><i></i><span class="pv-url">blueferret.com.ua</span></div>
+          <div style="background:#0b1f33;color:#fff;padding:46px 24px;text-align:center">
+            <div style="font-size:42px;margin-bottom:14px">🦦</div>
+            <p style="font-size:14px;line-height:1.6;color:rgba(255,255,255,.9)">${esc(msg)}</p>
+          </div></div>`
+      : browserChrome('blueferret.com.ua', `<div style="padding:20px 4px;color:#64748b;font-size:13px">Тех. режим вимкнено — сайт працює звичайно.</div>`);
+  }
+  else if (activeTab === 'appearance'){
+    const css = curVal('appearance.customCss','');
+    html = browserChrome('blueferret.com.ua',
+      `<div id="pvCssBox"><h3 class="hero-title" style="font-family:'Libre Baskerville',serif;font-size:18px;color:#1e293b;margin-bottom:6px">Заголовок</h3>
+        <p style="color:#64748b;font-size:13px">Абзац тексту сайту для перегляду CSS.</p>
+        <a href="#" class="bf-cta" onclick="return false" style="display:inline-block;margin-top:10px;background:#009fe3;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700">Кнопка</a>
+      </div><style>${css}</style>`);
+  }
+  else if (activeTab === 'games'){
+    const cards = gamesCache.length
+      ? `<div class="pvg-grid">${gamesCache.slice(0,6).map(g=>`
+          <div class="pvg-card">
+            <div class="pvg-thumb"${g.cover_url?` style="background-image:url('${esc(g.cover_url)}')"`:''}>${g.cover_url?'':'🎲'}</div>
+            <div class="pvg-meta"><div class="pvg-title">${esc(g.title)}</div>
+            <div class="pvg-sub">${esc([g.players,g.age].filter(Boolean).join(' · ')||g.status)}</div></div>
+          </div>`).join('')}</div>`
+      : `<p style="color:#94a3b8;font-size:12px;text-align:center;padding:20px">Немає ігор</p>`;
+    html = browserChrome('blueferret.com.ua/igry',
+      `<h4 style="font-family:'Libre Baskerville',serif;font-size:16px;color:#1e293b;margin-bottom:12px">Наші ігри</h4>${cards}`);
+  }
+  else if (activeTab === 'kik'){
+    const items = kikCache.length
+      ? kikCache.slice(0,5).map(k=>{
+          const pct = k.goal ? Math.min(100, Math.round(k.raised/k.goal*100)) : 0;
+          return `<div class="pvk-item">
+            <div class="pvk-title">${esc(k.title)}</div>
+            <div class="pvk-nums">${k.raised.toLocaleString('uk')} / ${k.goal.toLocaleString('uk')} ₴ · ${pct}%</div>
+            <div class="prog"><span style="width:${pct}%"></span></div>
+          </div>`;
+        }).join('')
+      : `<p style="color:#94a3b8;font-size:12px;text-align:center;padding:20px">Немає проектів</p>`;
+    html = browserChrome('blueferret.com.ua/kik',
+      `<h4 style="font-family:'Libre Baskerville',serif;font-size:16px;color:#1e293b;margin-bottom:12px">КІК-проекти</h4>${items}`);
+  }
+  else {
+    html = `<div class="pv-empty">Прев'ю недоступне для цієї вкладки<div class="pv-hint">Оберіть Загальне, Головна, Банер, Тех. режим, CSS, Ігри або КІК</div></div>`;
+  }
+
+  body.innerHTML = html + `<div class="pv-hint">Орієнтовний вигляд. Натисніть «Зберегти», щоб опублікувати.</div>`;
+}
+
 // ── Save settings ──────────────────────────────────────────────
-$('#saveBtn').addEventListener('click', async () => {
+$('#saveBtn').addEventListener('click', saveSettings);
+
+async function saveSettings(){
+  if (!SETTINGS_TABS.has(activeTab)) return;
   collectSettings();
   $('#saveBtn').disabled = true;
   try {
     const res = await api('PUT', '/api/admin/settings', S);
     S = res.settings;
+    setDirty(false);
     toast('Збережено і опубліковано ✓');
     stamp();
+    if (previewOpen) renderPreview();
   } catch(e){ if (e.message !== 'unauth') toast('Помилка збереження', true); }
   finally { $('#saveBtn').disabled = false; }
+}
+
+// Cmd/Ctrl+S
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')){
+    e.preventDefault();
+    if ($('#app').classList.contains('hidden')) return;
+    if (SETTINGS_TABS.has(activeTab)) saveSettings();
+  }
 });
 
 function stamp(){
@@ -780,7 +1179,8 @@ $('#loginForm').addEventListener('submit', async e => {
 
 $('#logoutBtn').addEventListener('click', async () => {
   await fetch('/api/admin/logout',{method:'POST'}).catch(()=>{});
-  showLogin();
+  toast('Ви вийшли з системи');
+  setTimeout(showLogin, 300);
 });
 
 // ── Boot ───────────────────────────────────────────────────────
@@ -795,12 +1195,9 @@ async function boot(){
     ]);
     showApp();
     renderSidebar();
-    draw();
+    switchTab(activeTab);
     stamp();
-    // Sidebar tab click (re-bind after render)
-    document.querySelectorAll('.sb-btn[data-tab]').forEach(b => {
-      b.addEventListener('click', () => switchTab(b.dataset.tab));
-    });
+    setDirty(false);
   } catch(e){ showLogin(); }
 }
 boot();
