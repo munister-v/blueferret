@@ -128,7 +128,8 @@ function validToken(tok){
   return ts && (Date.now() - ts) < 7 * 24 * 3600 * 1000;
 }
 function requireAuth(req, res, next){
-  if (validToken(req.cookies.bf_session)) return next();
+  const tok = req.headers['authorization']?.replace('Bearer ','') || req.cookies.bf_session;
+  if (validToken(tok)) return next();
   res.status(401).json({ error:'unauthorized' });
 }
 
@@ -148,24 +149,23 @@ app.post('/api/admin/login', (req, res) => {
   const ok = sha256(req.body?.password || '') === PASS_HASH;
   bump(ip, ok); audit(ip, ok?'login_ok':'login_fail', null);
   if (!ok) return res.status(401).json({ error:'invalid_password' });
-  res.setHeader('Set-Cookie', `bf_session=${makeToken()}; HttpOnly; Path=/; Max-Age=${7*24*3600}; SameSite=Lax; Secure`);
-  res.json({ ok:true });
+  const token = makeToken();
+  res.json({ ok:true, token });
 });
 app.post('/api/admin/login-form', (req, res) => {
   const ip = req.ip;
-  if (throttled(ip)){ return res.redirect('/admin?err=locked'); }
+  if (throttled(ip)) return res.redirect('/admin?err=locked');
   const pw = req.body?.password || '';
   const ok = sha256(pw) === PASS_HASH;
   bump(ip, ok); audit(ip, ok?'login_ok':'login_fail', null);
   if (!ok) return res.redirect('/admin?err=wrong');
-  res.setHeader('Set-Cookie', `bf_session=${makeToken()}; HttpOnly; Path=/; Max-Age=${7*24*3600}; SameSite=Lax; Secure`);
-  res.redirect('/admin');
+  res.redirect('/admin#tk=' + makeToken());
 });
-app.post('/api/admin/logout', (_req, res) => {
-  res.setHeader('Set-Cookie', 'bf_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
-  res.json({ ok:true });
+app.post('/api/admin/logout', (_req, res) => { res.json({ ok:true }); });
+app.get('/api/admin/me', (req, res) => {
+  const tok = req.headers['authorization']?.replace('Bearer ','') || req.cookies.bf_session;
+  res.json({ authenticated: validToken(tok) });
 });
-app.get('/api/admin/me', (req, res) => res.json({ authenticated:validToken(req.cookies.bf_session) }));
 
 // ---------- settings ----------
 app.get('/api/admin/settings', requireAuth, (_req, res) => res.json(fullSettings()));

@@ -590,6 +590,19 @@ code{
 'use strict';
 
 const $ = (s, ctx = document) => ctx.querySelector(s);
+const LS_KEY = 'bf_tok';
+function getToken(){ return localStorage.getItem(LS_KEY) || ''; }
+function setToken(t){ if(t) localStorage.setItem(LS_KEY,t); else localStorage.removeItem(LS_KEY); }
+
+// Read token from URL hash after form-login redirect (#tk=...)
+(function(){
+  const h = location.hash;
+  if(h.startsWith('#tk=')){
+    setToken(h.slice(4));
+    history.replaceState(null,'',location.pathname);
+  }
+})();
+
 let S = {}, gamesCache = [], kikCache = [];
 let activeTab = 'dash';
 let editType = null, editId = null;
@@ -605,13 +618,17 @@ function toast(msg, isErr = false){
   clearTimeout(t._tid);
   t._tid = setTimeout(() => t.className = 'toast', 2800);
 }
+function authHeaders(extra){
+  const h = {'Authorization':'Bearer '+getToken()};
+  return extra ? Object.assign(h,extra) : h;
+}
 async function api(method, url, body){
   const r = await fetch(url, {
     method,
-    headers: body ? {'Content-Type':'application/json'} : {},
+    headers: body ? authHeaders({'Content-Type':'application/json'}) : authHeaders(),
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (r.status === 401){ showLogin(); throw new Error('unauth'); }
+  if (r.status === 401){ setToken(''); showLogin(); throw new Error('unauth'); }
   return r.json();
 }
 function confirm2(title, text){
@@ -649,7 +666,7 @@ $('.sb-nav').addEventListener('click', e => {
   if (b) switchTab(b.dataset.tab);
 });
 $('#logoutBtn').addEventListener('click', async () => {
-  await fetch('/api/admin/logout',{method:'POST'}).catch(()=>{});
+  setToken('');
   toast('Ви вийшли з системи');
   setTimeout(showLogin, 300);
 });
@@ -1403,13 +1420,8 @@ $('#loginForm').addEventListener('submit', function(e){
 /* ─── Boot ─── */
 async function boot(){
   try {
-    const meR = await fetch('/api/admin/me');
-    const me = await meR.json().catch(()=>({authenticated:false}));
-    if (!me.authenticated){
-      $('#loginErr').textContent = `Сесія не встановилась (${meR.status}). Спробуй ще раз.`;
-      $('#loginErr').classList.remove('hidden');
-      showLogin(); return;
-    }
+    const me = await fetch('/api/admin/me', {headers: authHeaders()}).then(r=>r.json()).catch(()=>({authenticated:false}));
+    if (!me.authenticated){ showLogin(); return; }
     [S, gamesCache, kikCache] = await Promise.all([
       api('GET','/api/admin/settings'),
       api('GET','/api/admin/games'),
