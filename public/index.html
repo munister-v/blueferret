@@ -1040,7 +1040,7 @@ function renderSettingsPage(){
           </div>
         </div>
       </div>
-      <div class="banner-prev" id="ip_banner" style="background:${esc(b.bg||'#009fe3')};color:${esc(b.fg||'#fff')}">${esc(b.text||'Тут з'явиться текст вашого банера')}</div>
+      <div class="banner-prev" id="ip_banner" style="background:${esc(b.bg||'#009fe3')};color:${esc(b.fg||'#fff')}">${esc(b.text||'Тут з’явиться текст вашого банера')}</div>
     </div>
 
     <!-- MAINTENANCE -->
@@ -1148,7 +1148,7 @@ function renderSettingsPage(){
         document.querySelectorAll(`[data-s="${path}"]`).forEach(o => { if (o!==el) o.value = el.value; });
       }
       // live previews
-      if (path === 'banner.text') { const b=$('#ip_banner'); if(b) b.textContent=el.value||'Тут з'явиться текст вашого банера'; }
+      if (path === 'banner.text') { const b=$('#ip_banner'); if(b) b.textContent=el.value||'Тут з’явиться текст вашого банера'; }
       if (path === 'banner.bg') { const b=$('#ip_banner'); if(b) b.style.background=el.value; }
       if (path === 'banner.fg') { const b=$('#ip_banner'); if(b) b.style.color=el.value; }
       if (path === 'maintenance.message') { const m=$('#ip_maint'); if(m) m.textContent=el.value; }
