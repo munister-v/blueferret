@@ -2,1443 +2,1831 @@
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Blue Ferret — CMS</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700&family=Comfortaa:wght@400;600;700&display=swap" rel="stylesheet">
+<title>Blue Ferret · CMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --acc:#009fe3;--acc-d:#007ec5;--acc-l:rgba(0,159,227,.10);--acc-xl:rgba(0,159,227,.06);
-  --kik:#4bb272;--kik-d:#3a9960;--kik-l:rgba(75,178,114,.10);
-  --red:#e11d48;
-  --bg:#eef2f7;--card:#ffffff;
-  --ink:#1a2332;--ink2:#334155;--muted:#64748b;--muted2:#94a3b8;
-  --border:rgba(15,23,42,.09);--border-m:rgba(15,23,42,.14);
-  --dark:#0b1729;--dark2:#111f33;
-  --sh:0 1px 3px rgba(15,23,42,.06),0 4px 12px rgba(15,23,42,.04);
-  --sh-m:0 4px 16px rgba(15,23,42,.10),0 1px 4px rgba(15,23,42,.06);
-  --sh-lg:0 20px 60px rgba(15,23,42,.18),0 4px 16px rgba(15,23,42,.08);
-  --sb:236px;
-  --r:16px;--r-sm:10px;
+  --bf:#009fe3;--bf-h:#0077b3;--bf-m:rgba(0,159,227,.12);--bf-glow:rgba(0,159,227,.3);
+  --kik:#4bb272;--kik-h:#3d9a5f;--kik-m:rgba(75,178,114,.12);
+  --dark:#0a0f1a;--dark2:#0f172b;--dark3:#1a2744;--dark4:#1e2d4a;
+  --bg:#f0f4f9;--card:#fff;--line:#e2e8f0;
+  --txt:#1e293b;--txt-m:#64748b;--txt-s:#94a3b8;
+  --red:#ef4444;--green:#22c55e;
+  --r:14px;--r-sm:10px;--r-lg:18px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;scroll-behavior:smooth}
-body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;
-  -webkit-font-smoothing:antialiased}
+body{font-family:Comfortaa,system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:14px;-webkit-font-smoothing:antialiased}
 .hidden{display:none!important}
+button,input,select,textarea{font-family:inherit;font-size:14px}
 
-/* ═══ LOGIN ═══ */
-.login-wrap{
-  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+/* ── LOGIN ── */
+#loginPage{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
   background:var(--dark);
-  background-image:
-    radial-gradient(ellipse 80% 60% at 10% 90%,rgba(0,159,227,.25) 0%,transparent 55%),
-    radial-gradient(ellipse 65% 45% at 90% 10%,rgba(75,178,114,.18) 0%,transparent 55%),
-    radial-gradient(ellipse 50% 40% at 50% 50%,rgba(0,40,80,.4) 0%,transparent 70%)}
-.login-box{
-  background:rgba(255,255,255,.04);
-  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-  border:1px solid rgba(255,255,255,.09);
-  border-radius:24px;padding:48px 44px;
-  width:100%;max-width:390px;
-  box-shadow:0 48px 96px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04) inset}
-.login-logo{display:flex;justify-content:center;margin-bottom:10px}
-.login-icon{height:52px;max-width:200px;object-fit:contain;filter:brightness(0) invert(1);opacity:.92}
-.login-sub{
-  color:rgba(255,255,255,.38);font-size:13px;text-align:center;
-  margin-bottom:32px;letter-spacing:.01em}
-.login-label{
-  display:block;font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
-  color:rgba(255,255,255,.38);margin-bottom:9px;margin-top:22px}
-.login-input{
-  width:100%;padding:14px 16px;
-  border:1.5px solid rgba(255,255,255,.1);border-radius:12px;
-  font-family:'Comfortaa',sans-serif;font-size:14px;
-  background:rgba(255,255,255,.06);color:#fff;outline:none;transition:.2s}
-.login-input:focus{
-  border-color:rgba(0,159,227,.7);
-  box-shadow:0 0 0 3px rgba(0,159,227,.18),0 0 20px rgba(0,159,227,.08)}
-.login-input::placeholder{color:rgba(255,255,255,.2)}
-.login-btn{
-  width:100%;margin-top:22px;
-  background:linear-gradient(135deg,var(--acc) 0%,#00b4f5 100%);
-  color:#fff;border:none;padding:15px;border-radius:12px;
-  font-family:'Comfortaa',sans-serif;font-size:14px;font-weight:700;
-  cursor:pointer;transition:.2s;
-  box-shadow:0 6px 20px rgba(0,159,227,.4),0 1px 0 rgba(255,255,255,.15) inset}
-.login-btn:hover:not(:disabled){
-  box-shadow:0 8px 28px rgba(0,159,227,.55),0 1px 0 rgba(255,255,255,.15) inset;
-  transform:translateY(-1px)}
-.login-btn:active:not(:disabled){transform:translateY(0)}
-.login-btn:disabled{opacity:.45;cursor:default}
-.login-err{color:#f87171;font-size:13px;text-align:center;margin-top:14px}
+  background-image:radial-gradient(ellipse 90% 55% at 50% -10%,rgba(0,159,227,.15) 0%,transparent 55%),
+    radial-gradient(ellipse 80% 50% at 80% 70%,rgba(75,178,114,.08) 0%,transparent 50%);}
+.lb{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(20px);
+  border-radius:20px;padding:44px 40px;width:100%;max-width:400px;
+  box-shadow:0 32px 80px rgba(0,0,0,.5),0 0 0 1px rgba(0,159,227,.1),inset 0 1px 0 rgba(255,255,255,.1)}
+.lb-logo{text-align:center;margin-bottom:32px}
+.lb-ico{width:64px;height:64px;margin:0 auto 14px;background:linear-gradient(135deg,var(--bf),#0055aa);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 0 32px var(--bf-glow)}
+.lb h1{font-size:22px;font-weight:700;color:#fff;margin-bottom:4px}
+.lb p{color:rgba(255,255,255,.5);font-size:13px}
+.lf{margin-bottom:20px}
+.lf label{display:block;font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.lf input{width:100%;padding:13px 16px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;outline:none;transition:.2s}
+.lf input::placeholder{color:rgba(255,255,255,.25)}
+.lf input:focus{border-color:var(--bf);background:rgba(0,159,227,.07);box-shadow:0 0 0 3px var(--bf-m)}
+.l-btn{width:100%;padding:14px;border:none;cursor:pointer;font:700 15px inherit;
+  background:linear-gradient(135deg,var(--bf),#0066cc);color:#fff;border-radius:10px;
+  box-shadow:0 4px 20px rgba(0,159,227,.4);transition:.2s}
+.l-btn:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(0,159,227,.55)}
+.l-btn:disabled{opacity:.5;transform:none}
+#loginErr{color:#fca5a5;font-size:13px;text-align:center;margin-top:14px}
 
-/* ═══ SHELL ═══ */
-.shell{display:flex;height:100vh;overflow:hidden}
+/* ── SHELL ── */
+#appPage{display:flex;flex-direction:column;min-height:100vh}
+header{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;
+  position:sticky;top:0;z-index:100;
+  background:rgba(10,15,26,.96);border-bottom:1px solid rgba(255,255,255,.07);backdrop-filter:blur(14px)}
+.h-brand{display:flex;align-items:center;gap:9px;color:#fff;font-weight:700;font-size:14px}
+.h-dot{width:28px;height:28px;background:linear-gradient(135deg,var(--bf),#004fa3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 0 12px var(--bf-glow)}
+.h-r{display:flex;align-items:center;gap:14px}
+.h-link{color:rgba(255,255,255,.45);font-size:12.5px;text-decoration:none;transition:.15s}.h-link:hover{color:#fff}
+.h-out{padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.65);font:600 12.5px inherit;cursor:pointer;transition:.2s}.h-out:hover{background:rgba(255,255,255,.1);color:#fff}
+.shell{display:flex;flex:1}
 
-/* ═══ SIDEBAR ═══ */
-.sb{
-  width:var(--sb);flex-shrink:0;display:flex;flex-direction:column;
-  background:linear-gradient(180deg,#0d1f35 0%,#0b1729 100%);
-  border-right:1px solid rgba(255,255,255,.05);
-  box-shadow:1px 0 0 rgba(255,255,255,.03)}
-.sb-brand{
-  padding:22px 18px 20px;display:flex;align-items:center;gap:11px;
-  border-bottom:1px solid rgba(255,255,255,.05)}
-.sb-icon{height:30px;max-width:118px;object-fit:contain;flex-shrink:0;
-  filter:brightness(0) invert(1);opacity:.9}
-.sb-name{font-family:'Playfair Display',serif;font-size:14.5px;font-weight:700;color:rgba(255,255,255,.9);line-height:1.1}
-.sb-name small{
-  display:block;font-family:'Comfortaa',sans-serif;font-size:9.5px;
-  color:rgba(255,255,255,.25);font-weight:400;letter-spacing:.04em;margin-top:1px}
-.sb-nav{padding:14px 10px;flex:1;overflow-y:auto}
-.sb-nav::-webkit-scrollbar{width:3px}
-.sb-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
-.sb-section{
-  font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-  color:rgba(255,255,255,.18);padding:16px 10px 6px;user-select:none}
-.sb-item{
-  display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:11px;
-  border:none;background:none;cursor:pointer;color:rgba(255,255,255,.44);
-  font-family:'Comfortaa',sans-serif;font-size:13px;font-weight:600;
-  text-align:left;transition:.18s;text-decoration:none;margin-bottom:2px}
-.sb-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.82)}
-.sb-item.active{
-  background:linear-gradient(135deg,rgba(0,159,227,.22) 0%,rgba(0,159,227,.12) 100%);
-  color:var(--acc);
-  box-shadow:0 0 0 1px rgba(0,159,227,.18) inset}
-.sb-item .ico{flex-shrink:0;width:17px;height:17px;opacity:.6;transition:.18s}
-.sb-item:hover .ico{opacity:.8}
-.sb-item.active .ico{opacity:1}
-.sb-badge{
-  margin-left:auto;
-  background:rgba(255,255,255,.09);color:rgba(255,255,255,.55);
-  font-size:10px;font-weight:700;min-width:20px;text-align:center;
-  padding:2px 7px;border-radius:99px;transition:.18s}
-.sb-item.active .sb-badge{background:rgba(0,159,227,.28);color:#7dd3f8}
-.sb-foot{
-  padding:10px 10px 18px;
-  border-top:1px solid rgba(255,255,255,.05)}
-.sb-site{
-  display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;
-  color:rgba(255,255,255,.3);font-size:12.5px;text-decoration:none;transition:.18s}
-.sb-site:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.6)}
-.sb-logout{
-  display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;
-  border:none;background:none;cursor:pointer;width:100%;text-align:left;
-  color:rgba(255,255,255,.3);font-family:'Comfortaa',sans-serif;font-size:13px;
-  font-weight:600;transition:.18s}
-.sb-logout:hover{background:rgba(239,68,68,.12);color:#fca5a5}
+/* ── SIDEBAR ── */
+.sidebar{width:206px;flex-shrink:0;background:var(--dark2);border-right:1px solid rgba(255,255,255,.05);padding:10px 0 24px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+.sb-g{padding:0 10px;margin-bottom:4px}
+.sb-lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.1em;padding:10px 8px 4px;display:flex;align-items:center;gap:6px}
+.sb-lbl::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06)}
+.sb-i{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;cursor:pointer;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;border:none;background:none;width:100%;text-align:left;transition:.15s}
+.sb-i:hover{color:rgba(255,255,255,.85);background:rgba(255,255,255,.04)}
+.sb-i.active{color:#fff;font-weight:700;background:rgba(0,159,227,.14);border:1px solid rgba(0,159,227,.22)}
+.sb-i .ico{font-size:14px;width:18px;text-align:center}
 
-/* ═══ MAIN AREA ═══ */
-.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0;
-  background:var(--bg);
-  background-image:radial-gradient(circle at 100% 0%,rgba(0,159,227,.04) 0%,transparent 50%)}
-.topbar{
-  position:sticky;top:0;z-index:20;
-  background:rgba(238,242,247,.94);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border-bottom:1px solid rgba(15,23,42,.07);
-  box-shadow:0 1px 0 rgba(15,23,42,.04),0 2px 8px rgba(15,23,42,.04);
-  padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0}
-.breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
-.breadcrumb span{font-weight:500}
-.breadcrumb b{color:var(--ink);font-weight:700;font-family:'Libre Baskerville',serif;font-size:14px}
-.bc-sep{color:var(--muted2);font-size:11px}
-.page-body{padding:28px 28px 60px;max-width:1040px}
+/* ── MAIN ── */
+.main{flex:1;padding:22px;min-width:0}
 
-/* ═══ CARDS ═══ */
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--r);
-  padding:26px 28px;
-  margin-bottom:20px;
-  box-shadow:var(--sh);
-  transition:.2s}
-.card:hover{box-shadow:var(--sh-m)}
-.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:22px}
-.card-head-text h2{font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:var(--ink)}
-.card-head-text p{margin-top:4px;color:var(--muted);font-size:12.5px}
+/* ── CARD ── */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px;margin-bottom:18px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+.ch{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.ct{font-size:15px;font-weight:700}.cs{color:var(--txt-m);font-size:12px;margin-top:2px}
 
-/* ═══ STAT CARDS ═══ */
-.stat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px;margin-bottom:22px}
-.stat-card{
-  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
-  padding:24px 22px 20px;box-shadow:var(--sh);position:relative;overflow:hidden}
-.stat-card::before{
-  content:"";position:absolute;top:0;left:0;right:0;height:3px;
-  background:linear-gradient(90deg,var(--acc),#00c8f5)}
-.stat-card.kik-card::before{background:linear-gradient(90deg,var(--kik),#6ee09a)}
-.stat-card.status-card::before{background:linear-gradient(90deg,#a78bfa,#818cf8)}
-.stat-num{
-  font-family:'Playfair Display',serif;font-size:38px;font-weight:700;
-  color:var(--ink);line-height:1;margin-bottom:6px}
-.stat-label{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.sc{border-radius:var(--r);padding:18px;border:1px solid rgba(255,255,255,.07);
+  background:linear-gradient(135deg,var(--dark3),var(--dark2));box-shadow:0 4px 18px rgba(0,0,0,.28);position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 0% 0%,var(--g,.1) 0%,transparent 60%);pointer-events:none}
+.sc .n{font-size:32px;font-weight:700;line-height:1;color:#fff;margin-bottom:3px}
+.sc .l{font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.05em}
+.sc.bl{--g:rgba(0,159,227,.2)}.sc.bl .n{color:var(--bf)}
+.sc.gr{--g:rgba(75,178,114,.2)}.sc.gr .n{color:var(--kik)}
+.sc.am{--g:rgba(251,191,36,.12)}.sc.am .n{color:#fbbf24}
 
-/* ═══ QUICK ACTIONS ═══ */
-.qa-row{display:flex;flex-wrap:wrap;gap:10px}
+/* ── PROGRESS ── */
+.kik-banner{background:linear-gradient(135deg,var(--dark3),var(--dark2));border:1px solid rgba(75,178,114,.14);border-radius:var(--r);padding:20px;margin-bottom:18px;background-image:radial-gradient(ellipse 80% 50% at 80% 80%,rgba(75,178,114,.07) 0%,transparent 50%)}
+.kb-l{font-size:10px;font-weight:700;color:rgba(75,178,114,.75);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.kb-t{font-size:16px;font-weight:700;color:#fff;margin-bottom:3px}
+.kb-s{font-size:12px;color:rgba(255,255,255,.45);margin-bottom:10px}
+.pb{height:7px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.pb span{display:block;height:100%;background:linear-gradient(90deg,var(--kik),#22c55e);border-radius:99px;transition:.4s}
 
-/* ═══ CONTENT GRID ═══ */
-.content-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:18px}
-.item-card{
-  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
-  overflow:hidden;box-shadow:var(--sh);
-  display:flex;flex-direction:column;
-  cursor:pointer;transition:.22s}
-.item-card:hover{
-  box-shadow:0 12px 32px rgba(15,23,42,.13),0 2px 8px rgba(15,23,42,.06);
-  transform:translateY(-3px);border-color:rgba(0,159,227,.2)}
-.item-cover{
-  width:100%;aspect-ratio:16/9;
-  background:linear-gradient(135deg,rgba(0,159,227,.08) 0%,rgba(0,159,227,.04) 100%);
-  display:flex;align-items:center;justify-content:center;font-size:40px;
-  flex-shrink:0;overflow:hidden;position:relative}
-.item-cover img{width:100%;height:100%;object-fit:cover;display:block;transition:.3s}
-.item-card:hover .item-cover img{transform:scale(1.04)}
-.item-cover-overlay{
-  position:absolute;inset:0;
-  background:linear-gradient(to bottom,transparent 40%,rgba(10,20,35,.5) 100%);
-  opacity:0;transition:.22s}
-.item-card:hover .item-cover-overlay{opacity:1}
-.item-body{padding:16px 18px 18px;flex:1;display:flex;flex-direction:column}
-.item-title{font-family:'Libre Baskerville',serif;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:4px;line-height:1.3}
-.item-sub{font-size:12px;color:var(--muted);line-height:1.5;flex:1}
-.item-meta{font-size:11.5px;color:var(--muted2);margin-top:6px;margin-bottom:8px}
-.item-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+/* ── FORMS ── */
+.field{margin-bottom:14px}
+.flbl{display:block;font-size:11px;font-weight:700;color:var(--txt-m);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+input[type=text],input[type=url],input[type=email],input[type=password],input[type=number],input[type=date],select,textarea{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--txt);transition:.15s;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--bf);box-shadow:0 0 0 3px var(--bf-m)}
+textarea{resize:vertical;font-family:inherit;line-height:1.55}
+textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.row-auto{display:flex;gap:12px;flex-wrap:wrap}
+.row-auto>.field{flex:1;min-width:140px}
+.sw{display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:rgba(0,159,227,.04);border:1px solid rgba(0,159,227,.1);border-radius:9px}
+.sw input{appearance:none;width:44px;height:24px;background:#cbd5e1;border-radius:99px;position:relative;cursor:pointer;transition:.2s;flex-shrink:0}
+.sw input:checked{background:var(--bf)}
+.sw input::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.sw input:checked::after{left:22px}
+.sw span{font-size:13px;font-weight:600;color:var(--txt)}
+.cp{display:flex;align-items:center;gap:8px}
+.cp input[type=color]{width:44px;height:40px;padding:2px;border:1.5px solid var(--line);border-radius:8px;cursor:pointer}
 
-/* ═══ BADGES ═══ */
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.01em}
-.badge-green{background:rgba(22,163,74,.1);color:#16a34a;border:1px solid rgba(22,163,74,.18)}
-.badge-yellow{background:rgba(234,179,8,.1);color:#ca8a04;border:1px solid rgba(234,179,8,.2)}
-.badge-gray{background:rgba(100,116,139,.08);color:var(--muted);border:1px solid rgba(100,116,139,.14)}
-
-/* ═══ PROGRESS ═══ */
-.prog{height:5px;background:rgba(15,23,42,.07);border-radius:99px;overflow:hidden;margin-top:8px}
-.prog-bar{height:100%;background:linear-gradient(90deg,var(--kik),#6ee09a);border-radius:99px;transition:.4s}
-
-/* ═══ EMPTY STATE ═══ */
-.empty{
-  text-align:center;padding:72px 24px;
-  background:var(--card);border:1px solid var(--border);
-  border-radius:var(--r);box-shadow:var(--sh)}
-.empty-icon{font-size:52px;margin-bottom:16px;display:block}
-.empty-text{font-family:'Libre Baskerville',serif;font-size:18px;font-weight:700;color:var(--ink);margin-bottom:8px}
-.empty-hint{font-size:13.5px;color:var(--muted);margin-bottom:24px;max-width:340px;margin-left:auto;margin-right:auto;line-height:1.6}
-
-/* ═══ BUTTONS ═══ */
-.btn{
-  display:inline-flex;align-items:center;gap:6px;border:none;
-  padding:11px 22px;border-radius:11px;
-  font-family:'Comfortaa',sans-serif;font-size:13.5px;font-weight:700;
-  cursor:pointer;transition:.18s;text-decoration:none;white-space:nowrap;line-height:1}
-.btn-primary{
-  background:linear-gradient(135deg,var(--acc) 0%,#00b4f5 100%);
-  color:#fff;
-  box-shadow:0 3px 12px rgba(0,159,227,.32),0 1px 0 rgba(255,255,255,.2) inset}
-.btn-primary:hover:not(:disabled){
-  box-shadow:0 5px 18px rgba(0,159,227,.44),0 1px 0 rgba(255,255,255,.2) inset;
-  transform:translateY(-1px)}
-.btn-kik{
-  background:linear-gradient(135deg,var(--kik) 0%,#5dd68a 100%);
-  color:#fff;
-  box-shadow:0 3px 12px rgba(75,178,114,.32),0 1px 0 rgba(255,255,255,.2) inset}
-.btn-kik:hover:not(:disabled){
-  box-shadow:0 5px 18px rgba(75,178,114,.44),0 1px 0 rgba(255,255,255,.2) inset;
-  transform:translateY(-1px)}
-.btn-ghost{
-  background:var(--card);color:var(--ink);
-  border:1.5px solid var(--border-m);
-  box-shadow:0 1px 3px rgba(15,23,42,.06)}
-.btn-ghost:hover:not(:disabled){
-  background:#f8fafc;border-color:rgba(15,23,42,.22);
-  box-shadow:0 2px 8px rgba(15,23,42,.08)}
-.btn-danger{
-  background:linear-gradient(135deg,var(--red) 0%,#f43f6e 100%);
-  color:#fff;
-  box-shadow:0 3px 10px rgba(225,29,72,.28)}
-.btn-danger:hover:not(:disabled){
-  box-shadow:0 5px 16px rgba(225,29,72,.4);transform:translateY(-1px)}
-.btn-sm{padding:8px 16px;font-size:12.5px;border-radius:9px}
-.btn-xs{padding:6px 12px;font-size:11.5px;border-radius:8px}
-.btn:active:not(:disabled){transform:translateY(0)!important}
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:9px;font:700 13px inherit;cursor:pointer;border:none;transition:.15s}
+.btn-p{background:var(--bf);color:#fff;box-shadow:0 3px 12px rgba(0,159,227,.25)}.btn-p:hover{background:var(--bf-h);transform:translateY(-1px)}
+.btn-g{background:#fff;color:var(--txt);border:1.5px solid var(--line)}.btn-g:hover{border-color:var(--bf);color:var(--bf)}
+.btn-k{background:var(--kik);color:#fff}.btn-k:hover{background:var(--kik-h)}
+.btn-d{background:var(--red);color:#fff}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:7px}
 .btn:disabled{opacity:.4;cursor:default}
 
-/* ═══ FORMS ═══ */
-.field{margin-bottom:18px}
-.field>label{
-  display:block;font-size:11px;font-weight:700;letter-spacing:.07em;
-  text-transform:uppercase;color:var(--muted);margin-bottom:7px}
-.field .hint{font-size:11.5px;color:var(--muted2);margin-top:5px}
-.row2{display:flex;gap:14px;flex-wrap:wrap}
-.row2>.field{flex:1;min-width:155px}
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);color:var(--txt-m);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+.tbl td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr:last-child td{border:none}
+.tbl tr:hover td{background:#f8fafc}
+.thumb{width:46px;height:46px;object-fit:cover;border-radius:8px;background:var(--bg)}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700}
+.b-g{background:rgba(75,178,114,.12);color:#166534;border:1px solid rgba(75,178,114,.2)}
+.b-r{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.b-s{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
+.pg-w{min-width:100px}.pg{height:5px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:4px}
+.pg span{display:block;height:100%;background:linear-gradient(90deg,var(--bf),#22c55e);border-radius:99px}
 
-input[type=text],input[type=url],input[type=email],
-input[type=number],input[type=date],textarea,select{
-  width:100%;padding:11px 14px;
-  border:1.5px solid rgba(15,23,42,.12);border-radius:10px;
-  font-family:'Comfortaa',sans-serif;font-size:13.5px;
-  background:#fff;color:var(--ink);transition:.18s;outline:none;
-  box-shadow:0 1px 3px rgba(15,23,42,.04) inset}
-input:focus,textarea:focus,select:focus{
-  border-color:var(--acc);
-  box-shadow:0 0 0 3px rgba(0,159,227,.12),0 1px 3px rgba(15,23,42,.04) inset}
-input::placeholder,textarea::placeholder{color:var(--muted2)}
-textarea{min-height:100px;resize:vertical;line-height:1.6}
-select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2364748b' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;appearance:none;padding-right:34px}
+/* ── GAME EDITOR (full-page) ── */
+.ged{display:flex;gap:0;height:calc(100vh - 56px);overflow:hidden}
+.ged-form{flex:0 0 440px;min-width:320px;overflow-y:auto;padding:22px;background:var(--bg);border-right:1px solid var(--line)}
+@media(max-width:900px){.ged{flex-direction:column;height:auto;overflow:visible}.ged-form{flex:none;min-width:0;border-right:none;border-bottom:1px solid var(--line)}.ged-preview{height:auto;min-height:400px}}
+.ged-preview{flex:1;overflow-y:auto;background:var(--dark);
+  background-image:radial-gradient(ellipse 100% 60% at 50% 0%,rgba(0,159,227,.1) 0%,transparent 55%),
+    radial-gradient(ellipse 80% 50% at 80% 80%,rgba(75,178,114,.06) 0%,transparent 50%);}
+.ged-title{font-size:16px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.ged-section{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:14px}
+.ged-section h4{font-size:11px;font-weight:700;color:var(--txt-m);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.ged-actions{display:flex;gap:10px;padding:16px 22px;background:#fff;border-top:1px solid var(--line);position:sticky;bottom:0;z-index:10}
+/* Preview panel */
+.pv{padding:32px 24px;min-height:100%;display:flex;flex-direction:column;gap:24px}
+.pv-label{font-size:10.5px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.12em;text-align:center;margin-bottom:8px}
+/* Game card preview */
+.gc{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden;backdrop-filter:blur(10px);transition:.3s}
+.gc-img{width:100%;height:220px;object-fit:cover;display:block;background:rgba(255,255,255,.04)}
+.gc-img-empty{width:100%;height:220px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:32px}
+.gc-body{padding:20px}
+.gc-title{font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;line-height:1.3}
+.gc-sub{font-size:13px;color:rgba(255,255,255,.55);margin-bottom:14px;line-height:1.5}
+.gc-desc{font-size:12.5px;color:rgba(255,255,255,.45);line-height:1.7;margin-bottom:16px}
+.gc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.gc-tag{background:rgba(0,159,227,.12);border:1px solid rgba(0,159,227,.2);color:rgba(0,159,227,.9);padding:4px 10px;border-radius:99px;font-size:11.5px;font-weight:600}
+.gc-btn{display:block;text-align:center;background:var(--bf);color:#fff;padding:11px;border-radius:10px;font-weight:700;font-size:13.5px;box-shadow:0 4px 14px rgba(0,159,227,.35)}
+/* KIK card preview */
+.kc{background:rgba(255,255,255,.06);border:1px solid rgba(75,178,114,.15);border-radius:16px;overflow:hidden}
+.kc-img{width:100%;height:180px;object-fit:cover;display:block;background:rgba(255,255,255,.04)}
+.kc-body{padding:20px}
+.kc-status{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:rgba(75,178,114,.15);color:var(--kik);border:1px solid rgba(75,178,114,.25);margin-bottom:10px}
+.kc-title{font-size:17px;font-weight:700;color:#fff;margin-bottom:4px}
+.kc-sub{font-size:12.5px;color:rgba(255,255,255,.5);margin-bottom:14px}
+.kc-nums{display:flex;gap:16px;margin-bottom:12px}
+.kc-num{text-align:center}
+.kc-num .v{font-size:18px;font-weight:700;color:#fff}
+.kc-num .l{font-size:10.5px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.05em}
+.kc-pb{height:8px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-bottom:16px}
+.kc-pb span{display:block;height:100%;background:linear-gradient(90deg,var(--kik),#22c55e);border-radius:99px}
+.kc-btn{display:block;text-align:center;background:var(--kik);color:#fff;padding:11px;border-radius:10px;font-weight:700;font-size:13.5px}
 
-.switch-row{display:flex;align-items:center;gap:12px}
-.sw{
-  width:44px;height:25px;background:#cbd5e1;border-radius:99px;
-  position:relative;cursor:pointer;appearance:none;border:none;transition:.22s;flex-shrink:0;
-  box-shadow:0 1px 3px rgba(0,0,0,.12) inset}
-.sw:checked{background:var(--acc)}
-.sw::after{
-  content:"";position:absolute;top:2.5px;left:2.5px;
-  width:20px;height:20px;border-radius:50%;background:#fff;transition:.22s;
-  box-shadow:0 1px 4px rgba(0,0,0,.22)}
-.sw:checked::after{left:21.5px}
-.sw-label{font-size:13.5px;font-weight:600;cursor:pointer;user-select:none;color:var(--ink2)}
+/* ── MEDIA ── */
+.m-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:10px}
+.m-i{position:relative;border:2px solid var(--line);border-radius:9px;overflow:hidden;aspect-ratio:1;background:var(--bg);cursor:pointer;transition:.15s}
+.m-i img{width:100%;height:100%;object-fit:cover;display:block}
+.m-ov{position:absolute;inset:0;background:rgba(10,15,26,.65);opacity:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:.15s}
+.m-i:hover .m-ov{opacity:1}
+.m-ov button{background:#fff;border:none;border-radius:6px;padding:4px 9px;font:600 11.5px inherit;cursor:pointer}
+.m-ov .del{background:#fef2f2;color:var(--red)}
+.m-lbl{font-size:9.5px;color:var(--txt-m);text-align:center;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upload-z{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;cursor:pointer;transition:.2s;background:rgba(0,159,227,.02)}
+.upload-z:hover,.upload-z.drag{border-color:var(--bf);background:var(--bf-m)}
 
-.color-row{display:flex;align-items:center;gap:8px}
-.color-row input[type=color]{
-  width:44px;height:40px;padding:3px;
-  border:1.5px solid var(--border-m);border-radius:10px;background:#fff;cursor:pointer;flex-shrink:0}
-.color-row input[type=text]{max-width:130px}
-.char-counter{font-size:11px;color:var(--muted2);text-align:right;margin-top:4px;transition:.2s}
-.char-counter.over{color:var(--red);font-weight:700}
+/* ── DEVICE SWITCHER ── */
+.dev-bar{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.07);border-radius:8px;padding:3px}
+.dev-btn{width:32px;height:28px;border:none;background:transparent;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);font-size:13px;transition:.15s}
+.dev-btn.on{background:rgba(255,255,255,.15);color:#fff}
+.dev-btn:hover:not(.on){background:rgba(255,255,255,.08);color:rgba(255,255,255,.7)}
+/* iframe device frames */
+.pv-frame-wrap{width:100%;height:calc(100% - 38px);margin-top:38px;overflow:auto;display:flex;align-items:flex-start;justify-content:center;background:inherit}
+.pv-frame-wrap.desktop{align-items:stretch}
+.pv-frame-wrap.desktop iframe{width:100%;height:100%;transform:none}
+.pv-frame-wrap.tablet{padding:20px 10px}
+.pv-frame-wrap.tablet iframe{width:768px;height:1024px;border-radius:12px;box-shadow:0 0 0 12px #1e2d4a,0 24px 60px rgba(0,0,0,.5);flex-shrink:0}
+.pv-frame-wrap.mobile{padding:24px 10px}
+.pv-frame-wrap.mobile iframe{width:390px;height:844px;border-radius:40px;box-shadow:0 0 0 14px #1e2d4a,0 0 0 16px #111827,0 24px 60px rgba(0,0,0,.6);flex-shrink:0}
+.pv-frame-wrap.mobile iframe::before{content:'';display:block;height:32px;background:#1e2d4a}
+/* zoom wrapper */
+.pv-zoom-wrap{transition:transform .25s cubic-bezier(.22,1,.36,1);transform-origin:top center}
+.pv-frame-wrap:not(.desktop) .pv-zoom-wrap{display:inline-block}
+/* drag handle */
+.drag-handle{width:6px;cursor:col-resize;background:transparent;flex-shrink:0;position:relative;transition:.15s;z-index:20}
+.drag-handle:hover,.drag-handle.dragging{background:rgba(0,159,227,.3)}
+.drag-handle::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:40px;border-radius:2px;background:rgba(255,255,255,.15);transition:.15s}
+.drag-handle:hover::after,.drag-handle.dragging::after{background:var(--bf);height:60px}
+/* highlight block on hover */
+.blk:hover{cursor:text}
+.blk.focused{border-color:var(--bf)!important;box-shadow:0 0 0 3px var(--bf-m)!important}
+/* preview refresh animation */
+.pv-refreshing{opacity:.4;transition:opacity .2s ease}
+.pv-refreshed{opacity:1;transition:opacity .3s ease}
+/* zoom control */
+.zoom-ctrl{display:flex;align-items:center;gap:4px;margin-left:auto}
+.zoom-btn{width:26px;height:26px;border:1px solid rgba(255,255,255,.15);border-radius:5px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font:600 14px inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+.zoom-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.zoom-val{font-size:11px;color:rgba(255,255,255,.45);min-width:32px;text-align:center}
+/* game preview modes */
+.pv-mode-bar{display:flex;gap:4px;margin-bottom:14px;background:rgba(255,255,255,.06);border-radius:8px;padding:3px;width:fit-content}
+.pv-mode-btn{padding:5px 12px;border-radius:6px;font:600 12px inherit;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,.4);transition:.15s}
+.pv-mode-btn.on{background:rgba(255,255,255,.12);color:#fff}
+.pv-mode-btn:hover:not(.on){color:rgba(255,255,255,.7)}
 
-/* ═══ UPLOAD ZONE ═══ */
-.upload-zone{
-  border:2px dashed rgba(0,159,227,.25);border-radius:12px;padding:22px;
-  text-align:center;cursor:pointer;transition:.22s;color:var(--muted);font-size:13px;
-  background:rgba(0,159,227,.03);line-height:1.5}
-.upload-zone:hover,.upload-zone.drag{
-  border-color:var(--acc);background:rgba(0,159,227,.07);color:var(--acc)}
-.upload-zone input[type=file]{display:none}
-.cover-preview{
-  max-width:180px;max-height:120px;border-radius:12px;margin-top:12px;
-  object-fit:cover;display:block;
-  border:2px solid var(--border);box-shadow:var(--sh)}
+/* ── PAGES ── */
+.pages-shell{display:flex;height:calc(100vh - 56px);gap:0;overflow:hidden}
+.pages-nav{width:220px;flex-shrink:0;background:var(--dark2);border-right:1px solid rgba(255,255,255,.06);overflow-y:auto;padding:14px 10px}
+.pages-nav .nav-title{font-size:11px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;padding:0 6px 10px;display:flex;align-items:center;justify-content:space-between}
+.pages-nav .cnt{background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);padding:1px 7px;border-radius:5px;font-size:10px}
+.p-grp{margin-bottom:8px}
+.p-grp-l{font-size:9.5px;font-weight:700;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.1em;padding:6px 6px 3px;display:flex;align-items:center;gap:5px}
+.p-grp-l::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06)}
+.p-row{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:8px;cursor:pointer;border:1.5px solid transparent;transition:.12s}
+.p-row:hover{background:rgba(255,255,255,.05)}
+.p-row.ap{background:rgba(0,159,227,.14);border-color:rgba(0,159,227,.25)}
+.p-ico{font-size:13px;flex-shrink:0}
+.p-inf{flex:1;min-width:0}
+.p-path{font-weight:700;font-size:12px;color:rgba(255,255,255,.65);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-row.ap .p-path{color:#fff}
+.p-mt{color:rgba(255,255,255,.3);font-size:10px;margin-top:1px}
+/* editor */
+.pages-editor{flex:0 0 420px;background:var(--bg);border-right:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column}
+.ped-top{padding:16px 18px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ped-path{font-size:12px;font-family:ui-monospace,monospace;color:var(--txt-m);background:#f1f5f9;padding:4px 10px;border-radius:6px}
+.ped-body{flex:1;padding:16px 18px;overflow-y:auto}
+.ped-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 20px;text-align:center;color:var(--txt-m)}
+.ped-empty .big{font-size:42px;margin-bottom:12px}
+/* block card */
+.blk{background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:10px;transition:.15s}
+.blk:focus-within{border-color:var(--bf);box-shadow:0 0 0 3px var(--bf-m)}
+.blk-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.blk-ico{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.blk-ico.seo{background:rgba(99,102,241,.12);color:#6366f1}
+.blk-ico.h1{background:rgba(0,159,227,.12);color:var(--bf);font-size:10px}
+.blk-ico.h2{background:rgba(0,159,227,.08);color:var(--bf);font-size:10px}
+.blk-ico.h3{background:rgba(0,159,227,.06);color:var(--bf);font-size:10px}
+.blk-ico.p{background:#f1f5f9;color:var(--txt-m)}
+.blk-lbl{font-size:11px;font-weight:700;color:var(--txt-m);text-transform:uppercase;letter-spacing:.06em}
+.blk input[type=text],.blk textarea{border:none;padding:0;border-radius:0;box-shadow:none;background:transparent;font-size:14px;font-weight:500;color:var(--txt);resize:none}
+.blk input[type=text]:focus,.blk textarea:focus{outline:none;box-shadow:none;border:none}
+.blk.h1 input{font-size:17px;font-weight:700}
+.blk.h2 input{font-size:15px;font-weight:700}
+.blk textarea{min-height:72px;line-height:1.6}
+/* preview iframe */
+.pages-preview{flex:1;background:var(--dark);position:relative;overflow:hidden}
+.pv-bar{position:absolute;top:0;left:0;right:0;z-index:10;background:rgba(10,15,26,.85);backdrop-filter:blur(8px);padding:8px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.06)}
+.pv-url{font-size:11.5px;color:rgba(255,255,255,.45);font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.pv-iframe{width:100%;height:100%;border:none;padding-top:38px}
+.pv-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.2);gap:12px}
+@media(max-width:1100px){.pages-editor{flex:0 0 360px}.pages-preview{display:none}}
 
-/* ═══ MODAL ═══ */
-.modal-bg{
-  position:fixed;inset:0;background:rgba(11,23,41,.55);z-index:100;
-  display:flex;align-items:flex-start;justify-content:center;padding:24px;
-  overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.modal{
-  background:#fff;border-radius:22px;width:100%;max-width:700px;
-  box-shadow:var(--sh-lg);
-  margin:auto;overflow:hidden}
-.modal-head{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:24px 28px 20px;
-  background:linear-gradient(to bottom,rgba(0,159,227,.04),transparent);
-  border-bottom:1px solid var(--border)}
-.modal-head h3{font-family:'Libre Baskerville',serif;font-size:18px;font-weight:700;color:var(--ink)}
-.modal-close{
-  background:rgba(15,23,42,.06);border:none;width:34px;height:34px;border-radius:10px;
-  cursor:pointer;font-size:19px;color:var(--muted);
-  display:flex;align-items:center;justify-content:center;transition:.18s;flex-shrink:0}
-.modal-close:hover{background:rgba(15,23,42,.12);color:var(--ink)}
-.modal-content{padding:24px 28px}
-.modal-foot{
-  display:flex;gap:10px;align-items:center;
-  padding:18px 28px;border-top:1px solid var(--border);
-  background:#fafbfc}
-.modal-foot .spacer{flex:1}
+/* ── MODAL (media picker, settings) ── */
+.modal-bg{position:fixed;inset:0;background:rgba(10,15,26,.6);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.modal{background:#fff;border-radius:18px;width:100%;max-width:680px;box-shadow:0 30px 80px rgba(0,0,0,.3)}
+.mh{padding:22px 24px 0;display:flex;justify-content:space-between;align-items:center}
+.mh h3{font-size:16px;font-weight:700}
+.mb{padding:18px 24px}
+.mf{padding:14px 24px 20px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--line)}
+.close-x{width:30px;height:30px;border:1.5px solid var(--line);border-radius:7px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--txt-m);transition:.15s}
+.close-x:hover{border-color:var(--red);color:var(--red)}
 
-/* ═══ TOAST ═══ */
-.toast{
-  position:fixed;right:22px;bottom:22px;
-  background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);
-  color:#fff;padding:13px 20px;border-radius:14px;
-  font-size:13px;font-weight:600;
-  opacity:0;transform:translateY(14px) scale(.97);transition:.28s cubic-bezier(.4,0,.2,1);
-  z-index:300;
-  box-shadow:0 10px 32px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.06) inset;
-  pointer-events:none;max-width:320px}
-.toast.show{opacity:1;transform:none}
-.toast.err{background:linear-gradient(135deg,#e11d48 0%,#c01040 100%)}
+/* ── AUDIT ── */
+.at{width:100%;border-collapse:collapse;font-size:12px}
+.at td{padding:6px 8px;border-bottom:1px solid var(--line);color:var(--txt-m);vertical-align:top}
+.at code{background:#f1f5f9;padding:1px 6px;border-radius:5px;font-size:11.5px;color:var(--txt);font-family:ui-monospace,monospace}
 
-/* ═══ SETTINGS ═══ */
-.settings-form{max-width:660px}
-.section-head{
-  display:flex;align-items:center;gap:12px;
-  padding:17px 22px;cursor:pointer;user-select:none;transition:.18s;
-  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
-  margin-bottom:4px;box-shadow:var(--sh)}
-.section-head:hover{box-shadow:var(--sh-m);background:#fafcff}
-.section-open.section-head{
-  border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0;
-  background:#fafcff;border-bottom-color:transparent}
-.section-head-icon{font-size:20px;flex-shrink:0}
-.section-head-text{flex:1}
-.section-head-text h3{font-family:'Libre Baskerville',serif;font-size:14.5px;font-weight:700;color:var(--ink)}
-.section-head-text p{font-size:12px;color:var(--muted);margin-top:2px}
-.section-arrow{color:var(--muted2);font-size:20px;transition:.25s;flex-shrink:0;font-weight:300}
-.section-open .section-arrow{transform:rotate(90deg);color:var(--acc)}
-.section-body{
-  padding:20px 22px 24px;
-  background:var(--card);border:1px solid var(--border);border-top:none;
-  border-bottom-left-radius:var(--r);border-bottom-right-radius:var(--r);
-  margin-bottom:12px;box-shadow:var(--sh)}
+/* ── TOAST ── */
+#toast{position:fixed;right:18px;bottom:22px;padding:12px 18px;border-radius:11px;font:600 13px inherit;opacity:0;transform:translateY(6px);transition:.25s;z-index:999;pointer-events:none;max-width:320px;display:flex;align-items:center;gap:8px}
+#toast.s{opacity:1;transform:none}
+#toast.ok{background:linear-gradient(135deg,#065f46,#047857);color:#d1fae5;border:1px solid rgba(16,185,129,.3)}
+#toast.er{background:linear-gradient(135deg,#7f1d1d,#991b1b);color:#fecaca;border:1px solid rgba(239,68,68,.3)}
+#toast.i{background:linear-gradient(135deg,var(--dark3),var(--dark4));color:#fff;border:1px solid rgba(0,159,227,.2)}
 
-/* ═══ AUDIT ═══ */
-.audit-row{
-  display:grid;grid-template-columns:150px 180px 1fr;
-  align-items:baseline;gap:12px;padding:10px 0;
-  border-bottom:1px solid rgba(15,23,42,.04);font-size:12.5px;transition:.15s}
-.audit-row:last-child{border:none}
-.audit-row:hover{background:rgba(0,159,227,.03);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
-.audit-time{color:var(--muted2);font-size:11px;font-variant-numeric:tabular-nums}
-.audit-action{color:var(--acc);font-weight:700;font-size:12px}
-.audit-detail{color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+/* ── SKELETON ── */
+.skel{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:skel 1.4s infinite}
+@keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-line{height:14px;border-radius:6px;margin-bottom:10px}
+.skel-card{border-radius:var(--r);padding:22px;background:#fff;border:1px solid var(--line);margin-bottom:16px}
 
-/* ═══ PREVIEWS ═══ */
-.banner-prev{
-  padding:11px 18px;text-align:center;font-weight:600;font-size:13px;
-  border-radius:10px;margin-top:14px;
-  box-shadow:0 2px 8px rgba(0,0,0,.1)}
-.maint-prev{
-  background:linear-gradient(135deg,#0b1f33 0%,#0d2644 100%);
-  color:#fff;border-radius:14px;padding:32px;text-align:center;margin-top:14px;
-  box-shadow:var(--sh)}
-.maint-prev .mo{font-size:44px;margin-bottom:12px}
+/* ── FILTER TABS ── */
+.ftabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg);border-radius:10px;padding:4px;width:fit-content}
+.ftab{padding:6px 14px;border-radius:7px;font:600 12.5px inherit;cursor:pointer;border:none;background:transparent;color:var(--txt-m);transition:.15s}
+.ftab.on{background:#fff;color:var(--txt);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.ftab .cnt{font-size:10.5px;margin-left:4px;opacity:.6}
 
-code{
-  background:rgba(0,159,227,.08);color:var(--acc);
-  padding:2px 7px;border-radius:6px;font-size:11.5px;font-family:ui-monospace,monospace}
+/* ── ACTIVITY FEED ── */
+.act-feed{display:flex;flex-direction:column;gap:0}
+.act-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.act-item:last-child{border:none}
+.act-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.act-body{flex:1;min-width:0}
+.act-action{font-size:13px;font-weight:600;color:var(--txt)}
+.act-time{font-size:11px;color:var(--txt-s);margin-top:2px}
 
-/* ═══ MOBILE HEADER ═══ */
-.mob-header{
-  display:none;position:sticky;top:0;z-index:40;
-  background:linear-gradient(to bottom,#0d1f35,#0b1729);
-  padding:13px 16px;align-items:center;justify-content:space-between;
-  border-bottom:1px solid rgba(255,255,255,.06);
-  box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.mob-logo{height:26px;filter:brightness(0) invert(1);object-fit:contain;opacity:.9}
-.mob-burger{
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
-  color:#fff;cursor:pointer;padding:8px;border-radius:9px;
-  display:flex;flex-direction:column;gap:5px;transition:.18s}
-.mob-burger:hover{background:rgba(255,255,255,.14)}
-.mob-burger span{display:block;width:20px;height:2px;background:rgba(255,255,255,.8);border-radius:2px}
-.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45;backdrop-filter:blur(6px)}
-.mob-overlay.open{display:block}
-.sb.mob-open{
-  display:flex!important;position:fixed;top:0;left:0;bottom:0;z-index:50;
-  width:264px;max-width:86vw;animation:sbSlideIn .26s cubic-bezier(.4,0,.2,1)}
-@keyframes sbSlideIn{from{transform:translateX(-100%);opacity:.6}to{transform:none;opacity:1}}
+/* ── BANNER PREVIEW ── */
+.banner-pv{border-radius:10px;overflow:hidden;margin-top:14px;border:1.5px solid var(--line)}
+.banner-pv-bar{padding:10px 16px;text-align:center;font:600 14px Comfortaa,sans-serif}
+.banner-pv-page{background:#f8fafc;padding:20px;text-align:center;color:var(--txt-m);font-size:12px}
 
-/* ═══ RESPONSIVE ═══ */
-@media(max-width:700px){
-  .sb{display:none}
-  .mob-header{display:flex}
-  .topbar{padding:12px 16px;display:none}
-  .page-body{padding:14px 14px 60px}
-  .row2{flex-direction:column}
-  .modal-bg{padding:0;align-items:flex-end}
-  .modal{border-radius:22px 22px 0 0;max-width:100%;margin:0}
-  .modal-head{padding:20px 20px 16px}
-  .modal-content{padding:18px 20px}
-  .modal-foot{padding:14px 20px}
-  .content-grid{grid-template-columns:1fr 1fr;gap:12px}
-  .stat-row{grid-template-columns:1fr 1fr;gap:12px}
-  .card{padding:18px 16px}
-  .qa-row{flex-direction:column}
-  .qa-row .btn{width:100%;justify-content:center}
-  .modal-foot{flex-wrap:wrap}
-  .audit-row{grid-template-columns:1fr;gap:3px}
-  .audit-time,.audit-action{display:inline}
-  .section-body{padding:0 14px 16px}
-  .section-head{padding:14px}
-  .section-icon{width:34px;height:34px}
-}
-@media(max-width:480px){
-  .content-grid{grid-template-columns:1fr}
-}
+/* ── SCROLL TO TOP ── */
+#scrollTop{position:fixed;right:20px;bottom:70px;width:38px;height:38px;border-radius:50%;background:var(--dark3);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:16px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.3);transition:.2s}
+#scrollTop:hover{background:var(--bf)}
+#scrollTop.show{display:flex}
+
+/* ── QUICK STAT TREND ── */
+.sc .trend{font-size:10.5px;margin-top:6px;color:rgba(255,255,255,.35)}
+.sc .trend.up{color:#4ade80}.sc .trend.dn{color:#f87171}
+
+/* ── AUDIT ICONS ── */
+.aico{width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+
+/* ── SORT BAR ── */
+.sort-bar{display:flex;align-items:center;gap:6px;margin-bottom:12px;font-size:12.5px;color:var(--txt-m)}
+.sort-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:#fff;font:inherit;font-size:12px;cursor:pointer;color:var(--txt-m);transition:.15s}
+.sort-btn.on,.sort-btn:hover{border-color:var(--bf);color:var(--bf);background:rgba(0,159,227,.04)}
+
+/* ── IMAGE PICKER in form ── */
+.img-pick{display:flex;gap:8px;align-items:stretch}
+.img-pick input{flex:1}
+.img-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);display:block;margin-top:7px}
+.img-thumb-empty{width:100%;height:90px;border:1.5px dashed var(--line);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--txt-s);font-size:12px;margin-top:7px}
+
+/* gallery */
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-top:8px}
+.gal-i{position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;background:var(--bg);border:1.5px solid var(--line)}
+.gal-i img{width:100%;height:100%;object-fit:cover;display:block}
+.gal-i .rm{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(239,68,68,.9);border:none;cursor:pointer;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center}
+.gal-add{aspect-ratio:1;border-radius:7px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt-s);font-size:22px;background:var(--bg);transition:.15s}
+.gal-add:hover{border-color:var(--bf);color:var(--bf)}
+
+/* ── PAGE EDITOR improvements ── */
+.blk{border-left:3px solid transparent;transition:.15s}
+.blk.h1{border-left-color:var(--bf)}
+.blk.h2{border-left-color:rgba(0,159,227,.4)}
+.blk.h3{border-left-color:rgba(0,159,227,.2)}
+.blk.seo{border-left-color:#6366f1}
+.blk.p{border-left-color:var(--line)}
+.blk:hover{box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.blk.edited{border-color:#f59e0b!important;background:#fffdf5;box-shadow:0 0 0 1px #f59e0b33}
+.blk.edited .blk-ico{background:#fef3c7!important}
+.char-bar{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.char-cnt{font-size:10.5px;font-weight:700;color:var(--txt-s);background:#f8fafc;padding:2px 8px;border-radius:5px}
+.char-cnt.warn{color:#d97706;background:#fffbeb}.char-cnt.over{color:var(--red);background:#fef2f2}
+.blk-actions{margin-left:auto;display:flex;gap:4px;opacity:0;transition:.15s}
+.blk:hover .blk-actions,.blk.edited .blk-actions{opacity:1}
+.reset-btn{background:none;border:1px solid var(--line);cursor:pointer;color:var(--txt-s);font-size:10.5px;padding:3px 8px;border-radius:6px;transition:.15s;white-space:nowrap}
+.reset-btn:hover{background:var(--red);border-color:var(--red);color:#fff}
+.unsaved-badge{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:99px;display:none;box-shadow:0 2px 8px rgba(245,158,11,.3)}
+.unsaved-badge.show{display:inline-block}
+.ped-hint{font-size:12px;color:var(--txt-m);background:rgba(0,159,227,.04);border:1px solid rgba(0,159,227,.12);border-radius:9px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px;line-height:1.5}
+/* block input styles by type */
+.blk.h1 input[type=text]{font-size:20px;font-weight:700;color:var(--txt);letter-spacing:-.02em;padding:4px 0}
+.blk.h2 input[type=text]{font-size:16px;font-weight:700;color:var(--txt)}
+.blk.h3 input[type=text]{font-size:14px;font-weight:600;color:var(--txt)}
+.blk.seo input[type=text],.blk.seo textarea{font-size:13.5px;color:var(--txt)}
+.blk.p textarea{font-size:13.5px;line-height:1.7;color:var(--txt);font-family:inherit}
+.blk input[type=text],.blk textarea{background:transparent;border:none;border-bottom:1.5px solid transparent;border-radius:0;padding:4px 0;transition:.15s;width:100%}
+.blk input[type=text]:hover,.blk textarea:hover{border-bottom-color:var(--line)}
+.blk input[type=text]:focus,.blk textarea:focus{outline:none;border-bottom-color:var(--bf);background:rgba(0,159,227,.02);box-shadow:none;border-radius:0}
+.sect-head{font-size:10px;font-weight:700;color:var(--txt-m);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid var(--line);display:flex;align-items:center;gap:8px;justify-content:space-between}
+.sect-cnt{background:var(--bg);padding:1px 8px;border-radius:5px;font-size:9.5px;color:var(--txt-s)}
+
+/* ── MEDIA improvements ── */
+.m-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.m-i{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg);cursor:pointer;transition:.2s;display:flex;flex-direction:column}
+.m-i.sel{border-color:var(--bf);box-shadow:0 0 0 3px var(--bf-m)}
+.m-i-img{aspect-ratio:1;overflow:hidden;position:relative}
+.m-i-img img{width:100%;height:100%;object-fit:cover;display:block;transition:.3s}
+.m-i:hover .m-i-img img{transform:scale(1.06)}
+.m-ov{position:absolute;inset:0;background:rgba(10,15,26,.7);opacity:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:.2s;padding:8px}
+.m-i:hover .m-ov{opacity:1}
+.m-ov button{background:#fff;border:none;border-radius:7px;padding:5px 10px;font:600 11.5px inherit;cursor:pointer;width:100%;transition:.1s}
+.m-ov button:hover{background:#f1f5f9}
+.m-ov .del{background:#fff0f0;color:var(--red)}
+.m-lbl{padding:6px 8px;font-size:10.5px;color:var(--txt-m);background:#fff;border-top:1px solid var(--line)}
+.m-lbl .fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt);font-weight:600;font-size:11px}
+.m-lbl .sz{color:var(--txt-s);font-size:10px}
+/* info panel */
+.media-info{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;display:none}
+.media-info.show{display:block}
+.media-info img{width:100%;max-height:200px;object-fit:contain;border-radius:8px;background:var(--bg);margin-bottom:12px}
+.media-info .info-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--line)}
+.media-info .info-row:last-child{border:none}
+.media-info .info-row .lbl{color:var(--txt-m)}
+.media-info .info-row .val{font-weight:700;color:var(--txt);font-family:ui-monospace,monospace;font-size:11px}
+.media-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+/* lightbox */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+.lightbox img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.8)}
+.lightbox-close{position:absolute;top:20px;right:20px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.bulk-bar{background:var(--dark3);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;margin-bottom:12px;display:none}
+.bulk-bar.show{display:flex}
 </style>
 </head>
 <body>
 
 <!-- LOGIN -->
-<div id="login" class="login-wrap">
-  <form id="loginForm" class="login-box" action="/api/admin/login-form" method="POST">
-    <div class="login-logo">
-      <img class="login-icon" src="/logo-blue-ferret.png" alt="Blue Ferret" onerror="this.outerHTML='<div style=\'font-family:Playfair Display,serif;font-size:22px;font-weight:700;color:#fff\'>Blue Ferret</div>'">
+<div id="loginPage">
+  <div class="lb">
+    <div class="lb-logo">
+      <div class="lb-ico">🦦</div>
+      <h1>Blue Ferret</h1>
+      <p>Панель керування сайтом</p>
     </div>
-    <p class="login-sub">Панель керування · Введіть пароль</p>
-    <label class="login-label">Пароль адміністратора</label>
-    <input type="password" id="pw" name="password" class="login-input" autocomplete="current-password" required autofocus placeholder="••••••••">
-    <button type="submit" class="login-btn" id="loginBtn">Увійти →</button>
-    <p id="loginErr" class="login-err hidden"></p>
-    <script>
-      (function(){
-        var p=new URLSearchParams(location.search);
-        var e=p.get('err');
-        if(e){var el=document.getElementById('loginErr');el.textContent=e==='locked'?'Забагато спроб. Зачекайте 2 хв.':'Невірний пароль';el.classList.remove('hidden');}
-        history.replaceState(null,'',location.pathname);
-      })();
-    </script>
-  </form>
+    <form id="loginForm">
+      <div class="lf"><label>Пароль</label>
+        <div style="position:relative">
+          <input type="password" id="pw" autocomplete="current-password" required autofocus placeholder="••••••••" style="padding-right:44px">
+          <button type="button" id="pwToggle" onclick="togglePw()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);font-size:16px;padding:0;line-height:1">👁</button>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:20px">
+        <input type="checkbox" id="rememberMe" style="width:16px;height:16px;accent-color:var(--bf);cursor:pointer">
+        <span style="font-size:13px;color:rgba(255,255,255,.5)">Запам'ятати мене на 30 днів</span>
+      </label>
+      <button type="submit" class="l-btn" id="loginBtn">Увійти →</button>
+      <p id="loginErr" class="hidden"></p>
+    </form>
+  </div>
 </div>
-
-<!-- MOBILE HEADER -->
-<div id="mobHeader" class="mob-header hidden">
-  <img class="mob-logo" src="/logo-blue-ferret.png" alt="Blue Ferret" onerror="this.outerHTML='<span style=\'color:#fff;font-weight:700\'>Blue Ferret</span>'">
-  <button class="mob-burger" id="mobBurger" aria-label="Меню">
-    <span></span><span></span><span></span>
-  </button>
-</div>
-<div id="mobOverlay" class="mob-overlay"></div>
 
 <!-- APP -->
-<div id="app" class="shell hidden">
-  <aside class="sb">
-    <div class="sb-brand">
-      <img class="sb-icon" src="/logo-blue-ferret.png" alt="Blue Ferret" onerror="this.outerHTML='<span style=\'color:#fff;font-weight:700;font-size:14px\'>BF</span>'">
-      <div class="sb-name">Blue Ferret<small>CMS v4</small></div>
+<div id="appPage" class="hidden">
+  <header>
+    <div class="h-brand"><div class="h-dot">🦦</div> Blue Ferret · CMS</div>
+    <div class="h-r">
+      <a href="/" target="_blank" class="h-link">Відкрити сайт ↗</a>
+      <button class="h-out" id="logoutBtn">Вийти</button>
     </div>
-    <nav class="sb-nav">
-      <div class="sb-section">Огляд</div>
-      <button class="sb-item" data-tab="dash">
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Дашборд
-      </button>
-      <div class="sb-section">Контент</div>
-      <button class="sb-item" data-tab="games">
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-        Ігри
-        <span class="sb-badge" id="sb_games_cnt">0</span>
-      </button>
-      <button class="sb-item" data-tab="kik">
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        КІК-проекти
-        <span class="sb-badge" id="sb_kik_cnt">0</span>
-      </button>
-      <div class="sb-section">Налаштування</div>
-      <button class="sb-item" data-tab="settings">
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        Налаштування
-      </button>
-      <div class="sb-section">Система</div>
-      <button class="sb-item" data-tab="audit">
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Журнал
-      </button>
-    </nav>
-    <div class="sb-foot">
-      <a class="sb-site" href="/" target="_blank">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
-        Відкрити сайт
-      </a>
-      <button class="sb-logout" id="logoutBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-        Вийти
-      </button>
-    </div>
-  </aside>
-
-  <div class="main">
-    <div class="topbar">
-      <div class="breadcrumb">
-        <span>Blue Ferret</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-        <b id="pageTitle">Дашборд</b>
-      </div>
-      <div id="topbarRight" style="display:flex;align-items:center;gap:10px"></div>
-    </div>
-    <div class="page-body" id="pageBody"></div>
+  </header>
+  <div class="shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main" id="mainContent"></main>
   </div>
 </div>
 
-<!-- MODAL -->
-<div id="modalBg" class="modal-bg hidden">
-  <div class="modal" role="dialog">
-    <div class="modal-head">
-      <h3 id="modalTitle"></h3>
-      <button class="modal-close" id="modalClose" aria-label="Закрити">&times;</button>
-    </div>
-    <div id="modalBody" class="modal-content"></div>
-    <div class="modal-foot">
-      <button class="btn btn-danger btn-sm hidden" id="modalDelete">Видалити</button>
-      <div class="spacer"></div>
-      <button class="btn btn-ghost btn-sm" id="modalCancel">Скасувати</button>
-      <button class="btn btn-primary btn-sm" id="modalSave">Зберегти</button>
-    </div>
+<!-- MEDIA PICKER MODAL -->
+<div id="pickerModal" class="modal-bg hidden">
+  <div class="modal">
+    <div class="mh"><h3>🖼 Виберіть зображення</h3><button class="close-x" onclick="closePicker()">✕</button></div>
+    <div class="mb" id="pickerBody"></div>
+    <div class="mf"><button class="btn btn-g btn-sm" onclick="closePicker()">Закрити</button></div>
   </div>
 </div>
 
-<!-- CONFIRM -->
-<div id="confirmBg" class="modal-bg hidden">
-  <div class="modal" style="max-width:420px" role="alertdialog">
-    <div class="modal-head"><h3 id="confirmTitle">Видалити?</h3></div>
-    <div class="modal-content"><p id="confirmText" style="color:var(--muted);font-size:14px"></p></div>
-    <div class="modal-foot">
-      <div class="spacer"></div>
-      <button class="btn btn-ghost btn-sm" id="confirmNo">Скасувати</button>
-      <button class="btn btn-danger btn-sm" id="confirmYes">Видалити</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast" class="toast"></div>
+<div id="toast"></div>
+<button id="scrollTop" onclick="$('#mainContent').scrollTop=0" title="Вгору">↑</button>
 
 <script>
 'use strict';
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 
-const $ = (s, ctx = document) => ctx.querySelector(s);
-const LS_KEY = 'bf_tok';
-function getToken(){ return localStorage.getItem(LS_KEY) || ''; }
-function setToken(t){ if(t) localStorage.setItem(LS_KEY,t); else localStorage.removeItem(LS_KEY); }
+let S={}, games=[], kik=[], mediaList=[], pages=[];
+let activeTab='dashboard';
+let pickerCallback=null;
+// editor state
+let editingGame=null, editingKik=null;
+let gameGallery=[];
 
-// Read token from URL hash after form-login redirect (#tk=...)
-(function(){
-  const h = location.hash;
-  if(h.startsWith('#tk=')){
-    setToken(h.slice(4));
-    history.replaceState(null,'',location.pathname);
-  }
-})();
+// ── NAV ──
+const NAV=[
+  {g:'Огляд',items:[{id:'dashboard',ico:'📊',l:'Дашборд'}]},
+  {g:'Контент',items:[
+    {id:'games',ico:'🎲',l:'Ігри'},
+    {id:'kik',ico:'🚀',l:'КІК-проекти'},
+    {id:'pages',ico:'📄',l:'Сторінки'},
+    {id:'media',ico:'🖼',l:'Медіа'},
+  ]},
+  {g:'Налаштування',items:[
+    {id:'general',ico:'⚙️',l:'Загальне'},
+    {id:'banner',ico:'📢',l:'Банер'},
+    {id:'maintenance',ico:'🔧',l:'Тех. режим'},
+    {id:'contacts',ico:'📬',l:'Контакти'},
+    {id:'seo',ico:'🔍',l:'SEO'},
+    {id:'integrations',ico:'📈',l:'Аналітика'},
+    {id:'appearance',ico:'🎨',l:'CSS'},
+  ]},
+  {g:'Система',items:[
+    {id:'security',ico:'🔑',l:'Безпека'},
+    {id:'audit',ico:'📋',l:'Журнал'},
+  ]},
+];
+const STABS=new Set(['general','banner','maintenance','contacts','seo','integrations','appearance']);
 
-let S = {}, gamesCache = [], kikCache = [];
-let activeTab = 'dash';
-let editType = null, editId = null;
-let settingsDirty = false;
-let confirmResolve = null;
+// ── UTILS ──
+const esc=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtD=ts=>ts?new Date(ts).toLocaleString('uk-UA'):'—';
+const fmtM=n=>Number(n||0).toLocaleString('uk-UA');
+const fmtSz=b=>b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB';
+const relT=ts=>{const d=(Date.now()-ts)/1000;return d<60?'щойно':d<3600?Math.floor(d/60)+' хв тому':d<86400?Math.floor(d/3600)+' год тому':d<604800?Math.floor(d/86400)+' дн тому':fmtD(ts);};
 
-/* ─── Helpers ─── */
-function esc(x){ return String(x ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function toast(msg, isErr = false){
-  const t = $('#toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (isErr ? ' err' : '');
-  clearTimeout(t._tid);
-  t._tid = setTimeout(() => t.className = 'toast', 2800);
-}
-function authHeaders(extra){
-  const h = {'Authorization':'Bearer '+getToken()};
-  return extra ? Object.assign(h,extra) : h;
-}
-async function api(method, url, body){
-  const r = await fetch(url, {
-    method,
-    headers: body ? authHeaders({'Content-Type':'application/json'}) : authHeaders(),
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (r.status === 401){ setToken(''); showLogin(); throw new Error('unauth'); }
+const TOAST_ICO={ok:'✓',er:'✕',i:'ℹ'};
+function toast(msg,type='i'){const t=$('#toast');t.innerHTML=`<span style="opacity:.7">${TOAST_ICO[type]||''}</span>${esc(msg)}`;t.className='s '+type;clearTimeout(t._tid);t._tid=setTimeout(()=>t.className='',3000);}
+async function api(method,url,body){
+  const r=await fetch(url,{method,headers:body instanceof FormData?{}:body?{'Content-Type':'application/json'}:{},body:body instanceof FormData?body:body?JSON.stringify(body):undefined});
+  if(r.status===401){showLogin();throw new Error('unauth');}
+  if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||r.status);}
   return r.json();
 }
-function confirm2(title, text){
-  return new Promise(res => {
-    confirmResolve = res;
-    $('#confirmTitle').textContent = title;
-    $('#confirmText').textContent = text;
-    $('#confirmBg').classList.remove('hidden');
-  });
-}
-$('#confirmYes').addEventListener('click', () => { $('#confirmBg').classList.add('hidden'); if (confirmResolve){ confirmResolve(true); confirmResolve=null; } });
-$('#confirmNo').addEventListener('click', () => { $('#confirmBg').classList.add('hidden'); if (confirmResolve){ confirmResolve(false); confirmResolve=null; } });
 
-function statusBadge(s){
-  const map = {
-    published: ['badge-green','Опубліковано'],
-    active:    ['badge-green','Активний'],
-    draft:     ['badge-yellow','Чернетка'],
-    paused:    ['badge-yellow','Призупинено'],
-    archived:  ['badge-gray','Архів'],
-    ended:     ['badge-gray','Завершено'],
-  };
-  const [cls, lbl] = map[s] || ['badge-gray', s];
-  return `<span class="badge ${cls}">${lbl}</span>`;
+// ── SIDEBAR ──
+function buildNav(){
+  $('#sidebar').innerHTML=NAV.map(g=>`<div class="sb-g">
+    <div class="sb-lbl">${g.g}</div>
+    ${g.items.map(it=>`<button class="sb-i${it.id===activeTab?' active':''}" data-tab="${it.id}"><span class="ico">${it.ico}</span>${it.l}</button>`).join('')}
+  </div>`).join('');
 }
-
-function updateBadges(){
-  $('#sb_games_cnt').textContent = gamesCache.length;
-  $('#sb_kik_cnt').textContent = kikCache.length;
-}
-
-/* ─── Sidebar ─── */
-$('.sb-nav').addEventListener('click', e => {
-  const b = e.target.closest('[data-tab]');
-  if (b) switchTab(b.dataset.tab);
-});
-$('#logoutBtn').addEventListener('click', async () => {
-  setToken('');
-  toast('Ви вийшли з системи');
-  setTimeout(showLogin, 300);
+$('#sidebar').addEventListener('click',e=>{
+  const b=e.target.closest('[data-tab]');if(!b)return;
+  activeTab=b.dataset.tab;render();
 });
 
-function switchTab(id){
-  activeTab = id;
-  document.querySelectorAll('.sb-item').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
-  const labels = {dash:'Дашборд',games:'Ігри',kik:'КІК-проекти',settings:'Налаштування',audit:'Журнал дій'};
-  $('#pageTitle').textContent = labels[id] || id;
-  $('#topbarRight').innerHTML = '';
-  settingsDirty = false;
-  render();
-}
-
-/* ─── Render dispatcher ─── */
-function render(){
-  const b = $('#pageBody');
-  if (activeTab === 'dash')     b.innerHTML = renderDash();
-  else if (activeTab === 'games')    renderGamesPage();
-  else if (activeTab === 'kik')      renderKikPage();
-  else if (activeTab === 'settings') renderSettingsPage();
-  else if (activeTab === 'audit')    renderAuditPage();
-}
-
-/* ─── DASHBOARD ─── */
-function renderDash(){
-  const g = S.general || {};
-  const bannerOn = (S.banner || {}).enabled;
-  const maintOn  = (S.maintenance || {}).enabled;
-  const statusLabel = maintOn ? '<span class="badge badge-yellow">Тех. режим</span>'
-    : bannerOn ? '<span class="badge badge-green">Із банером</span>'
-    : '<span class="badge badge-green">Працює</span>';
-
-  return `
-    <div class="stat-row">
-      <div class="stat-card"><div class="stat-num">${gamesCache.length}</div><div class="stat-label">Ігор опубліковано</div></div>
-      <div class="stat-card"><div class="stat-num">${kikCache.length}</div><div class="stat-label">КІК-проектів</div></div>
-      <div class="stat-card" style="display:flex;flex-direction:column;justify-content:center">
-        <div class="stat-label" style="margin-bottom:6px">Стан сайту</div>
-        ${statusLabel}
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-head">
-        <div class="card-head-text"><h2>Швидкі дії</h2><p>Найпоширеніші операції</p></div>
-      </div>
-      <div class="qa-row">
-        <button class="btn btn-primary" onclick="switchTab('games');setTimeout(openGameModal,50,null)">+ Нова гра</button>
-        <button class="btn btn-kik" onclick="switchTab('kik');setTimeout(openKikModal,50,null)">+ Новий КІК-проект</button>
-        <button class="btn btn-ghost" onclick="switchTab('settings')">⚙ Налаштування сайту</button>
-      </div>
-    </div>
-    ${gamesCache.length ? `<div class="card">
-      <div class="card-head"><div class="card-head-text"><h2>Останні ігри</h2></div>
-        <button class="btn btn-ghost btn-sm" onclick="switchTab('games')">Усі ігри →</button>
-      </div>
-      <div class="content-grid">${gamesCache.slice(0,3).map(g=>gameCard(g,true)).join('')}</div>
-    </div>` : ''}
-  `;
-}
-
-/* ─── GAMES ─── */
-function renderGamesPage(){
-  const pb = $('#pageBody');
-  const tb = $('#topbarRight');
-  tb.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openGameModal(null)">+ Додати гру</button>`;
-
-  if (!gamesCache.length){
-    pb.innerHTML = `<div class="empty">
-      <div class="empty-icon">🎲</div>
-      <div class="empty-text">Ігор поки немає</div>
-      <div class="empty-hint">Додайте першу гру — вона з'явиться на сайті одразу після збереження</div>
-      <button class="btn btn-primary" onclick="openGameModal(null)">+ Додати першу гру</button>
-    </div>`;
-    return;
-  }
-
-  pb.innerHTML = `<div class="card">
-    <div class="card-head">
-      <div class="card-head-text"><h2>Каталог ігор</h2><p>${gamesCache.length} ${plural(gamesCache.length,'гра','гри','ігор')} · натисніть картку для редагування</p></div>
-      <button class="btn btn-primary btn-sm" onclick="openGameModal(null)">+ Додати</button>
-    </div>
-    <div class="content-grid">${gamesCache.map(g=>gameCard(g,false)).join('')}</div>
-  </div>`;
-}
-
-function gameCard(g, small){
-  const cover = g.cover_url
-    ? `<div class="item-cover" style="position:relative"><img src="${esc(g.cover_url)}" loading="lazy" onerror="this.style.display='none'"></div>`
-    : `<div class="item-cover">🎲</div>`;
-  const chars = [g.players,g.age,g.duration].filter(Boolean).join(' · ');
-  return `<div class="item-card" onclick="openGameModal(${g.id})">
-    ${cover}
-    <div class="item-body">
-      <div class="item-title">${esc(g.title)}</div>
-      ${g.subtitle ? `<div class="item-sub">${esc(g.subtitle)}</div>` : ''}
-      ${chars ? `<div style="font-size:11.5px;color:var(--muted);margin-top:4px;margin-bottom:6px">${esc(chars)}</div>` : ''}
-      <div class="item-foot">${statusBadge(g.status)}<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openGameModal(${g.id})">Редагувати</button></div>
-    </div>
-  </div>`;
-}
-
-function openGameModal(id){
-  editType = 'game'; editId = id;
-  const g = id ? (gamesCache.find(x=>x.id===id)||{}) : {};
-  $('#modalTitle').textContent = id ? `✏️ ${g.title || 'Редагувати гру'}` : '+ Нова гра';
-  $('#modalDelete').classList.toggle('hidden', !id);
-  const descLen = (g.description||'').length;
-
-  $('#modalBody').innerHTML = `
-    <div class="row2">
-      <div class="field">
-        <label>Назва гри *</label>
-        <input type="text" id="mf_title" value="${esc(g.title||'')}" placeholder="Наприклад: Кухня шефа" required>
-      </div>
-      <div class="field" style="max-width:180px">
-        <label>URL-ключ (slug)</label>
-        <input type="text" id="mf_slug" value="${esc(g.slug||'')}" placeholder="kuhnya-shefa">
-        <span class="hint">Автозаповнюється з назви</span>
-      </div>
-    </div>
-    <div class="field">
-      <label>Підзаголовок</label>
-      <input type="text" id="mf_subtitle" value="${esc(g.subtitle||'')}" placeholder="Коротко про гру">
-    </div>
-    <div class="field">
-      <label>Опис</label>
-      <textarea id="mf_description" placeholder="Детальний опис гри для сторінки товару…">${esc(g.description||'')}</textarea>
-      <div class="char-counter ${descLen>500?'over':''}" id="mf_descCount">${descLen} / 500</div>
-    </div>
-    <div class="field">
-      <label>Обкладинка</label>
-      <div class="upload-zone" id="uploadZone" onclick="$('#mf_file').click()">
-        <input type="file" id="mf_file" accept="image/*">
-        📷 Натисніть для завантаження фото або перетягніть файл сюди
-      </div>
-      <input type="url" id="mf_cover_url" value="${esc(g.cover_url||'')}" placeholder="або вставте посилання на фото" style="margin-top:8px">
-      ${g.cover_url ? `<img class="cover-preview" id="coverPreview" src="${esc(g.cover_url)}">` : `<div id="coverPreview"></div>`}
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label>Кількість гравців</label>
-        <input type="text" id="mf_players" value="${esc(g.players||'')}" placeholder="2–5">
-      </div>
-      <div class="field">
-        <label>Вік</label>
-        <input type="text" id="mf_age" value="${esc(g.age||'')}" placeholder="12+">
-      </div>
-      <div class="field">
-        <label>Тривалість</label>
-        <input type="text" id="mf_duration" value="${esc(g.duration||'')}" placeholder="30–60 хв">
-      </div>
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label>Посилання «Купити»</label>
-        <input type="url" id="mf_buy_url" value="${esc(g.buy_url||'')}" placeholder="https://rozetka.com.ua/...">
-      </div>
-      <div class="field" style="max-width:180px">
-        <label>Статус</label>
-        <select id="mf_status">
-          <option value="published" ${(g.status||'published')==='published'?'selected':''}>✅ Опубліковано</option>
-          <option value="draft" ${g.status==='draft'?'selected':''}>📝 Чернетка</option>
-          <option value="archived" ${g.status==='archived'?'selected':''}>📦 Архів</option>
-        </select>
-      </div>
-    </div>`;
-
-  setupUploadZone('mf_cover_url', 'coverPreview');
-  setupGameAids();
-  $('#modalBg').classList.remove('hidden');
-  setTimeout(()=>$('#mf_title')?.focus(), 50);
-}
-
-function setupGameAids(){
-  const title = $('#mf_title'), slug = $('#mf_slug');
-  title?.addEventListener('input', () => {
-    if (!slug.value.trim() || slug.dataset.auto === '1'){
-      slug.dataset.auto = '1';
-      slug.value = slugify(title.value);
+async function render(){
+  buildNav();
+  // scroll to top on tab change
+  const el=$('#mainContent');el.scrollTop=0;window.scrollTo(0,0);
+  // full-page editors
+  if(activeTab==='game-editor'){el.style.padding='0';el.innerHTML='';renderGameEditor();return;}
+  if(activeTab==='kik-editor'){el.style.padding='0';el.innerHTML='';renderKikEditor();return;}
+  el.style.padding='22px';
+  // skeleton loading
+  el.innerHTML=renderSkeleton();
+  try{
+    switch(activeTab){
+      case'dashboard':el.innerHTML=await renderDash();break;
+      case'games':el.innerHTML=renderGamesList();break;
+      case'kik':el.innerHTML=renderKikList();break;
+      case'pages':await renderPages();break;
+      case'media':await renderMedia();break;
+      case'security':el.innerHTML=renderSecurity();break;
+      case'audit':el.innerHTML=await renderAudit();break;
+      default:el.innerHTML=renderSettings(activeTab);
     }
-  });
-  slug?.addEventListener('input', () => slug.dataset.auto = '');
-  const desc = $('#mf_description'), cnt = $('#mf_descCount');
-  desc?.addEventListener('input', () => {
-    const n = desc.value.length;
-    cnt.textContent = n + ' / 500';
-    cnt.classList.toggle('over', n > 500);
-  });
-  $('#mf_cover_url')?.addEventListener('input', e => { if (e.target.value.trim()) showCoverPreview(e.target.value.trim()); });
+  }catch(e){if(e.message!=='unauth')el.innerHTML=`<div class="card" style="color:var(--red)">Помилка: ${esc(e.message)}</div>`;}
 }
 
-/* ─── KIK ─── */
-function renderKikPage(){
-  const pb = $('#pageBody');
-  const tb = $('#topbarRight');
-  tb.innerHTML = `<button class="btn btn-kik btn-sm" onclick="openKikModal(null)">+ Новий проект</button>`;
+// ── SKELETON ──
+function renderSkeleton(){
+  return`<div class="skel-card"><div class="skel skel-line" style="width:40%;height:18px;margin-bottom:20px"></div>${[1,2,3].map(()=>`<div class="skel skel-line" style="width:${60+Math.random()*30|0}%"></div>`).join('')}</div>
+  <div class="skel-card"><div class="skel skel-line" style="width:30%;height:14px;margin-bottom:16px"></div>${[1,2,3,4].map(()=>`<div class="skel skel-line" style="width:${50+Math.random()*40|0}%"></div>`).join('')}</div>`;
+}
 
-  if (!kikCache.length){
-    pb.innerHTML = `<div class="empty">
-      <div class="empty-icon">🚀</div>
-      <div class="empty-text">КІК-проектів поки немає</div>
-      <div class="empty-hint">Додайте краудфандингову кампанію — вона відразу з'явиться на сторінці /kik</div>
-      <button class="btn btn-kik" onclick="openKikModal(null)">+ Додати перший проект</button>
+// ── DASHBOARD ──
+let gameFilter='all', mediaSort='date';
+async function renderDash(){
+  const [st, auditRows] = await Promise.all([
+    api('GET','/api/admin/stats'),
+    api('GET','/api/admin/audit').catch(()=>[])
+  ]);
+  const pct=st.kikGoal>0?Math.min(100,Math.round(st.kikRaised/st.kikGoal*100)):0;
+
+  // activity feed (last 6 unique actions)
+  const ACT_CFG={
+    login_ok:    {ico:'🔑',bg:'rgba(99,102,241,.12)',  label:'Вхід в адмінку'},
+    login_fail:  {ico:'⚠️',bg:'rgba(239,68,68,.1)',    label:'Невірний пароль'},
+    settings_save:{ico:'⚙️',bg:'rgba(0,159,227,.1)',   label:'Налаштування збережено'},
+    game_create: {ico:'🎲',bg:'rgba(0,159,227,.1)',    label:'Нова гра'},
+    game_update: {ico:'✏️',bg:'rgba(99,102,241,.1)',   label:'Гру оновлено'},
+    game_delete: {ico:'🗑',bg:'rgba(239,68,68,.1)',    label:'Гру видалено'},
+    kik_create:  {ico:'🚀',bg:'rgba(75,178,114,.1)',   label:'Новий КІК-проект'},
+    kik_update:  {ico:'📊',bg:'rgba(75,178,114,.1)',   label:'КІК оновлено'},
+    kik_delete:  {ico:'🗑',bg:'rgba(239,68,68,.1)',    label:'КІК видалено'},
+    page_patch:  {ico:'📄',bg:'rgba(251,191,36,.1)',   label:'Сторінку відредаговано'},
+    page_edit:   {ico:'📝',bg:'rgba(251,191,36,.1)',   label:'HTML-редагування'},
+    upload:      {ico:'🖼',bg:'rgba(75,178,114,.1)',   label:'Файл завантажено'},
+    media_delete:{ico:'🗑',bg:'rgba(239,68,68,.1)',    label:'Файл видалено'},
+    password_change:{ico:'🔐',bg:'rgba(99,102,241,.1)',label:'Пароль змінено'},
+  };
+  const feedItems=auditRows.slice(0,6).map(r=>{
+    const cfg=ACT_CFG[r.action]||{ico:'📋',bg:'#f1f5f9',label:r.action};
+    return`<div class="act-item">
+      <div class="act-ico" style="background:${cfg.bg}">${cfg.ico}</div>
+      <div class="act-body">
+        <div class="act-action">${cfg.label}</div>
+        <div class="act-time">${relT(r.ts)}${r.ip?' · '+r.ip:''}</div>
+      </div>
     </div>`;
-    return;
-  }
+  }).join('');
 
-  pb.innerHTML = `<div class="card">
-    <div class="card-head">
-      <div class="card-head-text"><h2>КІК-проекти</h2><p>${kikCache.length} ${plural(kikCache.length,'проект','проекти','проектів')} · натисніть для редагування</p></div>
-      <button class="btn btn-kik btn-sm" onclick="openKikModal(null)">+ Новий</button>
+  return `<div class="stats">
+    <div class="sc bl"><div class="n">${st.games}</div><div class="l">Ігор</div><div class="trend">опубліковано</div></div>
+    <div class="sc"><div class="n">${st.drafts}</div><div class="l">Чернеток</div></div>
+    <div class="sc bl"><div class="n">${st.kik}</div><div class="l">КІК</div></div>
+    <div class="sc gr"><div class="n">${st.backers}</div><div class="l">Бекерів</div></div>
+    <div class="sc am"><div class="n">${st.uploads}</div><div class="l">Медіафайлів</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+    <div class="kik-banner" style="margin:0">
+      <div class="kb-l">КІК · Загальні збори</div>
+      <div class="kb-t">${fmtM(st.kikRaised)} / ${fmtM(st.kikGoal)} ₴</div>
+      <div class="kb-s">${pct}% від цілі · ${fmtM(st.backers)} бекерів</div>
+      <div class="pb"><span style="width:${pct}%"></span></div>
     </div>
-    <div class="content-grid">${kikCache.map(k=>kikCard(k)).join('')}</div>
+    <div class="card" style="margin:0">
+      <div class="ch" style="margin-bottom:10px"><div class="ct" style="font-size:13px">📋 Остання активність</div></div>
+      <div class="act-feed">${feedItems||'<div style="color:var(--txt-s);font-size:12px;padding:8px 0">Поки що немає дій</div>'}</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><div class="ct">⚡ Швидкі дії</div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px">
+      <button class="btn btn-p" onclick="openGameEditor(null)">🎲 Нова гра</button>
+      <button class="btn btn-k" onclick="openKikEditor(null)">🚀 Новий КІК</button>
+      <button class="btn btn-g" onclick="activeTab='media';saveTab('media');render()">🖼 Завантажити фото</button>
+      <button class="btn btn-g" onclick="activeTab='pages';saveTab('pages');render()">📄 Редагувати сторінки</button>
+      <button class="btn btn-g" onclick="activeTab='general';saveTab('general');render()">⚙️ Налаштування</button>
+    </div>
   </div>`;
 }
 
-function kikCard(k){
-  const pct = k.goal ? Math.min(100, Math.round(k.raised / k.goal * 100)) : 0;
-  const cover = k.cover_url
-    ? `<div class="item-cover" style="position:relative"><img src="${esc(k.cover_url)}" loading="lazy" onerror="this.style.display='none'"></div>`
-    : `<div class="item-cover" style="background:var(--kik-l)">🚀</div>`;
-  return `<div class="item-card" onclick="openKikModal(${k.id})">
-    ${cover}
-    <div class="item-body">
-      <div class="item-title">${esc(k.title)}</div>
-      ${k.subtitle ? `<div class="item-sub">${esc(k.subtitle)}</div>` : ''}
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">
-        ${k.raised.toLocaleString('uk')} / ${k.goal.toLocaleString('uk')} ₴ · ${k.backers} бекерів
-      </div>
-      <div class="prog"><div class="prog-bar" style="width:${pct}%"></div></div>
-      <div class="item-foot" style="margin-top:10px">${statusBadge(k.status)}
-        <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openKikModal(${k.id})">Редагувати</button>
-      </div>
+// ── GAMES LIST ──
+function renderGamesList(){
+  const filtered=gameFilter==='all'?games:games.filter(g=>g.status===gameFilter);
+  const pub=games.filter(g=>g.status==='published').length;
+  const dft=games.filter(g=>g.status==='draft').length;
+  const arc=games.filter(g=>g.status==='archived').length;
+  const rows=filtered.length?filtered.map(g=>`<tr>
+    <td style="width:54px">${g.cover_url?`<img class="thumb" src="${esc(g.cover_url)}" onerror="this.style.display='none'">`:''}</td>
+    <td><div style="font-weight:700">${esc(g.title)}</div><div style="color:var(--txt-m);font-size:11.5px">/igry/${esc(g.slug)}</div></td>
+    <td>
+      <span class="badge ${g.status==='published'?'b-g':g.status==='draft'?'b-r':'b-s'}" style="cursor:pointer" onclick="quickToggleStatus('game',${g.id},'${g.status}')" title="Клікніть щоб змінити статус">${g.status}</span>
+    </td>
+    <td style="color:var(--txt-m);font-size:12px">${[g.players,g.age,g.duration].filter(Boolean).join(' · ')||'—'}</td>
+    <td style="white-space:nowrap;display:flex;gap:6px">
+      <button class="btn btn-g btn-sm" onclick="openGameEditor(${g.id})">✏️ Редагувати</button>
+    </td>
+  </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;padding:36px;color:var(--txt-m)">${gameFilter==='all'?'Ігор ще немає — додайте першу!':'Немає ігор з таким статусом'}</td></tr>`;
+  return `<div class="card">
+    <div class="ch">
+      <div><div class="ct">🎲 Ігри</div><div class="cs">${games.length} всього</div></div>
+      <button class="btn btn-p btn-sm" onclick="openGameEditor(null)">+ Нова гра</button>
     </div>
-  </div>`;
+    <div class="ftabs">
+      <button class="ftab${gameFilter==='all'?' on':''}" onclick="gameFilter='all';render()">Всі<span class="cnt">${games.length}</span></button>
+      <button class="ftab${gameFilter==='published'?' on':''}" onclick="gameFilter='published';render()">✅ Опубліковані<span class="cnt">${pub}</span></button>
+      <button class="ftab${gameFilter==='draft'?' on':''}" onclick="gameFilter='draft';render()">📝 Чернетки<span class="cnt">${dft}</span></button>
+      ${arc?`<button class="ftab${gameFilter==='archived'?' on':''}" onclick="gameFilter='archived';render()">📦 Архів<span class="cnt">${arc}</span></button>`:''}
+    </div>
+    <table class="tbl"><thead><tr><th></th><th>Назва</th><th>Статус <span style="font-weight:400;opacity:.5">(клікніть)</span></th><th>Характеристики</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
 }
 
-function openKikModal(id){
-  editType = 'kik'; editId = id;
-  const k = id ? (kikCache.find(x=>x.id===id)||{}) : {};
-  $('#modalTitle').textContent = id ? `✏️ ${k.title || 'Редагувати проект'}` : '+ Новий КІК-проект';
-  $('#modalDelete').classList.toggle('hidden', !id);
-  const endsVal = k.ends_at ? new Date(k.ends_at).toISOString().slice(0,10) : '';
-  $('#modalSave').className = 'btn btn-kik btn-sm';
+async function quickToggleStatus(type,id,current){
+  const next={published:'draft',draft:'published',archived:'published'}[current]||'published';
+  try{
+    if(type==='game'){await api('PUT',`/api/admin/games/${id}`,{status:next});games=await api('GET','/api/admin/games');}
+    else{await api('PUT',`/api/admin/kik/${id}`,{status:next});kik=await api('GET','/api/admin/kik');}
+    toast(`Статус → ${next}`);render();
+  }catch(e){toast(e.message,'er');}
+}
+window.quickToggleStatus=quickToggleStatus;
 
-  $('#modalBody').innerHTML = `
-    <div class="field">
-      <label>Назва проекту *</label>
-      <input type="text" id="mf_title" value="${esc(k.title||'')}" placeholder="Наприклад: Підтримати «Кухню шефа»" required>
-    </div>
-    <div class="field">
-      <label>Підзаголовок</label>
-      <input type="text" id="mf_subtitle" value="${esc(k.subtitle||'')}" placeholder="Коротко про проект">
-    </div>
-    <div class="field">
-      <label>Опис</label>
-      <textarea id="mf_description" placeholder="Детальний опис кампанії…">${esc(k.description||'')}</textarea>
-    </div>
-    <div class="field">
-      <label>Фото обкладинки</label>
-      <div class="upload-zone" id="uploadZone" onclick="$('#mf_file').click()">
-        <input type="file" id="mf_file" accept="image/*">
-        📷 Завантажте фото або перетягніть сюди
-      </div>
-      <input type="url" id="mf_cover_url" value="${esc(k.cover_url||'')}" placeholder="або вставте посилання" style="margin-top:8px">
-      ${k.cover_url ? `<img class="cover-preview" id="coverPreview" src="${esc(k.cover_url)}">` : `<div id="coverPreview"></div>`}
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label>Ціль збору, ₴</label>
-        <input type="number" id="mf_goal" value="${k.goal||0}" min="0">
-      </div>
-      <div class="field">
-        <label>Зібрано, ₴</label>
-        <input type="number" id="mf_raised" value="${k.raised||0}" min="0">
-      </div>
-      <div class="field">
-        <label>Кількість бекерів</label>
-        <input type="number" id="mf_backers" value="${k.backers||0}" min="0">
-      </div>
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label>Посилання на кампанію</label>
-        <input type="url" id="mf_campaign_url" value="${esc(k.campaign_url||'')}" placeholder="https://kik.ua/...">
-      </div>
-      <div class="field" style="max-width:180px">
-        <label>Дата закінчення</label>
-        <input type="date" id="mf_ends_at" value="${endsVal}">
-      </div>
-    </div>
-    <div class="field" style="max-width:200px">
-      <label>Статус</label>
-      <select id="mf_status">
-        <option value="active" ${(k.status||'active')==='active'?'selected':''}>🟢 Активний</option>
-        <option value="paused" ${k.status==='paused'?'selected':''}>⏸ Призупинено</option>
-        <option value="ended" ${k.status==='ended'?'selected':''}>🏁 Завершено</option>
-      </select>
-    </div>`;
-
-  setupUploadZone('mf_cover_url', 'coverPreview');
-  $('#modalBg').classList.remove('hidden');
-  setTimeout(()=>$('#mf_title')?.focus(), 50);
+// ── GAME EDITOR (full-page with preview) ──
+function openGameEditor(id){
+  editingGame=id?games.find(x=>x.id===id)||null:null;
+  gameGallery=editingGame?JSON.parse(editingGame.gallery||'[]'):[];
+  activeTab='game-editor'; render();
 }
 
-/* ─── SETTINGS ─── */
-let settingsS = null;
+function renderGameEditor(){
+  const g=editingGame||{};
+  const el=$('#mainContent');
+  el.style.padding='0';
+  el.innerHTML=`<div class="ged">
+    <div class="ged-form" id="gedForm">
+      <div class="ged-title">
+        <button class="btn btn-g btn-sm" onclick="backToGames()">← Ігри</button>
+        ${editingGame?`Редагувати: <strong>${esc(g.title)}</strong>`:'Нова гра'}
+      </div>
 
-function renderSettingsPage(){
-  settingsS = JSON.parse(JSON.stringify(S));
-  const pb = $('#pageBody');
-  const tb = $('#topbarRight');
-  const stamp = S.general?.publishedAt ? `Збережено: ${new Date(S.general.publishedAt).toLocaleString('uk-UA')}` : '';
-  tb.innerHTML = `<span id="savedAt" style="font-size:12px;color:var(--muted)">${stamp}</span>
-    <button class="btn btn-primary btn-sm" id="settingsSaveBtn">Зберегти і опублікувати</button>`;
-  $('#settingsSaveBtn').addEventListener('click', saveAllSettings);
+      <div class="ged-section">
+        <h4>Основне</h4>
+        <div class="field"><label class="flbl">Назва *</label>
+          <input type="text" id="g_title" value="${esc(g.title)}" placeholder="Назва гри" oninput="updatePreview()"></div>
+        <div class="row2">
+          <div class="field"><label class="flbl">Slug (URL)</label>
+            <input type="text" id="g_slug" value="${esc(g.slug)}" placeholder="nazva-gry"></div>
+          <div class="field"><label class="flbl">Статус</label>
+            <select id="g_status" onchange="updatePreview()">
+              <option value="published" ${(g.status||'published')==='published'?'selected':''}>✅ published</option>
+              <option value="draft" ${g.status==='draft'?'selected':''}>📝 draft</option>
+              <option value="archived" ${g.status==='archived'?'selected':''}>📦 archived</option>
+            </select></div>
+        </div>
+        <div class="field"><label class="flbl">Підзаголовок</label>
+          <input type="text" id="g_subtitle" value="${esc(g.subtitle)}" placeholder="Короткий опис" oninput="updatePreview()"></div>
+        <div class="field"><label class="flbl">Опис</label>
+          <textarea id="g_desc" style="min-height:110px" placeholder="Розповідь про гру…" oninput="updatePreview()">${esc(g.description)}</textarea></div>
+      </div>
 
-  const g = settingsS.general || {};
-  const hp = settingsS.homepage || {};
-  const b = settingsS.banner || {};
-  const m = settingsS.maintenance || {};
-  const c = settingsS.contacts || {};
-  const seo = settingsS.seo || {};
-  const ig = settingsS.integrations || {};
-  const ap = settingsS.appearance || {};
+      <div class="ged-section">
+        <h4>Обкладинка</h4>
+        <div class="img-pick">
+          <input type="url" id="g_cover" value="${esc(g.cover_url)}" placeholder="https://..." oninput="onCoverInput()">
+          <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_cover',updatePreview)">📁</button>
+        </div>
+        ${g.cover_url?`<img id="g_cover_thumb" class="img-thumb" src="${esc(g.cover_url)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="g_cover_thumb">Немає зображення</div>`}
+      </div>
 
-  pb.innerHTML = `<div class="settings-form">
+      <div class="ged-section">
+        <h4>Галерея</h4>
+        <div class="gal-grid" id="galGrid"></div>
+        <button type="button" class="btn btn-g btn-sm" style="margin-top:10px;width:100%" onclick="openPickerFor(null,addToGallery)">+ Додати зображення</button>
+      </div>
 
-    <!-- GENERAL -->
-    <div class="section-head section-open" data-section="general">
-      <div class="section-head-icon">⚙️</div>
-      <div class="section-head-text"><h3>Загальне</h3><p>Назва сайту, акцентний колір</p></div>
-      <span class="section-arrow">›</span>
-    </div>
-    <div class="section-body" data-body="general">
-      <div class="field"><label>Назва сайту</label>
-        <input type="text" data-s="general.siteTitle" value="${esc(g.siteTitle||'Blue Ferret')}"></div>
-      <div class="field"><label>Гасло (підзаголовок)</label>
-        <input type="text" data-s="general.tagline" value="${esc(g.tagline||'')}"></div>
-      <div class="field"><label>Основний колір</label>
-        <div class="color-row">
-          <input type="color" data-s="general.primaryColor" value="${g.primaryColor||'#009fe3'}">
-          <input type="text" data-s="general.primaryColor" value="${esc(g.primaryColor||'#009fe3')}" style="max-width:130px">
+      <div class="ged-section">
+        <h4>Характеристики</h4>
+        <div class="row3">
+          <div class="field"><label class="flbl">Гравці</label>
+            <input type="text" id="g_players" value="${esc(g.players)}" placeholder="2–5" oninput="updatePreview()"></div>
+          <div class="field"><label class="flbl">Вік</label>
+            <input type="text" id="g_age" value="${esc(g.age)}" placeholder="12+" oninput="updatePreview()"></div>
+          <div class="field"><label class="flbl">Тривалість</label>
+            <input type="text" id="g_duration" value="${esc(g.duration)}" placeholder="30–60 хв" oninput="updatePreview()"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label class="flbl">Порядок</label>
+            <input type="number" id="g_sort" value="${g.sort_order||0}"></div>
+          <div class="field"><label class="flbl">Посилання «Купити»</label>
+            <input type="url" id="g_buy" value="${esc(g.buy_url)}" placeholder="https://"></div>
         </div>
       </div>
-    </div>
 
-    <!-- HOMEPAGE -->
-    <div class="section-head" data-section="homepage">
-      <div class="section-head-icon">🏠</div>
-      <div class="section-head-text"><h3>Головна сторінка</h3><p>Заголовок, підзаголовок, кнопка</p></div>
-      <span class="section-arrow">›</span>
-    </div>
-    <div class="section-body hidden" data-body="homepage">
-      <div class="field"><label>Заголовок (H1)</label>
-        <input type="text" data-s="homepage.heroTitle" value="${esc(hp.heroTitle||'')}" placeholder="Blue Ferret"></div>
-      <div class="field"><label>Підзаголовок</label>
-        <input type="text" data-s="homepage.heroSubtitle" value="${esc(hp.heroSubtitle||'')}" placeholder="Незалежне видавництво…"></div>
-      <div class="row2">
-        <div class="field"><label>Текст кнопки</label>
-          <input type="text" data-s="homepage.heroCta" value="${esc(hp.heroCta||'')}" placeholder="Переглянути ігри"></div>
-        <div class="field"><label>Посилання кнопки</label>
-          <input type="url" data-s="homepage.heroCtaLink" value="${esc(hp.heroCtaLink||'')}" placeholder="/igry"></div>
+      <div class="ged-actions">
+        ${editingGame?`<button class="btn btn-d btn-sm" onclick="deleteGame(${editingGame.id})">🗑 Видалити</button>`:''}
+        <button class="btn btn-g btn-sm" onclick="backToGames()">Скасувати</button>
+        <button class="btn btn-p" onclick="saveGame()">💾 Зберегти гру</button>
       </div>
-      <div class="field"><label>Текст про нас</label>
-        <textarea data-s="homepage.aboutText" placeholder="Ми — маленьке незалежне видавництво…">${esc(hp.aboutText||'')}</textarea></div>
     </div>
 
-    <!-- BANNER -->
-    <div class="section-head" data-section="banner">
-      <div class="section-head-icon">📢</div>
-      <div class="section-head-text"><h3>Банер-смужка</h3><p>Рядок повідомлення на всіх сторінках</p></div>
-      <span class="section-arrow">›</span>
-    </div>
-    <div class="section-body hidden" data-body="banner">
-      <div class="field"><div class="switch-row">
-        <input type="checkbox" class="sw" data-s="banner.enabled" id="sw_banner" ${b.enabled?'checked':''}>
-        <label class="sw-label" for="sw_banner">Показувати банер на сайті</label>
-      </div></div>
-      <div class="field"><label>Текст банера</label>
-        <input type="text" data-s="banner.text" value="${esc(b.text||'')}" placeholder="Наша нова гра вже у продажу!"></div>
-      <div class="field"><label>Посилання (необов'язково)</label>
-        <input type="url" data-s="banner.link" value="${esc(b.link||'')}" placeholder="https://…"></div>
-      <div class="row2">
-        <div class="field"><label>Колір фону</label>
-          <div class="color-row">
-            <input type="color" data-s="banner.bg" value="${b.bg||'#009fe3'}">
-            <input type="text" data-s="banner.bg" value="${esc(b.bg||'#009fe3')}" style="max-width:130px">
+    <div class="ged-preview" id="gedPreview">
+      <div class="pv">
+        <div class="pv-mode-bar">
+          <button class="pv-mode-btn on" data-mode="card" onclick="setGamePvMode('card')">🃏 Картка</button>
+          <button class="pv-mode-btn" data-mode="list" onclick="setGamePvMode('list')">☰ Список</button>
+          <button class="pv-mode-btn" data-mode="detail" onclick="setGamePvMode('detail')">📖 Деталі</button>
+          <button class="pv-mode-btn" data-mode="mobile" onclick="setGamePvMode('mobile')">📱 Мобайл</button>
+        </div>
+
+        <!-- CARD MODE -->
+        <div id="pvModeCard">
+          <div class="pv-label">Картка в каталозі</div>
+          <div id="gamePreviewCard" class="gc">
+            <div class="gc-img-empty">🎲</div>
+            <div class="gc-body">
+              <div class="gc-title">Назва гри</div>
+              <div class="gc-sub">Підзаголовок</div>
+              <div class="gc-tags"></div>
+            </div>
           </div>
         </div>
-        <div class="field"><label>Колір тексту</label>
-          <div class="color-row">
-            <input type="color" data-s="banner.fg" value="${b.fg||'#ffffff'}">
-            <input type="text" data-s="banner.fg" value="${esc(b.fg||'#ffffff')}" style="max-width:130px">
+
+        <!-- LIST MODE -->
+        <div id="pvModeList" style="display:none">
+          <div class="pv-label">Рядок у списку</div>
+          <div id="gamePreviewRow" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px">
+            <div id="pv_thumb" style="width:52px;height:52px;border-radius:8px;background:rgba(255,255,255,.08);flex-shrink:0;overflow:hidden"></div>
+            <div style="flex:1;min-width:0">
+              <div id="pv_title_row" style="font-weight:700;color:#fff;font-size:14px">Назва гри</div>
+              <div id="pv_sub_row" style="color:rgba(255,255,255,.45);font-size:12px;margin-top:2px"></div>
+            </div>
+            <div id="pv_badge_row" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(75,178,114,.15);color:#4bb272;border:1px solid rgba(75,178,114,.25)">published</div>
+          </div>
+          <div style="margin-top:10px">
+            <div class="pv-label">Мета-теги (SEO)</div>
+            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 14px">
+              <div style="color:var(--bf);font-size:13px;font-weight:600;margin-bottom:4px" id="pv_seo_title">Назва гри · Blue Ferret</div>
+              <div style="color:rgba(255,255,255,.45);font-size:12px;line-height:1.5" id="pv_seo_desc">Опис гри…</div>
+              <div style="color:rgba(255,255,255,.25);font-size:11px;margin-top:6px">blueferret.com.ua/igry/slug</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DETAIL MODE -->
+        <div id="pvModeDetail" style="display:none">
+          <div class="pv-label">Сторінка гри (спрощено)</div>
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden">
+            <div id="pv_detail_img" style="width:100%;height:160px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:40px">🎲</div>
+            <div style="padding:18px">
+              <div id="pv_detail_title" style="font-size:22px;font-weight:700;color:#fff;margin-bottom:6px">Назва гри</div>
+              <div id="pv_detail_sub" style="color:rgba(255,255,255,.5);font-size:13px;margin-bottom:14px"></div>
+              <div id="pv_detail_tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+              <div id="pv_detail_desc" style="color:rgba(255,255,255,.45);font-size:12.5px;line-height:1.7;margin-bottom:16px"></div>
+              <div id="pv_detail_btn" style="display:none;background:var(--bf);color:#fff;padding:11px;border-radius:10px;text-align:center;font-weight:700;font-size:13.5px">Купити гру →</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MOBILE MODE -->
+        <div id="pvModeMobile" style="display:none">
+          <div class="pv-label">Мобайл-картка (390px)</div>
+          <div style="width:280px;margin:0 auto;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;overflow:hidden;box-shadow:0 0 0 10px #1a2744,0 20px 50px rgba(0,0,0,.4)">
+            <div id="pv_mob_img" style="width:100%;height:200px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:48px">🎲</div>
+            <div style="padding:16px">
+              <div id="pv_mob_title" style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px">Назва гри</div>
+              <div id="pv_mob_tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
+              <div id="pv_mob_btn" style="display:none;background:var(--bf);color:#fff;padding:10px;border-radius:8px;text-align:center;font-weight:700;font-size:13px">Купити →</div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="banner-prev" id="ip_banner" style="background:${esc(b.bg||'#009fe3')};color:${esc(b.fg||'#fff')}">${esc(b.text||'Тут з’явиться текст вашого банера')}</div>
     </div>
-
-    <!-- MAINTENANCE -->
-    <div class="section-head" data-section="maint">
-      <div class="section-head-icon">🔧</div>
-      <div class="section-head-text"><h3>Технічний режим</h3><p>Заглушка поверх всього сайту</p></div>
-      <span class="section-arrow">›</span>
-    </div>
-    <div class="section-body hidden" data-body="maint">
-      <div class="field"><div class="switch-row">
-        <input type="checkbox" class="sw" data-s="maintenance.enabled" id="sw_maint" ${m.enabled?'checked':''}>
-        <label class="sw-label" for="sw_maint">⚠️ Увімкнути технічний режим</label>
-      </div><span class="hint" style="display:block;margin-top:6px">Сайт буде прихований для відвідувачів</span></div>
-      <div class="field"><label>Повідомлення</label>
-        <textarea data-s="maintenance.message" placeholder="Сайт тимчасово на обслуговуванні…">${esc(m.message||'')}</textarea></div>
-      <div class="maint-prev"><div class="mo">🦦</div><p id="ip_maint">${esc(m.message||'Сайт тимчасово на обслуговуванні. Скоро повернемось!')}</p></div>
-    </div>
-
-    <!-- CONTACTS -->
-    <div class="section-head" data-section="contacts">
-      <div class="section-head-icon">📬</div>
-      <div class="section-head-text"><h3>Контакти</h3><p>Email і соціальні мережі</p></div>
-      <span class="section-arrow">›</span>
-    </div>
-    <div class="section-body hidden" data-body="contacts">
-      <div class="field"><label>Email</label>
-        <input type="email" data-s="contacts.email" value="${esc(c.email||'')}" placeholder="info@blueferret.com.ua"></div>
-      <div class="row2">
-        <div class="field"><label>Telegram</label>
-          <input type="url" data-s="contacts.telegram" value="${esc(c.telegram||'')}" placeholder="https://t.me/…"></div>
-        <div class="field"><label>Instagram</label>
-          <input type="url" data-s="contacts.instagram" value="${esc(c.instagram||'')}" placeholder="https://instagram.com/…"></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Facebook</label>
-          <input type="url" data-s="contacts.facebook" value="${esc(c.facebook||'')}" placeholder="https://facebook.com/…"></div>
-        <div class="field"><label>X (Twitter)</label>
-          <input type="url" data-s="contacts.x" value="${esc(c.x||'')}" placeholder="https://x.com/…"></div>
-      </div>
-    </div>
-
-    <!-- SEO -->
-    <div class="section-head" data-section="seo">
-      <div class="section-head-icon">🔍</div>
-      <div class="section-head-text"><h3>SEO</h3><p>Теги для Google та соцмереж</p></div>
-      <span class="section-arrow">›</span>
-    </div>
-    <div class="section-body hidden" data-body="seo">
-      <div class="field"><label>Заголовок сторінки (title)</label>
-        <input type="text" data-s="seo.defaultTitle" value="${esc(seo.defaultTitle||'')}"></div>
-      <div class="field"><label>Опис (meta description)</label>
-        <textarea data-s="seo.defaultDescription" style="min-height:70px" placeholder="Опис сайту для пошукової видачі…">${esc(seo.defaultDescription||'')}</textarea></div>
-      <div class="field"><label>OG-зображення (посилання)</label>
-        <input type="url" data-s="seo.ogImage" value="${esc(seo.ogImage||'')}" placeholder="https://…"></div>
-      <div class="field"><div class="switch-row">
-        <input type="checkbox" class="sw" data-s="seo.noindex" id="sw_noindex" ${seo.noindex?'checked':''}>
-        <label class="sw-label" for="sw_noindex">Закрити сайт від індексації Google</label>
-      </div></div>
-    </div>
-
-    <!-- ANALYTICS -->
-    <div class="section-head" data-section="analytics">
-      <div class="section-head-icon">📊</div>
-      <div class="section-head-text"><h3>Аналітика та скрипти</h3><p>Google Analytics, Meta Pixel тощо</p></div>
-      <span class="section-arrow">›</span>
-    </div>
-    <div class="section-body hidden" data-body="analytics">
-      <div class="field"><label>Скрипти у &lt;head&gt;</label>
-        <textarea data-s="integrations.headScripts" placeholder="&lt;!-- Google Analytics --&gt;&#10;&lt;script&gt;…&lt;/script&gt;">${esc(ig.headScripts||'')}</textarea></div>
-      <div class="field"><label>Скрипти у &lt;body&gt;</label>
-        <textarea data-s="integrations.bodyScripts" placeholder="&lt;!-- Meta Pixel --&gt;&#10;&lt;script&gt;…&lt;/script&gt;">${esc(ig.bodyScripts||'')}</textarea></div>
-    </div>
-
-    <!-- CSS -->
-    <div class="section-head" data-section="css">
-      <div class="section-head-icon">🎨</div>
-      <div class="section-head-text"><h3>Кастомний CSS</h3><p>Додаткові стилі поверх сайту</p></div>
-      <span class="section-arrow">›</span>
-    </div>
-    <div class="section-body hidden" data-body="css">
-      <div class="field">
-        <textarea data-s="appearance.customCss" style="min-height:180px;font-family:ui-monospace,monospace;font-size:12.5px" placeholder=".hero-title { font-size: 3rem; }&#10;/* Ваші стилі тут */">${esc(ap.customCss||'')}</textarea>
-      </div>
-    </div>
-
-    <div style="height:60px"></div>
   </div>`;
-
-  // Section accordion
-  document.querySelectorAll('.section-head').forEach(h => {
-    h.addEventListener('click', () => {
-      const key = h.dataset.section;
-      const body = document.querySelector(`[data-body="${key}"]`);
-      const open = !h.classList.contains('section-open');
-      h.classList.toggle('section-open', open);
-      body.classList.toggle('hidden', !open);
-    });
-  });
-
-  // Color pair sync + banner/maint preview
-  document.querySelectorAll('[data-s]').forEach(el => {
-    el.addEventListener('input', () => {
-      const path = el.dataset.s;
-      if (el.type === 'color' || el.type === 'text'){
-        document.querySelectorAll(`[data-s="${path}"]`).forEach(o => { if (o!==el) o.value = el.value; });
-      }
-      // live previews
-      if (path === 'banner.text') { const b=$('#ip_banner'); if(b) b.textContent=el.value||'Тут з’явиться текст вашого банера'; }
-      if (path === 'banner.bg') { const b=$('#ip_banner'); if(b) b.style.background=el.value; }
-      if (path === 'banner.fg') { const b=$('#ip_banner'); if(b) b.style.color=el.value; }
-      if (path === 'maintenance.message') { const m=$('#ip_maint'); if(m) m.textContent=el.value; }
-    });
-    el.addEventListener('change', () => settingsDirty = true);
-    el.addEventListener('input', () => settingsDirty = true);
-  });
-
-  // Cmd+S
-  document.addEventListener('keydown', kbHandler);
+  el.style.padding='0';
+  renderGallery();
+  updatePreview();
 }
 
-function kbHandler(e){
-  if ((e.metaKey||e.ctrlKey) && (e.key==='s'||e.key==='S') && activeTab==='settings'){
-    e.preventDefault(); saveAllSettings();
+function renderGallery(){
+  const grid=$('#galGrid'); if(!grid)return;
+  grid.innerHTML=gameGallery.map((url,i)=>`<div class="gal-i">
+    <img src="${esc(url)}" onerror="this.style.display='none'">
+    <button class="rm" onclick="removeGalleryItem(${i})">✕</button>
+  </div>`).join('')+`<div class="gal-add" onclick="openPickerFor(null,addToGallery)">+</div>`;
+}
+window.removeGalleryItem=function(i){gameGallery.splice(i,1);renderGallery();}
+function addToGallery(url){gameGallery.push(url);renderGallery();}
+
+function onCoverInput(){
+  const url=$('#g_cover')?.value||'';
+  const th=$('#g_cover_thumb');
+  if(th){
+    if(url){th.outerHTML=`<img id="g_cover_thumb" class="img-thumb" src="${esc(url)}" onerror="this.style.display='none'">`;}
+    else{th.outerHTML=`<div class="img-thumb-empty" id="g_cover_thumb">Немає зображення</div>`;}
   }
+  updatePreview();
+}
+window.onCoverInput=onCoverInput;
+
+let gamePvMode='card';
+function setGamePvMode(mode){
+  gamePvMode=mode;
+  $$('.pv-mode-btn').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
+  $$('#pvModeCard,#pvModeList,#pvModeDetail,#pvModeMobile').forEach(el=>el.style.display='none');
+  const map={card:'#pvModeCard',list:'#pvModeList',detail:'#pvModeDetail',mobile:'#pvModeMobile'};
+  const el=$(map[mode]);if(el)el.style.display='';
+  updatePreview();
+}
+window.setGamePvMode=setGamePvMode;
+
+function updatePreview(){
+  const title=$('#g_title')?.value||'Назва гри';
+  const sub=$('#g_subtitle')?.value||'';
+  const desc=$('#g_desc')?.value||'';
+  const cover=$('#g_cover')?.value||'';
+  const players=$('#g_players')?.value||'';
+  const age=$('#g_age')?.value||'';
+  const dur=$('#g_duration')?.value||'';
+  const buy=$('#g_buy')?.value||'';
+  const slug=$('#g_slug')?.value||'slug';
+  const status=$('#g_status')?.value||'published';
+  const tags=[players&&`👥 ${players}`,age&&`🎂 ${age}`,dur&&`⏱ ${dur}`].filter(Boolean);
+  const tagHtml=tags.map(t=>`<span class="gc-tag">${esc(t)}</span>`).join('');
+  const mobTagHtml=tags.map(t=>`<span style="background:rgba(0,159,227,.12);border:1px solid rgba(0,159,227,.2);color:rgba(0,159,227,.9);padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600">${esc(t)}</span>`).join('');
+
+  // Card mode
+  const card=$('#gamePreviewCard');
+  if(card)card.innerHTML=`${cover?`<img class="gc-img" src="${esc(cover)}" onerror="this.style.display='none'">`:`<div class="gc-img-empty">🎲</div>`}
+    <div class="gc-body">
+      <div class="gc-title">${esc(title)}</div>
+      ${sub?`<div class="gc-sub">${esc(sub)}</div>`:''}
+      ${tags.length?`<div class="gc-tags">${tagHtml}</div>`:''}
+      ${desc?`<div class="gc-desc">${esc(desc.slice(0,160))}${desc.length>160?'…':''}</div>`:''}
+      ${buy?`<a class="gc-btn">Купити гру →</a>`:''}
+    </div>`;
+
+  // List mode
+  const tt=$('#pv_title_row'),st=$('#pv_sub_row'),bg=$('#pv_badge_row'),th=$('#pv_thumb');
+  if(tt)tt.textContent=title;
+  if(st)st.textContent=[players,age,dur].filter(Boolean).join(' · ');
+  if(bg){bg.textContent=status;bg.style.background=status==='published'?'rgba(75,178,114,.15)':'rgba(239,68,68,.1)';bg.style.color=status==='published'?'#4bb272':'#ef4444';}
+  if(th)th.innerHTML=cover?`<img src="${esc(cover)}" style="width:100%;height:100%;object-fit:cover">`:`<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.3);font-size:22px">🎲</div>`;
+  const seoT=$('#pv_seo_title'),seoD=$('#pv_seo_desc');
+  if(seoT)seoT.textContent=`${title} · Blue Ferret`;
+  if(seoD)seoD.textContent=desc?desc.slice(0,155)+'…':'Опис гри…';
+
+  // Detail mode
+  const di=$('#pv_detail_img'),dt=$('#pv_detail_title'),ds=$('#pv_detail_sub'),dtg=$('#pv_detail_tags'),dd=$('#pv_detail_desc'),db=$('#pv_detail_btn');
+  if(di)di.innerHTML=cover?`<img src="${esc(cover)}" style="width:100%;height:100%;object-fit:cover">`:'🎲';
+  if(dt)dt.textContent=title;
+  if(ds)ds.textContent=sub;
+  if(dtg)dtg.innerHTML=tagHtml;
+  if(dd)dd.textContent=desc?desc.slice(0,300)+(desc.length>300?'…':''):'';
+  if(db){db.style.display=buy?'block':'none';}
+
+  // Mobile mode
+  const mi=$('#pv_mob_img'),mtt=$('#pv_mob_title'),mtg=$('#pv_mob_tags'),mb=$('#pv_mob_btn');
+  if(mi)mi.innerHTML=cover?`<img src="${esc(cover)}" style="width:100%;height:100%;object-fit:cover">`:'🎲';
+  if(mtt)mtt.textContent=title;
+  if(mtg)mtg.innerHTML=mobTagHtml;
+  if(mb)mb.style.display=buy?'block':'none';
+}
+window.updatePreview=updatePreview;
+
+async function saveGame(){
+  const title=$('#g_title')?.value;
+  if(!title){toast('Назва обов\'язкова','er');return;}
+  const btn=document.querySelector('.ged-actions .btn-p');if(btn)btn.disabled=true;
+  try{
+    const body={title,slug:$('#g_slug')?.value,subtitle:$('#g_subtitle')?.value,
+      description:$('#g_desc')?.value,status:$('#g_status')?.value,
+      cover_url:$('#g_cover')?.value,gallery:gameGallery,
+      players:$('#g_players')?.value,age:$('#g_age')?.value,duration:$('#g_duration')?.value,
+      buy_url:$('#g_buy')?.value,sort_order:+$('#g_sort')?.value||0};
+    if(editingGame)await api('PUT',`/api/admin/games/${editingGame.id}`,body);
+    else await api('POST','/api/admin/games',body);
+    games=await api('GET','/api/admin/games');
+    toast(editingGame?'Гру оновлено ✓':'Гру створено ✓','ok');
+    backToGames();
+  }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
+  finally{if(btn)btn.disabled=false;}
+}
+async function deleteGame(id){
+  if(!confirm('Видалити гру?'))return;
+  try{await api('DELETE',`/api/admin/games/${id}`);games=await api('GET','/api/admin/games');toast('Видалено','ok');backToGames();}
+  catch(e){if(e.message!=='unauth')toast(e.message,'er');}
+}
+function backToGames(){
+  editingGame=null;gameGallery=[];
+  const el=$('#mainContent');if(el)el.style.padding='22px';
+  activeTab='games';render();
+}
+window.openGameEditor=openGameEditor;window.saveGame=saveGame;window.deleteGame=deleteGame;window.backToGames=backToGames;
+
+// ── KIK LIST ──
+function renderKikList(){
+  const rows=kik.length?kik.map(k=>{
+    const pct=k.goal>0?Math.min(100,Math.round(k.raised/k.goal*100)):0;
+    return `<tr>
+      <td style="width:54px">${k.cover_url?`<img class="thumb" src="${esc(k.cover_url)}" onerror="this.style.display='none'">`:''}</td>
+      <td><div style="font-weight:700">${esc(k.title)}</div><div style="color:var(--txt-m);font-size:11.5px">${esc(k.subtitle)}</div></td>
+      <td><span class="badge ${k.status==='active'?'b-g':k.status==='ended'?'b-s':'b-r'}">${k.status}</span></td>
+      <td class="pg-w">
+        <div style="font-size:11.5px;color:var(--txt-m)">${fmtM(k.raised)} / ${fmtM(k.goal)} ₴ · ${k.backers} бек.</div>
+        <div class="pg"><span style="width:${pct}%"></span></div>
+      </td>
+      <td>${k.ends_at?`<span style="font-size:11.5px;color:var(--txt-m)">${fmtD(k.ends_at)}</span>`:'—'}</td>
+      <td><button class="btn btn-g btn-sm" onclick="openKikEditor(${k.id})">✏️ Редагувати</button></td>
+    </tr>`;}).join(''):`<tr><td colspan="6" style="text-align:center;padding:36px;color:var(--txt-m)">Проектів ще немає</td></tr>`;
+  return `<div class="card">
+    <div class="ch">
+      <div><div class="ct">🚀 КІК-проекти</div><div class="cs">Краудфандингові кампанії</div></div>
+      <button class="btn btn-k btn-sm" onclick="openKikEditor(null)">+ Новий проект</button>
+    </div>
+    <table class="tbl"><thead><tr><th></th><th>Назва</th><th>Статус</th><th>Збори</th><th>Кінець</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
 }
 
+// ── KIK EDITOR ──
+function openKikEditor(id){editingKik=id?kik.find(x=>x.id===id)||null:null;activeTab='kik-editor';render();}
+
+function renderKikEditor(){
+  const k=editingKik||{};
+  const el=$('#mainContent'); el.style.padding='0';
+  const ev=k.ends_at?new Date(k.ends_at).toISOString().slice(0,10):'';
+  el.innerHTML=`<div class="ged">
+    <div class="ged-form">
+      <div class="ged-title">
+        <button class="btn btn-g btn-sm" onclick="backToKik()">← КІК</button>
+        ${editingKik?`Редагувати: <strong>${esc(k.title)}</strong>`:'Новий проект'}
+      </div>
+
+      <div class="ged-section">
+        <h4>Основне</h4>
+        <div class="field"><label class="flbl">Назва *</label>
+          <input type="text" id="k_title" value="${esc(k.title)}" placeholder="Назва проекту" oninput="updateKikPreview()"></div>
+        <div class="field"><label class="flbl">Підзаголовок</label>
+          <input type="text" id="k_subtitle" value="${esc(k.subtitle)}" placeholder="Короткий опис" oninput="updateKikPreview()"></div>
+        <div class="field"><label class="flbl">Опис</label>
+          <textarea id="k_desc" style="min-height:100px" oninput="updateKikPreview()">${esc(k.description)}</textarea></div>
+        <div class="row2">
+          <div class="field"><label class="flbl">Статус</label>
+            <select id="k_status" onchange="updateKikPreview()">
+              <option value="active" ${(k.status||'active')==='active'?'selected':''}>✅ active</option>
+              <option value="ended" ${k.status==='ended'?'selected':''}>🏁 ended</option>
+              <option value="paused" ${k.status==='paused'?'selected':''}>⏸ paused</option>
+            </select></div>
+          <div class="field"><label class="flbl">Кінець кампанії</label>
+            <input type="date" id="k_ends" value="${ev}" oninput="updateKikPreview()"></div>
+        </div>
+      </div>
+
+      <div class="ged-section">
+        <h4>Обкладинка</h4>
+        <div class="img-pick">
+          <input type="url" id="k_cover" value="${esc(k.cover_url)}" placeholder="https://..." oninput="onKikCoverInput()">
+          <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('k_cover',updateKikPreview)">📁</button>
+        </div>
+        ${k.cover_url?`<img id="k_cover_thumb" class="img-thumb" src="${esc(k.cover_url)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="k_cover_thumb">Немає зображення</div>`}
+      </div>
+
+      <div class="ged-section">
+        <h4>Фінансування</h4>
+        <div class="row3">
+          <div class="field"><label class="flbl">Ціль, ₴</label>
+            <input type="number" id="k_goal" value="${k.goal||0}" oninput="updateKikPreview()"></div>
+          <div class="field"><label class="flbl">Зібрано, ₴</label>
+            <input type="number" id="k_raised" value="${k.raised||0}" oninput="updateKikPreview()"></div>
+          <div class="field"><label class="flbl">Бекерів</label>
+            <input type="number" id="k_backers" value="${k.backers||0}" oninput="updateKikPreview()"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label class="flbl">Посилання на кампанію</label>
+            <input type="url" id="k_url" value="${esc(k.campaign_url)}" placeholder="https://"></div>
+          <div class="field"><label class="flbl">Порядок</label>
+            <input type="number" id="k_sort" value="${k.sort_order||0}"></div>
+        </div>
+      </div>
+
+      <div class="ged-actions">
+        ${editingKik?`<button class="btn btn-d btn-sm" onclick="deleteKik(${editingKik.id})">🗑 Видалити</button>`:''}
+        <button class="btn btn-g btn-sm" onclick="backToKik()">Скасувати</button>
+        <button class="btn btn-k" onclick="saveKik()">💾 Зберегти проект</button>
+      </div>
+    </div>
+
+    <div class="ged-preview">
+      <div class="pv">
+        <div class="pv-label">Прев'ю картки КІК</div>
+        <div id="kikPreviewCard" class="kc">
+          <div style="width:100%;height:180px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:32px">🚀</div>
+          <div class="kc-body">
+            <div class="kc-status">active</div>
+            <div class="kc-title">Назва проекту</div>
+            <div class="kc-sub">Підзаголовок</div>
+            <div class="kc-nums"></div>
+            <div class="kc-pb"><span style="width:0%"></span></div>
+          </div>
+        </div>
+        <div class="pv-label" style="margin-top:8px">Прогрес зборів</div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(75,178,114,.12);border-radius:12px;padding:16px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span id="pv_raised_lbl" style="font-size:13px;font-weight:700;color:#fff">0 ₴</span>
+            <span id="pv_pct_lbl" style="font-size:13px;color:var(--kik);font-weight:700">0%</span>
+          </div>
+          <div style="height:10px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden">
+            <div id="pv_pg" style="height:100%;background:linear-gradient(90deg,var(--kik),#22c55e);border-radius:99px;width:0%;transition:.3s"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px">
+            <span id="pv_backers_lbl" style="font-size:11.5px;color:rgba(255,255,255,.4)">0 бекерів</span>
+            <span id="pv_goal_lbl" style="font-size:11.5px;color:rgba(255,255,255,.3)">з 0 ₴</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  updateKikPreview();
+}
+
+function onKikCoverInput(){
+  const url=$('#k_cover')?.value||'';
+  const th=$('#k_cover_thumb');
+  if(th){if(url){th.outerHTML=`<img id="k_cover_thumb" class="img-thumb" src="${esc(url)}" onerror="this.style.display='none'">`;}
+    else{th.outerHTML=`<div class="img-thumb-empty" id="k_cover_thumb">Немає зображення</div>`;}}
+  updateKikPreview();
+}
+window.onKikCoverInput=onKikCoverInput;
+
+function updateKikPreview(){
+  const title=$('#k_title')?.value||'Назва проекту';
+  const sub=$('#k_subtitle')?.value||'';
+  const cover=$('#k_cover')?.value||'';
+  const status=$('#k_status')?.value||'active';
+  const goal=+$('#k_goal')?.value||0;
+  const raised=+$('#k_raised')?.value||0;
+  const backers=+$('#k_backers')?.value||0;
+  const pct=goal>0?Math.min(100,Math.round(raised/goal*100)):0;
+  const statusColor={active:['rgba(75,178,114,.15)','var(--kik)','rgba(75,178,114,.25)'],ended:['rgba(148,163,184,.1)','#94a3b8','rgba(148,163,184,.2)'],paused:['rgba(239,68,68,.1)','#ef4444','rgba(239,68,68,.2)']}[status]||['rgba(75,178,114,.15)','var(--kik)','rgba(75,178,114,.25)'];
+
+  const card=$('#kikPreviewCard'); if(!card)return;
+  card.innerHTML=`${cover?`<img class="kc-img" src="${esc(cover)}" onerror="this.style.display='none'">`:`<div style="width:100%;height:180px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:32px">🚀</div>`}
+    <div class="kc-body">
+      <span class="kc-status" style="background:${statusColor[0]};color:${statusColor[1]};border-color:${statusColor[2]}">${status}</span>
+      <div class="kc-title">${esc(title)}</div>
+      ${sub?`<div class="kc-sub">${esc(sub)}</div>`:''}
+      <div class="kc-nums">
+        <div class="kc-num"><div class="v">${fmtM(raised)} ₴</div><div class="l">Зібрано</div></div>
+        <div class="kc-num"><div class="v">${pct}%</div><div class="l">Від цілі</div></div>
+        <div class="kc-num"><div class="v">${backers}</div><div class="l">Бекерів</div></div>
+      </div>
+      <div class="kc-pb"><span style="width:${pct}%"></span></div>
+      <div class="kc-btn">Підтримати проект →</div>
+    </div>`;
+
+  const pg=$('#pv_pg'); if(pg)pg.style.width=pct+'%';
+  const rl=$('#pv_raised_lbl');if(rl)rl.textContent=fmtM(raised)+' ₴';
+  const pl=$('#pv_pct_lbl');if(pl)pl.textContent=pct+'%';
+  const bl=$('#pv_backers_lbl');if(bl)bl.textContent=backers+' бекерів';
+  const gl=$('#pv_goal_lbl');if(gl)gl.textContent='з '+fmtM(goal)+' ₴';
+}
+window.updateKikPreview=updateKikPreview;
+
+async function saveKik(){
+  const title=$('#k_title')?.value;if(!title){toast('Назва обов\'язкова','er');return;}
+  const btn=document.querySelector('.ged-actions .btn-k');if(btn)btn.disabled=true;
+  try{
+    const ev=$('#k_ends')?.value;
+    const body={title,subtitle:$('#k_subtitle')?.value,description:$('#k_desc')?.value,
+      status:$('#k_status')?.value,goal:+$('#k_goal')?.value||0,raised:+$('#k_raised')?.value||0,
+      backers:+$('#k_backers')?.value||0,cover_url:$('#k_cover')?.value,
+      campaign_url:$('#k_url')?.value,ends_at:ev?new Date(ev).getTime():null,
+      sort_order:+$('#k_sort')?.value||0};
+    if(editingKik)await api('PUT',`/api/admin/kik/${editingKik.id}`,body);
+    else await api('POST','/api/admin/kik',body);
+    kik=await api('GET','/api/admin/kik');
+    toast(editingKik?'Проект оновлено ✓':'Проект створено ✓','ok');backToKik();
+  }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
+  finally{if(btn)btn.disabled=false;}
+}
+async function deleteKik(id){
+  if(!confirm('Видалити проект?'))return;
+  try{await api('DELETE',`/api/admin/kik/${id}`);kik=await api('GET','/api/admin/kik');toast('Видалено','ok');backToKik();}
+  catch(e){if(e.message!=='unauth')toast(e.message,'er');}
+}
+function backToKik(){editingKik=null;const el=$('#mainContent');if(el)el.style.padding='22px';activeTab='kik';render();}
+window.openKikEditor=openKikEditor;window.saveKik=saveKik;window.deleteKik=deleteKik;window.backToKik=backToKik;
+
+// ── SETTINGS ──
+function renderSettings(id){
+  const g=S.general||{},b=S.banner||{},m=S.maintenance||{},c=S.contacts||{},seo=S.seo||{},ig=S.integrations||{},ap=S.appearance||{};
+  const T={general:'⚙️ Загальні',banner:'📢 Банер',maintenance:'🔧 Тех. режим',contacts:'📬 Контакти',seo:'🔍 SEO',integrations:'📈 Аналітика',appearance:'🎨 CSS'};
+  let body='';
+  switch(id){
+    case'general':body=`
+      <div class="field"><label class="flbl">Назва сайту</label><input type="text" data-p="general.siteTitle" value="${esc(g.siteTitle)}"></div>
+      <div class="field"><label class="flbl">Гасло</label><input type="text" data-p="general.tagline" value="${esc(g.tagline)}"></div>
+      <div class="field"><label class="flbl">Основний колір</label>
+        <div class="cp"><input type="color" data-p="general.primaryColor" value="${g.primaryColor||'#009fe3'}">
+        <input type="text" data-p="general.primaryColor" value="${g.primaryColor||''}" style="max-width:130px"></div></div>`;break;
+    case'banner':body=`
+      <div class="field"><label class="sw"><input type="checkbox" data-p="banner.enabled" ${b.enabled?'checked':''}><span>Показувати банер</span></label></div>
+      <div class="field"><label class="flbl">Текст</label><input type="text" id="bv_text" data-p="banner.text" value="${esc(b.text)}" placeholder="Текст банера…" oninput="updateBannerPreview()"></div>
+      <div class="field"><label class="flbl">Посилання</label><input type="url" data-p="banner.link" value="${esc(b.link)}" placeholder="https://…"></div>
+      <div class="row2">
+        <div class="field"><label class="flbl">Колір фону</label><div class="cp"><input type="color" id="bv_bg" data-p="banner.bg" value="${b.bg||'#009fe3'}" oninput="updateBannerPreview()"><input type="text" data-p="banner.bg" value="${b.bg||''}" style="max-width:100px" oninput="updateBannerPreview()"></div></div>
+        <div class="field"><label class="flbl">Колір тексту</label><div class="cp"><input type="color" id="bv_fg" data-p="banner.fg" value="${b.fg||'#fff'}" oninput="updateBannerPreview()"><input type="text" data-p="banner.fg" value="${b.fg||''}" style="max-width:100px" oninput="updateBannerPreview()"></div></div>
+      </div>
+      <div class="banner-pv" id="bannerPreview">
+        <div class="banner-pv-bar" style="background:${b.bg||'#009fe3'};color:${b.fg||'#fff'}">${esc(b.text)||'Текст банера'}</div>
+        <div class="banner-pv-page">↑ Так виглядатиме банер на сайті</div>
+      </div>`;break;
+    case'maintenance':body=`
+      <div class="field"><label class="sw"><input type="checkbox" data-p="maintenance.enabled" ${m.enabled?'checked':''}><span>Увімкнути режим обслуговування</span></label></div>
+      <div class="field"><label class="flbl">Повідомлення</label><textarea data-p="maintenance.message" style="min-height:80px">${esc(m.message)}</textarea></div>`;break;
+    case'contacts':body=`
+      <div class="field"><label class="flbl">Email</label><input type="email" data-p="contacts.email" value="${esc(c.email)}"></div>
+      <div class="row2">
+        <div class="field"><label class="flbl">Telegram</label><input type="url" data-p="contacts.telegram" value="${esc(c.telegram)}"></div>
+        <div class="field"><label class="flbl">Instagram</label><input type="url" data-p="contacts.instagram" value="${esc(c.instagram)}"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="flbl">Facebook</label><input type="url" data-p="contacts.facebook" value="${esc(c.facebook)}"></div>
+        <div class="field"><label class="flbl">X</label><input type="url" data-p="contacts.x" value="${esc(c.x)}"></div>
+      </div>`;break;
+    case'seo':body=`
+      <div class="field"><label class="flbl">Title</label><input type="text" data-p="seo.defaultTitle" value="${esc(seo.defaultTitle)}"></div>
+      <div class="field"><label class="flbl">Description</label><textarea data-p="seo.defaultDescription" style="min-height:70px">${esc(seo.defaultDescription)}</textarea></div>
+      <div class="field"><label class="flbl">OG Image URL</label><input type="url" data-p="seo.ogImage" value="${esc(seo.ogImage)}"></div>
+      <div class="field"><label class="sw"><input type="checkbox" data-p="seo.noindex" ${seo.noindex?'checked':''}><span>Noindex</span></label></div>`;break;
+    case'integrations':body=`
+      <div class="field"><label class="flbl">Скрипти &lt;head&gt;</label><textarea class="code" data-p="integrations.headScripts">${esc(ig.headScripts)}</textarea></div>
+      <div class="field"><label class="flbl">Скрипти &lt;body&gt;</label><textarea class="code" data-p="integrations.bodyScripts">${esc(ig.bodyScripts)}</textarea></div>`;break;
+    case'appearance':body=`
+      <div class="field"><label class="flbl">Кастомний CSS</label><textarea class="code" style="min-height:260px" data-p="appearance.customCss">${esc(ap.customCss)}</textarea></div>`;break;
+  }
+  return `<div class="card">
+    <div class="ch"><div class="ct">${T[id]||id}</div></div>
+    ${body}
+    <div style="margin-top:6px;padding-top:16px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:center">
+      <button class="btn btn-p" id="saveBtn">💾 Зберегти та опублікувати</button>
+      ${S.general?.publishedAt?`<span style="color:var(--txt-m);font-size:12px">${fmtD(S.general.publishedAt)}</span>`:''}
+    </div></div>`;
+}
+function updateBannerPreview(){
+  const txt=$('#bv_text')?.value||'Текст банера';
+  const bg=$$('[data-p="banner.bg"]').find(el=>el.type==='color')?.value||'#009fe3';
+  const fg=$$('[data-p="banner.fg"]').find(el=>el.type==='color')?.value||'#fff';
+  const bar=$('#bannerPreview .banner-pv-bar');
+  if(bar){bar.textContent=txt;bar.style.background=bg;bar.style.color=fg;}
+}
+window.updateBannerPreview=updateBannerPreview;
+document.addEventListener('click',e=>{if(e.target.id==='saveBtn')saveSettings();});
+document.addEventListener('input',e=>{
+  const el=e.target;if(!el.dataset.p)return;
+  if(el.type==='color'){$$(`[data-p="${el.dataset.p}"]`).forEach(o=>{if(o!==el)o.value=el.value;});}
+});
 function collectSettings(){
-  document.querySelectorAll('[data-s]').forEach(el => {
-    const [k, f] = el.dataset.s.split('.');
-    if (!settingsS[k]) settingsS[k] = {};
-    if (el.type === 'checkbox') settingsS[k][f] = el.checked;
-    else settingsS[k][f] = el.value;
+  $$('[data-p]').forEach(el=>{
+    const[k,f]=el.dataset.p.split('.');if(!S[k])S[k]={};
+    S[k][f]=el.type==='checkbox'?el.checked:el.value;
   });
 }
-
-async function saveAllSettings(){
-  const btn = $('#settingsSaveBtn');
-  if (!btn) return;
+async function saveSettings(){
   collectSettings();
-  btn.disabled = true; btn.textContent = 'Зберігаю…';
-  try {
-    const res = await api('PUT', '/api/admin/settings', settingsS);
-    S = res.settings;
-    settingsS = JSON.parse(JSON.stringify(S));
-    settingsDirty = false;
-    toast('Збережено і опубліковано ✓');
-    const t = S.general?.publishedAt;
-    const savedAt = $('#savedAt');
-    if (savedAt && t) savedAt.textContent = 'Збережено: ' + new Date(t).toLocaleString('uk-UA');
-  } catch(e){ if (e.message!=='unauth') toast('Помилка збереження', true); }
-  finally { if (btn){ btn.disabled=false; btn.textContent='Зберегти і опублікувати'; } }
+  try{const res=await api('PUT','/api/admin/settings',S);S=res.settings;toast('Збережено ✓','ok');render();}
+  catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
 }
 
-/* ─── AUDIT ─── */
-function renderAuditPage(){
-  $('#pageBody').innerHTML = `<div class="card">
-    <div class="card-head"><div class="card-head-text"><h2>Журнал дій</h2><p>Останні 100 змін</p></div></div>
-    <div id="auditList" style="color:var(--muted);font-size:13px">Завантаження…</div>
+// ── PAGES ──
+let activePage=null, pageBlocks=[], pageEdited={};
+const PICO={'/':{i:'🏠'},igry:{i:'🎲'},kik:{i:'🚀'},kontakty:{i:'📬'}};
+function pIco(p){const s=p==='/'?'/':p.split('/')[0];return(PICO[s]||{i:'📄'}).i;}
+function gPages(ps){const g={};for(const p of ps){const s=p.path==='/'?'__root__':p.path.split('/')[0];const l=s==='__root__'?'Головна':s==='igry'?'🎲 Ігри':s==='kik'?'🚀 КІК':s==='kontakty'?'📬 Контакти':s;if(!g[s])g[s]={l,items:[]};g[s].items.push(p);}return g;}
+
+async function renderPages(){
+  pages=await api('GET','/api/admin/pages');
+  const gr=gPages(pages);
+  const sideHtml=Object.values(gr).map(g=>`<div class="p-grp">
+    <div class="p-grp-l">${g.l}</div>
+    ${g.items.map(p=>`<div class="p-row${activePage===p.file?' ap':''}" data-file="${esc(p.file)}" data-path="${esc(p.path)}">
+      <span class="p-ico">${pIco(p.path)}</span>
+      <div class="p-inf">
+        <div class="p-path">${esc(p.path==='/'?'Головна':p.path.split('/').pop()||p.path)}</div>
+        <div class="p-mt">${relT(p.mtime)}</div>
+      </div>
+    </div>`).join('')}
+  </div>`).join('');
+
+  // build editor area
+  let edHtml='', pvSrc='';
+  if(activePage && pageBlocks.length){
+    const typeOrder=['seo','h1','h2','h3','p'];
+    const grouped={};
+    for(const b of pageBlocks){if(!grouped[b.type])grouped[b.type]=[];grouped[b.type].push(b);}
+    const groupLabels={seo:'🔍 SEO та мета',h1:'Заголовки',h2:'Підзаголовки',h3:'Підзаголовки',p:'Текстові блоки'};
+    const rendered=new Set();
+    const SEO_LIMITS={title:60,og_title:60,meta_desc:160};
+    edHtml=typeOrder.map(type=>{
+      if(!grouped[type]||rendered.has(type))return'';
+      const mergedType=['h1','h2','h3'].includes(type)?'headings':type;
+      if(rendered.has(mergedType))return'';rendered.add(mergedType);
+      const finalItems=mergedType==='headings'?[...(grouped.h1||[]),...(grouped.h2||[]),...(grouped.h3||[])]:grouped[type]||[];
+      const typeIcon={seo:'🔍',h1:'H',h2:'H',h3:'H',p:'¶'};
+      return`<div style="margin-bottom:24px">
+        <div class="sect-head">${groupLabels[type]||type}<span class="sect-cnt">${finalItems.length}</span></div>
+        ${finalItems.map(b=>{
+          const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc');
+          const maxLen=SEO_LIMITS[b.id]||0;
+          const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
+          const curLen=curVal.length;
+          const cntClass='char-cnt'+(maxLen&&curLen>maxLen?' over':maxLen&&curLen>maxLen*.85?' warn':'');
+          const edited=pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value;
+          return`<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" style="padding:14px 16px 12px">
+            <div class="blk-head" style="margin-bottom:6px">
+              <div class="blk-ico ${b.type==='seo'?'seo':b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
+              <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
+              <div class="blk-actions">
+                <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути до оригіналу">↩ скинути</button>
+              </div>
+            </div>
+            ${isLong
+              ?`<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:${b.type==='p'?80:52}px;padding:4px 0">${esc(curVal)}</textarea>`
+              :`<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`}
+            ${maxLen?`<div class="char-bar">
+              <span id="cc_${esc(b.id)}" class="${cntClass}" data-max="${maxLen}">${curLen} / ${maxLen}</span>
+              <span style="font-size:10px;color:var(--txt-s)">${maxLen===60?'оптим. 50–60':'оптим. 140–160'}</span>
+            </div>`:''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+    // page path for iframe (e.g. kontakty/index.html → /kontakty/)
+    const pagePath='/'+activePage.replace(/\/?index\.html$/,'');
+    pvSrc=pagePath+'?t='+Date.now();
+  }
+
+  $('#mainContent').innerHTML=`<div class="pages-shell" style="height:calc(100vh - 56px)">
+    <!-- nav -->
+    <div class="pages-nav">
+      <div class="nav-title">Сторінки <span class="cnt">${pages.length}</span></div>
+      ${sideHtml}
+    </div>
+    <!-- editor -->
+    <div class="pages-editor">
+      ${activePage?`
+        <div class="ped-top" style="background:var(--dark2);border-bottom:1px solid rgba(255,255,255,.07)">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0">
+            <span style="font-size:14px">📄</span>
+            <span class="ped-path" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.1);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">/${activePage}</span>
+            <span id="unsaved-badge" class="unsaved-badge"></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.1)" onclick="closePagesEditor()">✕</button>
+            <button class="btn btn-sm" id="pedSaveBtn" onclick="savePatchedPage()" style="background:var(--bf);color:#fff;box-shadow:0 3px 12px rgba(0,159,227,.3)">💾 Зберегти зміни</button>
+          </div>
+        </div>
+        <div class="ped-body">
+          <div class="ped-hint">✏️ Клікніть на поле і редагуйте. <strong>Жовте поле</strong> = є зміни. Натисніть ↩ щоб скинути або «Зберегти зміни».</div>
+          ${edHtml||'<div style="color:var(--txt-m);padding:32px;text-align:center;font-size:13px">Немає редагованих блоків на цій сторінці</div>'}
+        </div>
+      `:`<div class="ped-empty"><div class="big">📄</div><div style="font-size:15px;font-weight:700;color:var(--txt);margin-bottom:6px">Виберіть сторінку</div><div style="font-size:13px">Оберіть зі списку зліва</div></div>`}
+    </div>
+    <!-- drag handle -->
+    <div class="drag-handle" id="pvDragHandle" title="Тягніть щоб змінити розмір"></div>
+    <!-- preview -->
+    <div class="pages-preview" id="pagesPreview">
+      ${pvSrc?`
+        <div class="pv-bar">
+          <span style="font-size:14px">👁</span>
+          <span class="pv-url" style="cursor:pointer;transition:.15s" onclick="window.open('${pvSrc.split('?')[0]}','_blank')" title="Відкрити в новій вкладці">blueferret.com.ua${pvSrc.split('?')[0]}</span>
+          <div class="dev-bar">
+            <button class="dev-btn on" data-dev="desktop" onclick="setDevice('desktop')" title="Desktop">🖥</button>
+            <button class="dev-btn" data-dev="tablet" onclick="setDevice('tablet')" title="Tablet (768px)">📱</button>
+            <button class="dev-btn" data-dev="mobile" onclick="setDevice('mobile')" title="Mobile (390px)">📱</button>
+          </div>
+          <div class="zoom-ctrl">
+            <button class="zoom-btn" onclick="changeZoom(-10)">−</button>
+            <span class="zoom-val" id="zoomVal">100%</span>
+            <button class="zoom-btn" onclick="changeZoom(+10)">+</button>
+          </div>
+          <button class="btn btn-sm" onclick="refreshPreview()" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.1);flex-shrink:0" title="Оновити (Cmd+R)">↻</button>
+          <button class="btn btn-sm" onclick="window.open('${pvSrc.split('?')[0]}','_blank')" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.08);flex-shrink:0" title="Відкрити в новій вкладці">↗</button>
+        </div>
+        <div class="pv-frame-wrap desktop" id="pvFrameWrap">
+          <div class="pv-zoom-wrap" id="pvZoomWrap" style="width:100%;height:100%">
+            <iframe id="pvIframe" src="${pvSrc}" style="width:100%;height:100%;border:none" onload="onPvLoad()"></iframe>
+          </div>
+        </div>
+      `:`<div class="pv-placeholder"><div style="font-size:48px;margin-bottom:16px">🖥</div><div style="font-size:14px;font-weight:600;color:rgba(255,255,255,.4)">Виберіть сторінку</div><div style="font-size:12px;color:rgba(255,255,255,.25);margin-top:6px">Прев'ю з'явиться тут</div></div>`}
+    </div>
   </div>`;
-  loadAudit();
+  $('#mainContent').style.padding='0';
+  $$('.p-row').forEach(r=>r.addEventListener('click',async()=>{
+    const file=r.dataset.file;
+    if(activePage===file)return;
+    activePage=file; pageBlocks=[]; pageEdited={};
+    try{const res=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(file)}`);pageBlocks=res.blocks||[];}catch(e){console.error(e);}
+    await renderPages();
+  }));
+  // init after render
+  initDragHandle();
+  // restore device/zoom
+  if(pvDevice!=='desktop')setDevice(pvDevice);
+  if(pvZoom!==100)applyZoom();
+  // restore edited values
+  for(const[id,val] of Object.entries(pageEdited)){
+    const el=document.querySelector(`[data-blk="${id}"]`);
+    if(el)el.value=val;
+  }
 }
 
-const actionLabels = {
-  login_ok:'Вхід', login_fail:'Невдалий вхід', logout:'Вихід',
-  settings_save:'Налаштування збережено',
-  game_create:'Гру додано', game_update:'Гру змінено', game_delete:'Гру видалено',
-  kik_create:'КІК-проект додано', kik_update:'КІК-проект змінено', kik_delete:'КІК-проект видалено',
-  upload:'Файл завантажено',
+function markEdited(id){
+  const el=document.querySelector(`[data-blk="${id}"]`);
+  if(!el)return;
+  pageEdited[id]=el.value;
+  // visual: highlight changed block
+  const blk=el.closest('.blk');
+  const orig=pageBlocks.find(b=>b.id===id);
+  const changed=orig&&el.value!==orig.value;
+  if(blk)blk.classList.toggle('edited',changed);
+  // update char counter
+  updateCharCounter(id,el.value);
+  // update unsaved count
+  const cnt=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length;
+  const badge=$('#unsaved-badge');if(badge){badge.textContent=cnt+' змін';badge.classList.toggle('show',cnt>0);}
+  // auto-resize textarea
+  if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+}
+function updateCharCounter(id,val){
+  const cnt=$(`#cc_${CSS.escape(id)}`);if(!cnt)return;
+  const n=val.length, max=+cnt.dataset.max||0;
+  cnt.textContent=n+(max?` / ${max}`:'');
+  cnt.className='char-cnt'+(max&&n>max?' over':max&&n>max*.85?' warn':'');
+}
+function resetField(id){
+  const orig=pageBlocks.find(b=>b.id===id);if(!orig)return;
+  const el=document.querySelector(`[data-blk="${id}"]`);if(!el)return;
+  el.value=orig.value;
+  delete pageEdited[id];
+  el.closest('.blk')?.classList.remove('edited');
+  updateCharCounter(id,orig.value);
+  if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+  const cnt=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length;
+  const badge=$('#unsaved-badge');if(badge){badge.textContent=cnt+' змін';badge.classList.toggle('show',cnt>0);}
+}
+window.markEdited=markEdited;window.resetField=resetField;
+
+async function savePatchedPage(){
+  const btn=$('#pedSaveBtn');if(btn)btn.disabled=true;
+  const updates=pageBlocks.map(b=>({
+    orig:b.orig, origVal:b.origVal,
+    newVal: pageEdited[b.id]!==undefined ? pageEdited[b.id] : b.value
+  })).filter(u=>u.newVal!==undefined);
+  try{
+    const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`,{blocks:updates});
+    toast(`Збережено (${res.changed} змін) ✓`,'ok');
+    // update blocks with new values and refresh preview
+    for(const b of pageBlocks){if(pageEdited[b.id]!==undefined)b.value=pageEdited[b.id];b.origVal=b.value;}
+    pageEdited={};
+    refreshPreview();
+  }catch(e){toast('Помилка: '+e.message,'er');}
+  finally{if(btn)btn.disabled=false;}
+}
+// ── Preview device / zoom / drag ──
+let pvDevice='desktop', pvZoom=100;
+
+function setDevice(dev){
+  pvDevice=dev;
+  $$('.dev-btn').forEach(b=>b.classList.toggle('on',b.dataset.dev===dev));
+  const wrap=$('#pvFrameWrap');if(!wrap)return;
+  wrap.className='pv-frame-wrap '+dev;
+  applyZoom();
+}
+window.setDevice=setDevice;
+
+function applyZoom(){
+  const z=$('#pvZoomWrap'),val=$('#zoomVal');if(!z)return;
+  if(pvDevice==='desktop'){
+    z.style.transform=pvZoom===100?'':'scale('+pvZoom/100+')';
+    z.style.width=pvZoom===100?'100%':Math.round(10000/pvZoom)+'%';
+    z.style.height=pvZoom===100?'100%':Math.round(10000/pvZoom)+'%';
+    z.style.transformOrigin='top left';
+  }else{
+    z.style.transform=`scale(${pvZoom/100})`;
+    z.style.transformOrigin='top center';
+  }
+  if(val)val.textContent=pvZoom+'%';
+}
+function changeZoom(d){pvZoom=Math.max(30,Math.min(150,pvZoom+d));applyZoom();}
+window.changeZoom=changeZoom;
+
+function onPvLoad(){
+  const f=$('#pvIframe');if(!f)return;
+  f.classList.remove('pv-refreshing');f.classList.add('pv-refreshed');
+}
+window.onPvLoad=onPvLoad;
+
+function refreshPreview(){
+  const f=$('#pvIframe');if(!f)return;
+  f.classList.add('pv-refreshing');
+  const src=f.src.split('?')[0];
+  setTimeout(()=>{f.src=src+'?t='+Date.now();},150);
+}
+
+// ── Drag handle ──
+function initDragHandle(){
+  const handle=$('#pvDragHandle');
+  const editor=$('.pages-editor');
+  const preview=$('#pagesPreview');
+  if(!handle||!editor||!preview)return;
+  let startX=0,startW=0,dragging=false;
+  handle.addEventListener('mousedown',e=>{
+    e.preventDefault();dragging=true;startX=e.clientX;startW=editor.offsetWidth;
+    handle.classList.add('dragging');document.body.style.cursor='col-resize';document.body.style.userSelect='none';
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!dragging)return;
+    const delta=e.clientX-startX;
+    const newW=Math.max(280,Math.min(600,startW+delta));
+    editor.style.flex=`0 0 ${newW}px`;
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!dragging)return;dragging=false;
+    handle.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect='';
+  });
+}
+
+// ── Block focus highlight ──
+function initBlockFocus(){
+  document.addEventListener('focusin',e=>{
+    const blk=e.target.closest?.('.blk');
+    $$('.blk.focused').forEach(b=>b.classList.remove('focused'));
+    if(blk)blk.classList.add('focused');
+  });
+  document.addEventListener('focusout',e=>{
+    const blk=e.target.closest?.('.blk');
+    if(blk)setTimeout(()=>{if(!blk.contains(document.activeElement))blk.classList.remove('focused');},100);
+  });
+}
+initBlockFocus();
+
+// Cmd+R to refresh preview
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==='r'&&activeTab==='pages'&&activePage){
+    e.preventDefault();refreshPreview();
+  }
+  if((e.metaKey||e.ctrlKey)&&e.key==='p'){
+    e.preventDefault();
+    const pv=$('#pagesPreview');
+    if(pv){pv.style.display=pv.style.display==='none'?'':'none';}
+  }
+});
+function closePagesEditor(){
+  activePage=null;pageBlocks=[];pageEdited={};
+  $('#mainContent').style.padding='22px';
+  renderPages();
+}
+window.savePatchedPage=savePatchedPage;window.refreshPreview=refreshPreview;window.closePagesEditor=closePagesEditor;
+
+// ── MEDIA ──
+let selectedMedia=null, bulkSelected=new Set();
+async function renderMedia(){
+  const raw=await api('GET','/api/admin/media');
+  mediaList=[...raw].sort((a,b)=>{
+    if(mediaSort==='size') return b.size-a.size;
+    if(mediaSort==='name') return a.filename.localeCompare(b.filename);
+    return b.mtime-a.mtime; // date (default)
+  });
+  const grid=mediaList.length?mediaList.map(f=>`<div class="m-i${selectedMedia===f.filename?' sel':''}" data-fn="${esc(f.filename)}" data-url="${esc(f.url)}" onclick="selectMedia('${esc(f.filename)}','${esc(f.url)}',${f.size})">
+    <div class="m-i-img">
+      <img src="${esc(f.url)}" loading="lazy" onerror="this.style.opacity='.3'">
+      <div class="m-ov">
+        <button onclick="event.stopPropagation();openLightbox('${esc(f.url)}')">🔍 Переглянути</button>
+        <button onclick="event.stopPropagation();copyUrl('${esc(f.url)}')">📋 Копіювати URL</button>
+        <button class="del" onclick="event.stopPropagation();delMedia('${esc(f.filename)}')">🗑 Видалити</button>
+      </div>
+    </div>
+    <div class="m-lbl">
+      <div class="fn">${esc(f.filename.replace(/-\d{13}(\.[^.]+)$/,'$1'))}</div>
+      <div class="sz">${fmtSz(f.size)}</div>
+    </div>
+  </div>`).join(''):`<div style="color:var(--txt-m);padding:40px;text-align:center">Поки що файлів немає — завантажте перший!</div>`;
+
+  $('#mainContent').innerHTML=`<div class="card">
+    <div class="ch">
+      <div><div class="ct">🖼 Медіа-бібліотека</div><div class="cs">${mediaList.length} файлів</div></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-g btn-sm" onclick="$('#fInp').click()">+ Завантажити</button>
+      </div>
+    </div>
+
+    <div class="upload-z" id="upZ" style="margin-bottom:16px">
+      <input type="file" id="fInp" multiple accept="image/*" style="display:none">
+      <p style="color:var(--txt-m)">Перетягніть зображення або <a href="#" onclick="$('#fInp').click();return false">виберіть файли</a></p>
+      <p style="font-size:11.5px;color:var(--txt-s);margin-top:4px">PNG, JPG, WebP, GIF, SVG · до 10 МБ · кілька файлів одразу</p>
+    </div>
+    <div id="upProgress" style="display:none;margin-bottom:14px"></div>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <div style="position:relative;flex:1;min-width:200px">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--txt-s);font-size:14px">🔍</span>
+        <input type="text" id="mediaSearch" placeholder="Пошук файлів…" style="padding-left:36px" oninput="filterMedia(this.value)" value="${esc(mediaFilter)}">
+      </div>
+      <div class="sort-bar">Сортування:
+        <button class="sort-btn${mediaSort==='date'?' on':''}" onclick="mediaSort='date';renderMedia()">Нові</button>
+        <button class="sort-btn${mediaSort==='size'?' on':''}" onclick="mediaSort='size';renderMedia()">Розмір</button>
+        <button class="sort-btn${mediaSort==='name'?' on':''}" onclick="mediaSort='name';renderMedia()">Назва</button>
+      </div>
+      <span style="color:var(--txt-m);font-size:12px;white-space:nowrap" id="mediaCount">${mediaList.length} файлів</span>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div class="m-grid" id="mediaGrid">${grid}</div>
+      </div>
+      <div id="mediaInfoPanel" class="media-info" style="width:220px;flex-shrink:0"></div>
+    </div>
+  </div>
+  <div id="lightboxEl" class="lightbox hidden" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <img id="lightboxImg" src="" alt="">
+  </div>`;
+
+  const z=$('#upZ'),inp=$('#fInp');if(!z||!inp)return;
+  inp.addEventListener('change',()=>upFiles([...inp.files]));
+  z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag');});
+  z.addEventListener('dragleave',()=>z.classList.remove('drag'));
+  z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag');upFiles([...e.dataTransfer.files]);});
+  // restore selection
+  if(selectedMedia){const m=mediaList.find(f=>f.filename===selectedMedia);if(m)showMediaInfo(m);}
+}
+
+function selectMedia(fn,url,size){
+  selectedMedia=fn;
+  // update UI selection
+  $$('.m-i').forEach(el=>el.classList.toggle('sel',el.dataset.fn===fn));
+  const m=mediaList.find(f=>f.filename===fn);
+  if(m)showMediaInfo(m);
+}
+
+function showMediaInfo(f){
+  const panel=$('#mediaInfoPanel');if(!panel)return;
+  panel.classList.add('show');
+  const shortName=f.filename.replace(/-\d{13}(\.[^.]+)$/,'$1');
+  const ext=f.filename.split('.').pop().toUpperCase();
+  panel.innerHTML=`
+    <img src="${esc(f.url)}" onerror="this.style.display='none'" onclick="openLightbox('${esc(f.url)}')" style="cursor:zoom-in">
+    <div class="info-row"><span class="lbl">Назва</span><span class="val" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(shortName)}</span></div>
+    <div class="info-row"><span class="lbl">Розмір</span><span class="val">${fmtSz(f.size)}</span></div>
+    <div class="info-row"><span class="lbl">Тип</span><span class="val">${ext}</span></div>
+    <div class="info-row"><span class="lbl">Дата</span><span class="val">${new Date(f.mtime).toLocaleDateString('uk-UA')}</span></div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">
+      <button class="btn btn-p btn-sm" style="width:100%" onclick="copyUrl('${esc(f.url)}')">📋 Копіювати URL</button>
+      <button class="btn btn-g btn-sm" style="width:100%" onclick="openLightbox('${esc(f.url)}')">🔍 Повний перегляд</button>
+      <button class="btn btn-sm" style="width:100%;background:#fef2f2;color:var(--red);border:1px solid #fecaca" onclick="delMedia('${esc(f.filename)}')">🗑 Видалити</button>
+    </div>`;
+}
+
+function openLightbox(url){
+  const lb=$('#lightboxEl'),img=$('#lightboxImg');
+  if(!lb||!img)return;
+  img.src=url; lb.classList.remove('hidden');
+  document.body.style.overflow='hidden';
+}
+function closeLightbox(){
+  const lb=$('#lightboxEl');if(lb)lb.classList.add('hidden');
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
+
+async function upFiles(files){
+  const prog=$('#upProgress');
+  if(prog){prog.style.display='';prog.innerHTML=`<div style="color:var(--txt-m);font-size:13px">Завантаження ${files.length} файл(ів)…</div><div style="height:4px;background:var(--line);border-radius:99px;margin-top:8px;overflow:hidden"><div id="upBar" style="height:100%;background:var(--bf);border-radius:99px;width:0%;transition:.3s"></div></div>`;}
+  let ok=0;
+  for(let i=0;i<files.length;i++){
+    const fd=new FormData();fd.append('file',files[i]);
+    try{await api('POST','/api/admin/upload',fd);ok++;}catch(e){toast(files[i].name+': '+e.message,'er');}
+    const bar=$('#upBar');if(bar)bar.style.width=Math.round((i+1)/files.length*100)+'%';
+  }
+  if(ok)toast(`Завантажено ${ok} з ${files.length} файлів ✓`,'ok');
+  await renderMedia();
+}
+async function delMedia(fn){
+  if(!confirm(`Видалити ${fn.replace(/-\d{13}(\.[^.]+)$/,'$1')}?`))return;
+  try{
+    await api('DELETE',`/api/admin/media/${fn}`);
+    if(selectedMedia===fn)selectedMedia=null;
+    toast('Видалено','ok');await renderMedia();
+  }catch(e){toast(e.message,'er');}
+}
+function copyUrl(url){navigator.clipboard.writeText(location.origin+url).then(()=>toast('URL скопійовано ✓'));}
+function filterMedia(q){
+  mediaFilter=q.toLowerCase();
+  const grid=$('#mediaGrid'),cnt=$('#mediaCount');
+  if(!grid)return;
+  const filtered=mediaList.filter(f=>f.filename.toLowerCase().includes(mediaFilter));
+  if(cnt)cnt.textContent=`${filtered.length} / ${mediaList.length} файлів`;
+  grid.innerHTML=filtered.length?filtered.map(f=>`<div class="m-i${selectedMedia===f.filename?' sel':''}" data-fn="${esc(f.filename)}" data-url="${esc(f.url)}" onclick="selectMedia('${esc(f.filename)}','${esc(f.url)}',${f.size})">
+    <div class="m-i-img">
+      <img src="${esc(f.url)}" loading="lazy" onerror="this.style.opacity='.3'">
+      <div class="m-ov">
+        <button onclick="event.stopPropagation();openLightbox('${esc(f.url)}')">🔍 Переглянути</button>
+        <button onclick="event.stopPropagation();copyUrl('${esc(f.url)}')">📋 Копіювати URL</button>
+        <button class="del" onclick="event.stopPropagation();delMedia('${esc(f.filename)}')">🗑 Видалити</button>
+      </div>
+    </div>
+    <div class="m-lbl">
+      <div class="fn">${esc(f.filename.replace(/-\d{13}(\.[^.]+)$/,'$1'))}</div>
+      <div class="sz">${fmtSz(f.size)}</div>
+    </div>
+  </div>`).join(''):`<div style="color:var(--txt-m);padding:32px;text-align:center">Нічого не знайдено</div>`;
+}
+window.filterMedia=filterMedia;
+window.delMedia=delMedia;window.copyUrl=copyUrl;window.selectMedia=selectMedia;window.openLightbox=openLightbox;window.closeLightbox=closeLightbox;
+
+// ── MEDIA PICKER ──
+function openPickerFor(targetId, cb){
+  pickerCallback=(url)=>{if(targetId){const el=document.getElementById(targetId);if(el)el.value=url;}if(cb)cb(url);};
+  api('GET','/api/admin/media').then(list=>{
+    mediaList=list;
+    $('#pickerBody').innerHTML=list.length
+      ?`<div class="m-grid">${list.map(f=>`<div class="m-i" onclick="pickMedia('${esc(f.url)}')" style="cursor:pointer">
+          <img src="${esc(f.url)}" loading="lazy">
+          <div class="m-ov"><button>Вибрати</button></div>
+          <div class="m-lbl">${fmtSz(f.size)}</div>
+        </div>`).join('')}</div>`
+      :`<p style="color:var(--txt-m);text-align:center;padding:32px">Медіабібліотека порожня — завантажте фото у розділі Медіа</p>`;
+    $('#pickerModal').classList.remove('hidden');
+  }).catch(()=>{});
+}
+function pickMedia(url){if(pickerCallback){pickerCallback(url);pickerCallback=null;}closePicker();}
+function closePicker(){$('#pickerModal').classList.add('hidden');pickerCallback=null;}
+window.openPickerFor=openPickerFor;window.pickMedia=pickMedia;window.closePicker=closePicker;
+
+// ── SECURITY ──
+function renderSecurity(){
+  return `<div class="card">
+    <div class="ch"><div><div class="ct">🔑 Зміна пароля</div><div class="cs">Мінімум 8 символів</div></div></div>
+    <div class="field"><label class="flbl">Поточний пароль</label><input type="password" id="sc" autocomplete="current-password"></div>
+    <div class="field"><label class="flbl">Новий пароль</label><input type="password" id="sn" autocomplete="new-password"></div>
+    <div class="field"><label class="flbl">Підтвердити</label><input type="password" id="sf"></div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <button class="btn btn-p" onclick="chgPass()">Змінити</button>
+      <span id="smsg" style="font-size:13px"></span>
+    </div></div>`;
+}
+async function chgPass(){
+  const c=$('#sc')?.value,n=$('#sn')?.value,f=$('#sf')?.value,msg=$('#smsg');
+  if(!c||!n||!f){if(msg){msg.style.color='var(--red)';msg.textContent='Заповніть усі поля';}return;}
+  if(n!==f){if(msg){msg.style.color='var(--red)';msg.textContent='Паролі не збігаються';}return;}
+  try{await api('POST','/api/admin/password',{current:c,next:n});if(msg){msg.style.color='var(--kik)';msg.textContent='Пароль змінено ✓';}toast('Пароль змінено ✓','ok');}
+  catch(e){if(e.message!=='unauth'&&msg){msg.style.color='var(--red)';msg.textContent=e.message==='wrong_current'?'Невірний поточний пароль':'Помилка';}}
+}
+window.chgPass=chgPass;
+
+// ── AUDIT ──
+const AUDIT_CFG={
+  login_ok:    {ico:'🔑',bg:'rgba(99,102,241,.12)',color:'#6366f1'},
+  login_fail:  {ico:'⚠️',bg:'rgba(239,68,68,.1)', color:'#ef4444'},
+  settings_save:{ico:'⚙️',bg:'rgba(0,159,227,.1)',color:  'var(--bf)'},
+  game_create: {ico:'🎲',bg:'rgba(0,159,227,.1)', color:'var(--bf)'},
+  game_update: {ico:'✏️',bg:'rgba(99,102,241,.1)',color:'#6366f1'},
+  game_delete: {ico:'🗑',bg:'rgba(239,68,68,.1)', color:'#ef4444'},
+  kik_create:  {ico:'🚀',bg:'rgba(75,178,114,.1)',color:'var(--kik)'},
+  kik_update:  {ico:'📊',bg:'rgba(75,178,114,.1)',color:'var(--kik)'},
+  kik_delete:  {ico:'🗑',bg:'rgba(239,68,68,.1)', color:'#ef4444'},
+  page_patch:  {ico:'📄',bg:'rgba(251,191,36,.1)',color:'#d97706'},
+  page_edit:   {ico:'📝',bg:'rgba(251,191,36,.1)',color:'#d97706'},
+  upload:      {ico:'🖼',bg:'rgba(75,178,114,.1)',color:'var(--kik)'},
+  media_delete:{ico:'🗑',bg:'rgba(239,68,68,.1)', color:'#ef4444'},
+  password_change:{ico:'🔐',bg:'rgba(99,102,241,.1)',color:'#6366f1'},
 };
-
-async function loadAudit(){
-  try {
-    const rows = await api('GET', '/api/admin/audit');
-    const box = $('#auditList');
-    if (!box) return;
-    box.innerHTML = rows.length
-      ? rows.map(r => `<div class="audit-row">
-          <span class="audit-time">${new Date(r.ts).toLocaleString('uk-UA')}</span>
-          <span class="audit-action">${actionLabels[r.action] || r.action}</span>
-          <span class="audit-detail">${esc(r.detail||'')}</span>
-        </div>`).join('')
-      : '<p>Журнал порожній</p>';
-  } catch(e){}
+async function renderAudit(){
+  const rows=await api('GET','/api/admin/audit');
+  const body=rows.length?rows.map(r=>{
+    const cfg=AUDIT_CFG[r.action]||{ico:'📋',bg:'#f1f5f9',color:'var(--txt-m)'};
+    let detail='';
+    try{const d=JSON.parse(r.detail||'null');if(d)detail=typeof d==='object'?Object.entries(d).map(([k,v])=>`${k}: ${v}`).join(', '):String(d);}catch{}
+    return`<tr>
+      <td style="white-space:nowrap;color:var(--txt-s)">${relT(r.ts)}<br><span style="font-size:10px">${fmtD(r.ts).split(',')[1]||''}</span></td>
+      <td><div style="display:flex;align-items:center;gap:8px">
+        <span class="aico" style="background:${cfg.bg}">${cfg.ico}</span>
+        <span style="font-weight:600;color:${cfg.color};font-size:13px">${r.action}</span>
+      </div></td>
+      <td style="color:var(--txt-s);font-size:12px">${esc(r.ip||'—')}</td>
+      <td style="max-width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px;color:var(--txt-m)">${esc(detail)}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--txt-m)">Журнал порожній</td></tr>`;
+  return `<div class="card">
+    <div class="ch"><div><div class="ct">📋 Журнал дій</div><div class="cs">Останні 200 записів</div></div>
+      <button class="btn btn-g btn-sm" onclick="render()" title="Оновити">↻ Оновити</button>
+    </div>
+    <table class="at"><thead><tr><th>Час</th><th>Дія</th><th>IP</th><th>Деталі</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
-/* ─── Upload ─── */
-function setupUploadZone(urlFieldId, previewId){
-  const zone = $('#uploadZone'), fileInput = $('#mf_file');
-  if (!zone||!fileInput) return;
-  fileInput.addEventListener('change', e => { if (e.target.files[0]) uploadFile(e.target.files[0], urlFieldId, previewId); });
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
-  zone.addEventListener('drop', e => {
-    e.preventDefault(); zone.classList.remove('drag');
-    if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0], urlFieldId, previewId);
-  });
-}
+// ── AUTH ──
+function showLogin(){$('#loginPage').classList.remove('hidden');$('#appPage').classList.add('hidden');$('#pw').value='';setTimeout(()=>$('#pw').focus(),80);}
+function showApp(){$('#loginPage').classList.add('hidden');$('#appPage').classList.remove('hidden');}
 
-async function uploadFile(file, urlFieldId, previewId){
-  toast('Завантажую…');
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      const r = await api('POST', '/api/admin/upload', { filename: file.name, data: e.target.result });
-      if (r.url){
-        const f = document.getElementById(urlFieldId);
-        if (f) f.value = r.url;
-        showCoverPreview(r.url, previewId);
-        toast('Фото завантажено ✓');
-      } else toast('Помилка', true);
-    } catch { toast('Помилка завантаження', true); }
-  };
-  reader.readAsDataURL(file);
-}
+function togglePw(){const i=$('#pw');const b=$('#pwToggle');if(!i)return;if(i.type==='password'){i.type='text';b.textContent='🙈';}else{i.type='password';b.textContent='👁';}}
+window.togglePw=togglePw;
 
-function showCoverPreview(url, id = 'coverPreview'){
-  let p = document.getElementById(id);
-  if (!p) return;
-  if (p.tagName === 'IMG') p.src = url;
-  else p.outerHTML = `<img class="cover-preview" id="${id}" src="${esc(url)}">`;
-}
+$('#loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();$('#loginBtn').disabled=true;$('#loginErr').classList.add('hidden');
+  try{
+    const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:$('#pw').value,remember:$('#rememberMe')?.checked||false})});
+    if(r.ok){
+      if($('#rememberMe')?.checked)localStorage.setItem('bf_remember','1');
+      await boot();
+    }else{const j=await r.json().catch(()=>({}));$('#loginErr').textContent=j.error==='too_many_attempts'?'Забагато спроб — зачекайте 10 хв':'Невірний пароль';$('#loginErr').classList.remove('hidden');}
+  }finally{$('#loginBtn').disabled=false;}
+});
+// restore remember state
+if(localStorage.getItem('bf_remember')==='1'&&$('#rememberMe'))$('#rememberMe').checked=true;
 
-/* ─── Modal save/delete ─── */
-$('#modalSave').addEventListener('click', modalSave);
-$('#modalDelete').addEventListener('click', modalDeleteClick);
-$('#modalClose').addEventListener('click', closeModal);
-$('#modalCancel').addEventListener('click', closeModal);
-$('#modalBg').addEventListener('click', e => { if (e.target === $('#modalBg')) closeModal(); });
-
-async function modalSave(){
-  const btn = $('#modalSave');
-  btn.disabled = true;
-  try {
-    if (editType === 'game'){
-      const body = {
-        title: $('#mf_title').value.trim(),
-        slug: $('#mf_slug').value.trim() || slugify($('#mf_title').value),
-        subtitle: $('#mf_subtitle').value,
-        description: $('#mf_description').value,
-        status: $('#mf_status').value,
-        cover_url: $('#mf_cover_url').value,
-        players: $('#mf_players').value,
-        age: $('#mf_age').value,
-        duration: $('#mf_duration').value,
-        buy_url: $('#mf_buy_url').value,
-      };
-      if (!body.title){ toast('Введіть назву гри', true); return; }
-      if (editId) await api('PUT', `/api/admin/games/${editId}`, body);
-      else await api('POST', '/api/admin/games', body);
-      gamesCache = await api('GET', '/api/admin/games');
-      toast(editId ? 'Гру оновлено ✓' : 'Гру додано ✓');
-    } else {
-      const endsRaw = $('#mf_ends_at').value;
-      const body = {
-        title: $('#mf_title').value.trim(),
-        subtitle: $('#mf_subtitle').value,
-        description: $('#mf_description').value,
-        status: $('#mf_status').value,
-        goal: Number($('#mf_goal').value)||0,
-        raised: Number($('#mf_raised').value)||0,
-        backers: Number($('#mf_backers').value)||0,
-        cover_url: $('#mf_cover_url').value,
-        campaign_url: $('#mf_campaign_url').value,
-        ends_at: endsRaw ? new Date(endsRaw).getTime() : null,
-      };
-      if (!body.title){ toast('Введіть назву проекту', true); return; }
-      if (editId) await api('PUT', `/api/admin/kik/${editId}`, body);
-      else await api('POST', '/api/admin/kik', body);
-      kikCache = await api('GET', '/api/admin/kik');
-      toast(editId ? 'Проект оновлено ✓' : 'Проект додано ✓');
-    }
-    closeModal(); updateBadges(); render();
-  } catch(e){ if (e.message!=='unauth') toast('Помилка збереження', true); }
-  finally { if (btn) { btn.disabled=false; btn.className='btn btn-primary btn-sm'; } }
-}
-
-async function modalDeleteClick(){
-  const name = editType==='game'
-    ? (gamesCache.find(x=>x.id===editId)||{}).title || 'гру'
-    : (kikCache.find(x=>x.id===editId)||{}).title || 'проект';
-  const ok = await confirm2('Видалити назавжди?', `«${name}» буде видалено безповоротно.`);
-  if (!ok) return;
-  try {
-    if (editType==='game'){
-      await api('DELETE', `/api/admin/games/${editId}`);
-      gamesCache = await api('GET', '/api/admin/games');
-      toast('Гру видалено');
-    } else {
-      await api('DELETE', `/api/admin/kik/${editId}`);
-      kikCache = await api('GET', '/api/admin/kik');
-      toast('Проект видалено');
-    }
-    closeModal(); updateBadges(); render();
-  } catch(e){ if (e.message!=='unauth') toast('Помилка', true); }
-}
-
-function closeModal(){
-  $('#modalBg').classList.add('hidden');
-  $('#modalSave').className = 'btn btn-primary btn-sm';
-  editType = null; editId = null;
-}
-
-/* ─── Utils ─── */
-function slugify(s){
-  return String(s||'').toLowerCase().trim()
-    .replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
-}
-
-function plural(n, one, few, many){
-  const m = n % 100;
-  if (m >= 11 && m <= 19) return many;
-  const r = n % 10;
-  if (r === 1) return one;
-  if (r >= 2 && r <= 4) return few;
-  return many;
-}
-
-/* ─── Mobile nav ─── */
-function initMobileNav(){
-  const burger = $('#mobBurger'), overlay = $('#mobOverlay'), sb = $('.sb');
-  function openSb(){ sb.classList.add('mob-open'); overlay.classList.add('open'); document.body.style.overflow='hidden'; }
-  function closeSb(){ sb.classList.remove('mob-open'); overlay.classList.remove('open'); document.body.style.overflow=''; }
-  burger?.addEventListener('click', openSb);
-  overlay.addEventListener('click', closeSb);
-  // close on nav item click
-  document.querySelector('.sb-nav')?.addEventListener('click', e => {
-    if (e.target.closest('[data-tab]') && window.innerWidth <= 700) closeSb();
-  });
-  $('#logoutBtn')?.addEventListener('click', closeSb);
-}
-
-/* ─── Auth ─── */
-function showApp(){
-  $('#login').classList.add('hidden');
-  $('#app').classList.remove('hidden');
-  $('#mobHeader').classList.remove('hidden');
-}
-function showLogin(){
-  $('#app').classList.add('hidden');
-  $('#mobHeader').classList.add('hidden');
-  $('#login').classList.remove('hidden');
-  $('#pw').value = '';
-  setTimeout(() => $('#pw').focus(), 50);
-}
-
-$('#loginForm').addEventListener('submit', function(e){
-  $('#loginBtn').disabled = true;
-  $('#loginBtn').textContent = 'Входжу…';
-  // Let the native form POST happen (action="/api/admin/login-form")
+$('#logoutBtn').addEventListener('click',async()=>{
+  await fetch('/api/admin/logout',{method:'POST'});
+  localStorage.removeItem('bf_remember');
+  showLogin();
 });
 
-/* ─── Boot ─── */
-async function boot(){
-  try {
-    const me = await fetch('/api/admin/me', {headers: authHeaders()}).then(r=>r.json()).catch(()=>({authenticated:false}));
-    if (!me.authenticated){ showLogin(); return; }
-    [S, gamesCache, kikCache] = await Promise.all([
-      api('GET','/api/admin/settings'),
-      api('GET','/api/admin/games'),
-      api('GET','/api/admin/kik'),
-    ]);
-    showApp();
-    initMobileNav();
-    updateBadges();
-    switchTab('dash');
-  } catch { showLogin(); }
+// ── SCROLL TO TOP ──
+document.addEventListener('scroll',()=>{
+  const btn=$('#scrollTop');if(btn)btn.classList.toggle('show',window.scrollY>300);
+},true);
+document.getElementById('mainContent').addEventListener('scroll',e=>{
+  const btn=$('#scrollTop');if(btn)btn.classList.toggle('show',e.target.scrollTop>300);
+});
+
+// ── TAB PERSISTENCE ──
+function saveTab(t){try{localStorage.setItem('bf_tab',t);}catch{}}
+function loadTab(){try{return localStorage.getItem('bf_tab')||'dashboard';}catch{return'dashboard';}}
+$('#sidebar').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b)saveTab(b.dataset.tab);});
+
+// ── KEYBOARD SHORTCUTS ──
+document.addEventListener('keydown',e=>{
+  // Cmd+S / Ctrl+S → save
+  if((e.metaKey||e.ctrlKey)&&e.key==='s'){
+    e.preventDefault();
+    if(activeTab==='pages'&&activePage){savePatchedPage?.();}
+    else if(STABS.has(activeTab)){$('#saveBtn')?.click();}
+    else if(activeTab==='game-editor'){saveGame?.();}
+    else if(activeTab==='kik-editor'){saveKik?.();}
+  }
+  // Escape → close editors
+  if(e.key==='Escape'){
+    if(activeTab==='pages'&&activePage){closePagesEditor?.();}
+    else if(activeTab==='game-editor'){backToGames?.();}
+    else if(activeTab==='kik-editor'){backToKik?.();}
+  }
+});
+
+// ── MEDIA SEARCH ──
+let mediaFilter='';
+const origRenderMedia=renderMedia;
+// We patch renderMedia to support search after it's defined — done inline in renderMedia instead.
+
+// ── AUTO-RESIZE textareas after render ──
+function autoResizeAll(){
+  $$('textarea.code, .blk textarea').forEach(t=>{if(t.style.height)return;t.style.height='auto';t.style.height=t.scrollHeight+'px';});
 }
+// observe DOM changes to auto-resize
+const resizeObs=new MutationObserver(()=>autoResizeAll());
+resizeObs.observe(document.getElementById('mainContent'),{childList:true,subtree:true});
 
-window.openGameModal = id => openGameModal(id);
-window.openKikModal = id => openKikModal(id);
-window.switchTab = t => switchTab(t);
-window.$ = $;
-
+async function boot(){
+  const me=await fetch('/api/admin/me').then(r=>r.json()).catch(()=>({authenticated:false}));
+  if(!me.authenticated){showLogin();return;}
+  [S,games,kik]=await Promise.all([api('GET','/api/admin/settings'),api('GET','/api/admin/games'),api('GET','/api/admin/kik')]);
+  activeTab=loadTab();
+  showApp();render();
+}
 boot();
 </script>
 </body>
