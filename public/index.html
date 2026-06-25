@@ -1394,23 +1394,10 @@ function showLogin(){
   setTimeout(() => $('#pw').focus(), 50);
 }
 
-$('#loginForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = 'Входжу…';
-  $('#loginErr').classList.add('hidden');
-  try {
-    const pw = $('#pw').value;
-    const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
-    const j = await r.json().catch(()=>({}));
-    if (r.ok){
-      await boot();
-    } else {
-      const msg = j.error==='too_many_attempts' ? 'Забагато спроб. Зачекайте 2 хв.' : `Невірний пароль (${r.status})`;
-      $('#loginErr').textContent = msg;
-      $('#loginErr').classList.remove('hidden');
-    }
-  } catch(err) { $('#loginErr').textContent = 'Помилка: '+err.message; $('#loginErr').classList.remove('hidden'); }
-  finally { btn.disabled=false; btn.textContent='Увійти →'; }
+$('#loginForm').addEventListener('submit', function(e){
+  $('#loginBtn').disabled = true;
+  $('#loginBtn').textContent = 'Входжу…';
+  // Let the native form POST happen (action="/api/admin/login-form")
 });
 
 /* ─── Boot ─── */
