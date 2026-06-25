@@ -1391,8 +1391,14 @@ $('#loginForm').addEventListener('submit', async e => {
   const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = 'Входжу…';
   $('#loginErr').classList.add('hidden');
   try {
-    const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#pw').value})});
-    if (r.ok){ await boot(); }
+    const pw = $('#pw').value;
+    const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    if (r.ok){
+      if (window.PasswordCredential) {
+        try { await navigator.credentials.store(new PasswordCredential({id:'admin',password:pw,name:'Blue Ferret CMS'})); } catch(_){}
+      }
+      await boot();
+    }
     else {
       const j = await r.json().catch(()=>({}));
       const msg = j.error==='too_many_attempts' ? 'Забагато спроб. Зачекайте 10 хвилин.' : 'Невірний пароль';

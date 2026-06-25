@@ -137,7 +137,7 @@ function bump(ip, ok){
   if (ok){ attempts.delete(ip); return; }
   const a = attempts.get(ip) || { n:0, until:0 };
   a.n += 1;
-  if (a.n >= 5){ a.until = Date.now() + 10*60*1000; a.n = 0; }
+  if (a.n >= 20){ a.until = Date.now() + 2*60*1000; a.n = 0; }
   attempts.set(ip, a);
 }
 
