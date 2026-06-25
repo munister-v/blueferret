@@ -128,7 +128,12 @@ function validToken(tok){
   return ts && (Date.now() - ts) < 7 * 24 * 3600 * 1000;
 }
 function requireAuth(req, res, next){
-  const tok = req.headers['authorization']?.replace('Bearer ','') || req.cookies.bf_session;
+  const auth = req.headers['authorization'] || '';
+  if (auth.startsWith('Basic ')) {
+    const [user, pass] = Buffer.from(auth.slice(6), 'base64').toString().split(':');
+    if (user === 'admin' && sha256(pass) === PASS_HASH) return next();
+  }
+  const tok = auth.replace('Bearer ','') || req.cookies.bf_session;
   if (validToken(tok)) return next();
   res.status(401).json({ error:'unauthorized' });
 }
