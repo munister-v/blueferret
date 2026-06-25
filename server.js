@@ -8,7 +8,7 @@ const Database = require('better-sqlite3');
 const PORT      = parseInt(process.env.PORT || '4100', 10);
 const HOST      = process.env.HOST || '127.0.0.1';
 const PASS_HASH = (process.env.ADMIN_PASS_HASH ||
-  '5d7b3053c60b5c738508e6e4e5bfcfd4b75a5b0132075d4ec60a2317cf81235c').toLowerCase();
+  '3c8a8ce0510943251350dbed22221dca5d9ec86c4336315ac9900dad25af9ee1').toLowerCase();
 const DB_PATH   = process.env.DB_PATH || path.join(__dirname, 'data', 'blueferret.db');
 const STATIC_ROOT = process.env.STATIC_ROOT || '/var/www/blueferret';
 
