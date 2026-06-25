@@ -4,290 +4,265 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Blue Ferret — Адмінка</title>
+<title>Blue Ferret — CMS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700&family=Comfortaa:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --acc:#009fe3;--acc-h:#0077b3;--acc-m:rgba(0,159,227,.12);
-  --kik:#4bb272;--kik-h:#3a9960;--kik-m:rgba(75,178,114,.12);
-  --bg:#f1f5f9;--card:#fff;
-  --dark:#0f172a;--dark-8:#1e293b;--dark-7:#334155;
-  --border:rgba(15,23,42,.1);--border-s:rgba(15,23,42,.06);
-  --txt:#1e293b;--muted:#64748b;
-  --red:#e11d48;--green:#16a34a;
-  --sb:240px;--pv:380px;
+  --acc:#009fe3;--acc-d:#0077b3;--acc-l:rgba(0,159,227,.10);
+  --kik:#4bb272;--kik-d:#3a9960;--kik-l:rgba(75,178,114,.10);
+  --red:#e11d48;--red-l:rgba(225,29,72,.08);
+  --bg:#f0f4f8;--card:#fff;
+  --ink:#1e293b;--ink2:#334155;--muted:#64748b;
+  --border:rgba(15,23,42,.10);--border-s:rgba(15,23,42,.05);
+  --dark:#0f172a;--dark2:#1e293b;
+  --sb:230px;
+  --r:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.5}
-a{color:var(--acc)}
-.hidden{display:none!important}
+html,body{height:100%;scroll-behavior:smooth}
+body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
 
-/* ── Login ── */
+/* ─── Login ─── */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
   background:var(--dark);
   background-image:
-    radial-gradient(ellipse 80% 50% at 20% 80%,rgba(0,159,227,.18) 0%,transparent 55%),
-    radial-gradient(ellipse 70% 40% at 80% 20%,rgba(75,178,114,.14) 0%,transparent 55%)}
-.login-box{background:rgba(255,255,255,.06);backdrop-filter:blur(20px);
-  border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:40px;
-  width:100%;max-width:380px;box-shadow:0 40px 80px rgba(0,0,0,.45)}
-.login-logo{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:24px}
-.login-dot{width:36px;height:36px;border-radius:11px;background:var(--acc);flex-shrink:0;
-  box-shadow:0 4px 16px rgba(0,159,227,.4)}
-.login-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#fff;line-height:1.2}
-.login-title small{display:block;font-family:'Comfortaa',sans-serif;font-size:11px;
-  color:rgba(255,255,255,.4);font-weight:400;margin-top:2px;letter-spacing:.04em}
-.login-sub{color:rgba(255,255,255,.45);font-size:13px;text-align:center;margin-bottom:28px}
-.login-box label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  color:rgba(255,255,255,.5);margin-bottom:7px}
-.login-box input{width:100%;padding:13px 15px;border:1.5px solid rgba(255,255,255,.14);border-radius:12px;
-  font-family:'Comfortaa',sans-serif;font-size:14px;background:rgba(255,255,255,.08);color:#fff;outline:none;transition:.2s}
-.login-box input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(0,159,227,.22)}
-.login-box input::placeholder{color:rgba(255,255,255,.28)}
-.login-btn{width:100%;margin-top:18px;background:var(--acc);color:#fff;border:none;
-  padding:14px;border-radius:12px;font-family:'Comfortaa',sans-serif;font-size:14px;font-weight:700;
-  cursor:pointer;transition:.2s;box-shadow:0 4px 16px rgba(0,159,227,.35)}
-.login-btn:hover{background:var(--acc-h);box-shadow:0 6px 20px rgba(0,159,227,.45)}
+    radial-gradient(ellipse 70% 50% at 15% 85%,rgba(0,159,227,.22),transparent 55%),
+    radial-gradient(ellipse 60% 40% at 85% 15%,rgba(75,178,114,.16),transparent 55%)}
+.login-box{background:rgba(255,255,255,.05);backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,.1);border-radius:22px;padding:44px 40px;
+  width:100%;max-width:380px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
+.login-logo{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:8px}
+.login-icon{width:42px;height:42px;border-radius:13px;background:var(--acc);
+  box-shadow:0 6px 20px rgba(0,159,227,.45);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:20px}
+.login-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#fff}
+.login-sub{color:rgba(255,255,255,.4);font-size:13px;text-align:center;margin-bottom:30px}
+.login-label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:rgba(255,255,255,.45);margin-bottom:8px;margin-top:20px}
+.login-input{width:100%;padding:13px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:12px;
+  font-family:'Comfortaa',sans-serif;font-size:14px;background:rgba(255,255,255,.07);
+  color:#fff;outline:none;transition:.2s}
+.login-input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(0,159,227,.2)}
+.login-input::placeholder{color:rgba(255,255,255,.25)}
+.login-btn{width:100%;margin-top:20px;background:var(--acc);color:#fff;border:none;
+  padding:15px;border-radius:12px;font-family:'Comfortaa',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;transition:.2s;box-shadow:0 4px 18px rgba(0,159,227,.38)}
+.login-btn:hover:not(:disabled){background:var(--acc-d)}
 .login-btn:disabled{opacity:.5;cursor:default}
 .login-err{color:#f87171;font-size:13px;text-align:center;margin-top:14px}
+.hidden{display:none!important}
 
-/* ── Shell ── */
+/* ─── Shell ─── */
 .shell{display:flex;height:100vh;overflow:hidden}
 
-/* ── Sidebar ── */
-.sidebar{width:var(--sb);flex-shrink:0;background:var(--dark);display:flex;flex-direction:column;
-  border-right:1px solid rgba(255,255,255,.05);overflow-y:auto}
-.sb-brand{padding:18px 16px 16px;display:flex;align-items:center;gap:10px;
-  border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
-.sb-dot{width:30px;height:30px;border-radius:9px;background:var(--acc);flex-shrink:0;
-  box-shadow:0 3px 12px rgba(0,159,227,.4)}
-.sb-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#fff;line-height:1.2}
-.sb-name small{display:block;font-family:'Comfortaa',sans-serif;font-size:10px;
-  color:rgba(255,255,255,.35);font-weight:400;letter-spacing:.04em}
-.sb-nav{padding:10px 8px;flex:1}
-.sb-group-label{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-  color:rgba(255,255,255,.28);padding:14px 12px 5px}
-.sb-btn{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;cursor:pointer;
-  color:rgba(255,255,255,.5);font-family:'Comfortaa',sans-serif;font-size:13px;font-weight:600;
-  transition:.15s;border:none;background:none;width:100%;text-align:left}
-.sb-btn:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.82)}
-.sb-btn.active{background:rgba(0,159,227,.16);color:var(--acc)}
-.sb-btn svg{flex-shrink:0;opacity:.65}
-.sb-btn.active svg{opacity:1}
-.sb-badge{margin-left:auto;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);
+/* ─── Sidebar ─── */
+.sb{width:var(--sb);flex-shrink:0;background:var(--dark);display:flex;flex-direction:column;
+  border-right:1px solid rgba(255,255,255,.05)}
+.sb-brand{padding:20px 16px 18px;display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-icon{width:34px;height:34px;border-radius:10px;background:var(--acc);flex-shrink:0;
+  box-shadow:0 3px 12px rgba(0,159,227,.4);display:flex;align-items:center;justify-content:center;font-size:16px}
+.sb-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#fff;line-height:1.1}
+.sb-name small{display:block;font-family:'Comfortaa',sans-serif;font-size:10px;color:rgba(255,255,255,.3);font-weight:400}
+.sb-nav{padding:12px 8px;flex:1;overflow-y:auto}
+.sb-section{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(255,255,255,.22);padding:14px 12px 5px}
+.sb-item{display:flex;align-items:center;gap:9px;width:100%;padding:10px 12px;border-radius:10px;
+  border:none;background:none;cursor:pointer;color:rgba(255,255,255,.5);
+  font-family:'Comfortaa',sans-serif;font-size:13px;font-weight:600;
+  text-align:left;transition:.15s;text-decoration:none}
+.sb-item:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.8)}
+.sb-item.active{background:rgba(0,159,227,.18);color:var(--acc)}
+.sb-item .ico{flex-shrink:0;width:18px;height:18px;opacity:.65}
+.sb-item.active .ico{opacity:1}
+.sb-badge{margin-left:auto;background:rgba(255,255,255,.1);color:rgba(255,255,255,.65);
   font-size:10.5px;font-weight:700;min-width:20px;text-align:center;padding:2px 7px;border-radius:99px}
-.sb-btn.active .sb-badge{background:rgba(0,159,227,.28);color:#fff}
-.sb-footer{padding:10px 8px 16px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}
-.sb-site-link{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;
-  color:rgba(255,255,255,.4);font-size:12.5px;font-family:'Comfortaa',sans-serif;
-  text-decoration:none;transition:.15s}
-.sb-site-link:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.7)}
-.sb-logout{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;cursor:pointer;
-  color:rgba(255,255,255,.4);font-size:13px;font-family:'Comfortaa',sans-serif;font-weight:600;
-  transition:.15s;border:none;background:none;width:100%;text-align:left}
+.sb-item.active .sb-badge{background:rgba(0,159,227,.3);color:#fff}
+.sb-foot{padding:10px 8px 16px;border-top:1px solid rgba(255,255,255,.06)}
+.sb-site{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;
+  color:rgba(255,255,255,.38);font-size:12px;text-decoration:none;transition:.15s}
+.sb-site:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.65)}
+.sb-logout{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;
+  border:none;background:none;cursor:pointer;width:100%;text-align:left;
+  color:rgba(255,255,255,.38);font-family:'Comfortaa',sans-serif;font-size:13px;font-weight:600;transition:.15s}
 .sb-logout:hover{background:rgba(239,68,68,.14);color:#f87171}
 
-/* ── Main area ── */
+/* ─── Main ─── */
 .main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
-.main-topbar{position:sticky;top:0;z-index:10;background:rgba(241,245,249,.96);
+.topbar{position:sticky;top:0;z-index:20;background:rgba(240,244,248,.96);
   backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
-  padding:13px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0}
+  padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0}
 .breadcrumb{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)}
-.breadcrumb b{color:var(--txt);font-weight:700}
-.breadcrumb svg{opacity:.35}
-.topbar-right{display:flex;align-items:center;gap:12px}
-.saved-stamp{font-size:12px;color:var(--muted)}
-.save-wrap{position:relative}
-.save-dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;
-  background:#facc15;border:2px solid var(--bg);box-shadow:0 0 0 2px rgba(250,204,21,.3);display:none}
-.save-wrap.dirty .save-dot{display:block}
-.main-body{padding:28px;max-width:920px;width:100%}
+.breadcrumb b{color:var(--ink);font-weight:700}
+.page-body{padding:28px;max-width:1000px}
 
-/* ── Preview panel ── */
-.preview-pane{width:var(--pv);flex-shrink:0;background:var(--dark);
-  border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
-.preview-pane.collapsed{display:none}
-.pv-head{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;
-  align-items:center;justify-content:space-between;flex-shrink:0}
-.pv-head h3{font-family:'Comfortaa',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;color:rgba(255,255,255,.55)}
-.pv-head .pv-tag{font-size:10px;color:rgba(255,255,255,.32);font-weight:600}
-.pv-body{flex:1;overflow-y:auto;padding:18px}
-.pv-frame{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.3);
-  font-family:'Comfortaa',sans-serif}
-.pv-browserbar{background:#e2e8f0;padding:8px 12px;display:flex;align-items:center;gap:6px}
-.pv-browserbar i{width:9px;height:9px;border-radius:50%;background:#cbd5e1;display:block}
-.pv-browserbar .pv-url{margin-left:8px;background:#fff;border-radius:6px;font-size:10.5px;
-  color:#94a3b8;padding:3px 10px;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.pv-content{padding:18px}
-.pv-empty{color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:40px 20px;line-height:1.7}
-.pv-hint{margin-top:14px;font-size:11px;color:rgba(255,255,255,.3);text-align:center;line-height:1.6}
+/* ─── Cards ─── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:26px;margin-bottom:20px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:22px}
+.card-head-text h2{font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:var(--ink)}
+.card-head-text p{margin-top:4px;color:var(--muted);font-size:12.5px}
 
-/* ── Cards ── */
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px;
-  margin-bottom:20px;box-shadow:0 1px 4px rgba(15,23,42,.04)}
-.card-head{margin-bottom:20px}
-.card-head h2{font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:var(--dark-8)}
-.card-head p{margin-top:5px;color:var(--muted);font-size:12.5px}
+/* ─── Stat row (dashboard) ─── */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:22px 20px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.stat-num{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;color:var(--ink);line-height:1}
+.stat-label{font-size:12.5px;color:var(--muted);margin-top:5px;font-weight:600}
 
-/* ── Inline preview blocks inside cards ── */
-.inline-pv{margin-top:18px;border-top:1px dashed var(--border);padding-top:16px}
-.inline-pv-label{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.inline-pv-label::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--acc)}
-.pv-banner-strip{padding:10px 16px;text-align:center;font-weight:600;font-size:13px;border-radius:8px}
-.pv-color-row{display:flex;align-items:center;gap:14px}
-.pv-color-dot{width:48px;height:48px;border-radius:12px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,.12)}
-.pv-color-hex{font-family:ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--dark-8)}
-.pv-color-sample{font-size:14px;font-weight:700;margin-top:4px}
-.pv-hero{border-radius:14px;padding:26px 22px;color:#fff;
-  background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);position:relative;overflow:hidden}
-.pv-hero::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 80% 10%,rgba(0,159,227,.35),transparent 60%);pointer-events:none}
-.pv-hero h4{font-family:'Libre Baskerville',serif;font-size:22px;line-height:1.2;margin-bottom:8px;position:relative}
-.pv-hero p{font-size:13px;color:rgba(255,255,255,.65);margin-bottom:16px;position:relative}
-.pv-hero .pv-cta{display:inline-block;background:var(--acc);color:#fff;font-weight:700;font-size:13px;
-  padding:9px 20px;border-radius:9px;position:relative}
-.pv-maint{border-radius:14px;padding:30px 22px;text-align:center;
-  background:#0b1f33;color:#fff}
-.pv-maint .pv-otter{font-size:40px;margin-bottom:12px}
-.pv-maint p{font-size:14px;color:rgba(255,255,255,.85);line-height:1.6}
-.pv-css-demo{border:1px solid var(--border);border-radius:12px;padding:18px;background:#fff}
+/* ─── Quick actions ─── */
+.qa-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px}
 
-/* ── Form ── */
+/* ─── Content cards (games/kik) ─── */
+.content-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.item-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;
+  transition:.15s;cursor:pointer}
+.item-card:hover{box-shadow:0 6px 20px rgba(15,23,42,.1);transform:translateY(-2px);border-color:rgba(0,159,227,.25)}
+.item-cover{width:100%;aspect-ratio:3/2;object-fit:cover;background:var(--acc-l);
+  display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0}
+.item-cover img{width:100%;height:100%;object-fit:cover}
+.item-body{padding:16px;flex:1;display:flex;flex-direction:column}
+.item-title{font-family:'Libre Baskerville',serif;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.item-sub{font-size:12px;color:var(--muted);margin-bottom:10px;flex:1}
+.item-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+
+/* ─── Badges ─── */
+.badge{display:inline-flex;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700}
+.badge-green{background:rgba(22,163,74,.12);color:#15803d}
+.badge-yellow{background:rgba(234,179,8,.11);color:#a16207}
+.badge-gray{background:rgba(100,116,139,.1);color:var(--muted)}
+
+/* ─── Progress ─── */
+.prog{height:5px;background:rgba(15,23,42,.08);border-radius:99px;overflow:hidden;margin-top:8px}
+.prog-bar{height:100%;background:var(--kik);border-radius:99px;transition:.3s}
+
+/* ─── Empty state ─── */
+.empty{text-align:center;padding:56px 24px;color:var(--muted)}
+.empty-icon{font-size:48px;margin-bottom:14px}
+.empty-text{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.empty-hint{font-size:13px;color:var(--muted);margin-bottom:20px}
+
+/* ─── Buttons ─── */
+.btn{display:inline-flex;align-items:center;gap:6px;border:none;padding:11px 20px;
+  border-radius:10px;font-family:'Comfortaa',sans-serif;font-size:13.5px;font-weight:700;
+  cursor:pointer;transition:.15s;text-decoration:none;white-space:nowrap;line-height:1}
+.btn-primary{background:var(--acc);color:#fff;box-shadow:0 3px 10px rgba(0,159,227,.28)}
+.btn-primary:hover:not(:disabled){background:var(--acc-d)}
+.btn-kik{background:var(--kik);color:#fff;box-shadow:0 3px 10px rgba(75,178,114,.28)}
+.btn-kik:hover:not(:disabled){background:var(--kik-d)}
+.btn-ghost{background:var(--card);color:var(--ink);border:1.5px solid var(--border)}
+.btn-ghost:hover:not(:disabled){border-color:rgba(15,23,42,.22);background:#f8fafc}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover:not(:disabled){background:#c01040}
+.btn-sm{padding:8px 16px;font-size:12.5px;border-radius:9px}
+.btn-xs{padding:6px 12px;font-size:11.5px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:default}
+
+/* ─── Forms ─── */
 .field{margin-bottom:16px}
-.field>label,.field-label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--dark-7);margin-bottom:7px}
-.field .note{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
-.row{display:flex;gap:14px;flex-wrap:wrap}
-.row>.field{flex:1;min-width:170px}
-.char-counter{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
-.char-counter.over{color:var(--red);font-weight:700}
-
-input[type=text],input[type=url],input[type=email],input[type=password],
+.field>label,.flabel{display:block;font-size:11.5px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink2);margin-bottom:7px}
+.field .hint{font-size:11.5px;color:var(--muted);margin-top:5px}
+.row2{display:flex;gap:14px;flex-wrap:wrap}
+.row2>.field{flex:1;min-width:160px}
+input[type=text],input[type=url],input[type=email],
 input[type=number],input[type=date],textarea,select{
   width:100%;padding:11px 13px;
   border:1.5px solid rgba(15,23,42,.13);border-radius:10px;
   font-family:'Comfortaa',sans-serif;font-size:13.5px;
-  background:#fff;color:var(--txt);transition:.15s;outline:none}
-input:focus,textarea:focus,select:focus{
-  border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-m)}
-textarea{min-height:100px;resize:vertical;
-  font-family:ui-monospace,'Menlo','Consolas',monospace;font-size:12.5px}
+  background:#fff;color:var(--ink);transition:.15s;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-l)}
+textarea{min-height:100px;resize:vertical;font-family:'Comfortaa',sans-serif;font-size:13.5px;line-height:1.6}
 .switch-row{display:flex;align-items:center;gap:10px}
-.switch-input{width:44px;height:25px;background:#cbd5e1;border-radius:99px;
+.sw{width:44px;height:25px;background:#cbd5e1;border-radius:99px;
   position:relative;cursor:pointer;appearance:none;border:none;transition:.2s;flex-shrink:0}
-.switch-input:checked{background:var(--acc)}
-.switch-input::after{content:"";position:absolute;top:2.5px;left:2.5px;
-  width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;
-  box-shadow:0 1px 3px rgba(0,0,0,.22)}
-.switch-input:checked::after{left:21.5px}
-.switch-label{font-size:13.5px;font-weight:600;cursor:pointer;user-select:none}
-.color-row{display:flex;align-items:center;gap:10px}
+.sw:checked{background:var(--acc)}
+.sw::after{content:"";position:absolute;top:2.5px;left:2.5px;
+  width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw:checked::after{left:21.5px}
+.sw-label{font-size:13.5px;font-weight:600;cursor:pointer;user-select:none}
+.color-row{display:flex;align-items:center;gap:8px}
 .color-row input[type=color]{width:44px;height:40px;padding:3px;
   border:1.5px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;flex-shrink:0}
-.color-row input[type=text]{max-width:140px}
+.color-row input[type=text]{max-width:130px}
+.char-counter{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
+.char-counter.over{color:var(--red);font-weight:700}
 
-/* ── Buttons ── */
-.btn{display:inline-flex;align-items:center;gap:6px;border:none;padding:11px 20px;
-  border-radius:10px;font-family:'Comfortaa',sans-serif;font-size:13.5px;font-weight:700;
-  cursor:pointer;transition:.15s;text-decoration:none;white-space:nowrap}
-.btn-primary{background:var(--acc);color:#fff;box-shadow:0 3px 12px rgba(0,159,227,.28)}
-.btn-primary:hover{background:var(--acc-h);box-shadow:0 4px 16px rgba(0,159,227,.38)}
-.btn-ghost{background:#fff;color:var(--txt);border:1.5px solid rgba(15,23,42,.14)}
-.btn-ghost:hover{border-color:rgba(15,23,42,.24);background:#f8fafc}
-.btn-danger{background:var(--red);color:#fff}
-.btn-danger:hover{background:#c01040}
-.btn-kik{background:var(--kik);color:#fff}
-.btn-kik:hover{background:var(--kik-h)}
-.btn-sm{padding:7px 14px;font-size:12.5px;border-radius:8px}
-.btn:disabled{opacity:.45;cursor:default!important}
-
-/* ── Table / List ── */
-.list-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
-.list-header h2{font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:var(--dark-8)}
-.list-header p{font-size:12px;color:var(--muted);margin-top:3px}
-.list-tbl{width:100%;border-collapse:collapse;font-size:13px}
-.list-tbl th{text-align:left;padding:9px 12px;border-bottom:2px solid var(--border);
-  color:var(--muted);font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
-.list-tbl td{padding:12px;border-bottom:1px solid var(--border-s);vertical-align:middle}
-.list-tbl tbody tr:last-child td{border:none}
-.list-tbl tbody tr:hover td{background:#f8fafc}
-.thumb{width:50px;height:50px;object-fit:cover;border-radius:10px;
-  background:var(--bg);border:1px solid var(--border-s)}
-.badge{display:inline-flex;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.02em}
-.badge-published,.badge-active{background:rgba(22,163,74,.12);color:#15803d}
-.badge-draft{background:rgba(234,179,8,.11);color:#a16207}
-.badge-archived,.badge-ended,.badge-paused{background:rgba(100,116,139,.1);color:var(--muted)}
-.prog{height:6px;background:rgba(15,23,42,.08);border-radius:99px;overflow:hidden;margin-top:6px}
-.prog span{display:block;height:100%;background:var(--kik);border-radius:99px;transition:.3s}
-
-/* ── Drag handle ── */
-.drag-handle{cursor:grab;color:#cbd5e1;font-size:16px;line-height:1;user-select:none;
-  padding:0 4px;transition:.15s;touch-action:none}
-.drag-handle:hover{color:var(--muted)}
-.drag-handle:active{cursor:grabbing}
-.drag-row.dragging{opacity:.4}
-.drag-ghost{position:fixed;z-index:300;pointer-events:none;background:#fff;border-radius:12px;
-  box-shadow:0 16px 40px rgba(15,23,42,.25);border:1px solid var(--acc);
-  padding:12px 16px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:10px}
-.drop-line{height:2px;background:var(--acc);box-shadow:0 0 0 2px var(--acc-m)}
-
-/* ── Upload zone ── */
-.upload-zone{border:2px dashed rgba(0,159,227,.3);border-radius:12px;padding:20px;
+/* ─── Upload zone ─── */
+.upload-zone{border:2px dashed rgba(0,159,227,.3);border-radius:10px;padding:18px;
   text-align:center;cursor:pointer;transition:.2s;color:var(--muted);font-size:13px}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--acc);background:var(--acc-m)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--acc);background:var(--acc-l)}
 .upload-zone input[type=file]{display:none}
-.cover-preview{max-width:150px;max-height:100px;border-radius:10px;margin-top:10px;
+.cover-preview{max-width:160px;max-height:110px;border-radius:10px;margin-top:10px;
   object-fit:cover;display:block;border:1px solid var(--border)}
 
-/* ── Modal ── */
-.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;
-  display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto;
-  backdrop-filter:blur(5px)}
+/* ─── Modal ─── */
+.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:100;
+  display:flex;align-items:flex-start;justify-content:center;padding:24px;
+  overflow-y:auto;backdrop-filter:blur(5px)}
 .modal{background:#fff;border-radius:20px;width:100%;max-width:680px;
   box-shadow:0 40px 80px rgba(0,0,0,.22);padding:32px;margin:auto}
-.modal h3{font-family:'Libre Baskerville',serif;font-size:18px;font-weight:700;
-  color:var(--dark-8);margin-bottom:24px}
-.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;
-  padding-top:18px;border-top:1px solid var(--border)}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+.modal-head h3{font-family:'Libre Baskerville',serif;font-size:18px;font-weight:700;color:var(--ink)}
+.modal-close{background:rgba(15,23,42,.06);border:none;width:34px;height:34px;border-radius:9px;
+  cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;
+  transition:.15s;flex-shrink:0}
+.modal-close:hover{background:rgba(15,23,42,.12)}
+.modal-foot{display:flex;gap:10px;align-items:center;margin-top:24px;padding-top:18px;border-top:1px solid var(--border)}
+.modal-foot .spacer{flex:1}
 
-/* ── Toast ── */
-.toast{position:fixed;right:20px;bottom:20px;background:var(--dark-8);color:#fff;
+/* ─── Toast ─── */
+.toast{position:fixed;right:20px;bottom:20px;background:var(--dark2);color:#fff;
   padding:13px 20px;border-radius:12px;font-size:13px;font-weight:600;
   opacity:0;transform:translateY(10px);transition:.25s;z-index:200;
-  box-shadow:0 8px 28px rgba(0,0,0,.22);pointer-events:none}
+  box-shadow:0 8px 28px rgba(0,0,0,.22);pointer-events:none;max-width:320px}
 .toast.show{opacity:1;transform:none}
 .toast.err{background:var(--red)}
 
-/* ── Audit ── */
-.audit-tbl{width:100%;border-collapse:collapse;font-size:12px}
-.audit-tbl td{padding:8px 10px;border-bottom:1px solid var(--border-s);color:var(--muted);vertical-align:top}
-.audit-tbl td:first-child{white-space:nowrap;color:var(--txt);font-size:11.5px}
-code{background:rgba(0,159,227,.1);color:var(--acc);padding:2px 7px;border-radius:6px;font-size:11.5px}
-.sec-divider{height:1px;background:var(--border-s);margin:20px 0}
+/* ─── Settings ─── */
+.settings-form{max-width:640px}
+.section-head{display:flex;align-items:center;gap:10px;padding:16px 0 12px;
+  border-top:1px solid var(--border);margin-top:8px;cursor:pointer;user-select:none}
+.section-head:first-child{border-top:none;margin-top:0}
+.section-head-icon{font-size:20px}
+.section-head-text h3{font-family:'Libre Baskerville',serif;font-size:15px;font-weight:700;color:var(--ink)}
+.section-head-text p{font-size:12px;color:var(--muted);margin-top:2px}
+.section-arrow{margin-left:auto;color:var(--muted);font-size:16px;transition:.2s}
+.section-open .section-arrow{transform:rotate(90deg)}
+.section-body{padding-bottom:8px}
 
-/* ── Preview mini cards ── */
-.pvg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.pvg-card{border:1px solid var(--border-s);border-radius:10px;overflow:hidden;background:#fff}
-.pvg-card .pvg-thumb{height:54px;background:rgba(0,159,227,.08);display:flex;align-items:center;justify-content:center;font-size:20px;background-size:cover;background-position:center}
-.pvg-card .pvg-meta{padding:7px 9px}
-.pvg-card .pvg-title{font-size:11.5px;font-weight:700;color:var(--dark-8);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pvg-card .pvg-sub{font-size:9.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pvk-item{margin-bottom:13px}
-.pvk-item .pvk-title{font-size:12px;font-weight:700;color:var(--dark-8)}
-.pvk-item .pvk-nums{font-size:10px;color:var(--muted);margin:3px 0 5px}
+/* ─── Audit ─── */
+.audit-row{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-s);font-size:12.5px}
+.audit-row:last-child{border:none}
+.audit-time{color:var(--muted);white-space:nowrap;font-size:11.5px;flex-shrink:0}
+.audit-action{color:var(--acc);font-weight:700;flex-shrink:0}
+.audit-detail{color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* ── Responsive ── */
-@media(max-width:1100px){.preview-pane{position:fixed;top:0;right:0;bottom:0;z-index:50;box-shadow:-12px 0 40px rgba(0,0,0,.3)}}
+/* ─── Banner inline preview ─── */
+.banner-prev{padding:10px 16px;text-align:center;font-weight:600;font-size:13px;border-radius:8px;margin-top:12px}
+
+/* ─── Maintenance preview ─── */
+.maint-prev{background:#0b1f33;color:#fff;border-radius:12px;padding:30px;text-align:center;margin-top:12px}
+.maint-prev .mo{font-size:42px;margin-bottom:12px}
+
+/* ─── Audit ─── */
+code{background:var(--acc-l);color:var(--acc);padding:2px 7px;border-radius:6px;font-size:11.5px}
+
+/* ─── Responsive ─── */
 @media(max-width:700px){
-  .sidebar{display:none}
-  .main-body{padding:16px}
-  .row{flex-direction:column}
-  .modal{padding:20px;border-radius:16px}
-  .main-topbar{padding:12px 16px}
-  .preview-pane{width:100vw}
+  .sb{display:none}
+  .page-body{padding:16px}
+  .row2{flex-direction:column}
+  .modal{padding:20px;border-radius:16px;margin:0}
+  .modal-bg{padding:0;align-items:flex-end}
+  .modal{border-radius:20px 20px 0 0;max-width:100%}
+  .content-grid{grid-template-columns:1fr 1fr}
+  .stat-row{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){
+  .content-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -297,85 +272,103 @@ code{background:rgba(0,159,227,.1);color:var(--acc);padding:2px 7px;border-radiu
 <div id="login" class="login-wrap">
   <form id="loginForm" class="login-box">
     <div class="login-logo">
-      <div class="login-dot"></div>
-      <div class="login-title">Blue Ferret<small>Панель керування</small></div>
+      <div class="login-icon">🦦</div>
+      <div class="login-title">Blue Ferret</div>
     </div>
-    <p class="login-sub">Введіть пароль адміністратора</p>
-    <div class="field">
-      <label>Пароль</label>
-      <input type="password" id="pw" autocomplete="current-password" required autofocus placeholder="••••••••">
-    </div>
-    <button type="submit" class="login-btn" id="loginBtn">Увійти</button>
+    <p class="login-sub">Панель керування · Введіть пароль</p>
+    <label class="login-label">Пароль адміністратора</label>
+    <input type="password" id="pw" class="login-input" autocomplete="current-password" required autofocus placeholder="••••••••">
+    <button type="submit" class="login-btn" id="loginBtn">Увійти →</button>
     <p id="loginErr" class="login-err hidden"></p>
   </form>
 </div>
 
 <!-- APP -->
 <div id="app" class="shell hidden">
-  <aside class="sidebar">
+  <aside class="sb">
     <div class="sb-brand">
-      <div class="sb-dot"></div>
-      <div class="sb-name">Blue Ferret<small>CMS v3</small></div>
+      <div class="sb-icon">🦦</div>
+      <div class="sb-name">Blue Ferret<small>CMS v4</small></div>
     </div>
-    <nav class="sb-nav" id="sbNav"></nav>
-    <div class="sb-footer">
-      <a class="sb-site-link" href="/" target="_blank">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
-        </svg>
+    <nav class="sb-nav">
+      <div class="sb-section">Огляд</div>
+      <button class="sb-item" data-tab="dash">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Дашборд
+      </button>
+      <div class="sb-section">Контент</div>
+      <button class="sb-item" data-tab="games">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        Ігри
+        <span class="sb-badge" id="sb_games_cnt">0</span>
+      </button>
+      <button class="sb-item" data-tab="kik">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        КІК-проекти
+        <span class="sb-badge" id="sb_kik_cnt">0</span>
+      </button>
+      <div class="sb-section">Налаштування</div>
+      <button class="sb-item" data-tab="settings">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Налаштування
+      </button>
+      <div class="sb-section">Система</div>
+      <button class="sb-item" data-tab="audit">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Журнал
+      </button>
+    </nav>
+    <div class="sb-foot">
+      <a class="sb-site" href="/" target="_blank">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
         Відкрити сайт
       </a>
       <button class="sb-logout" id="logoutBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
-        </svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
         Вийти
       </button>
     </div>
   </aside>
 
   <div class="main">
-    <div class="main-topbar">
+    <div class="topbar">
       <div class="breadcrumb">
         <span>Blue Ferret</span>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M9 18l6-6-6-6"/>
-        </svg>
-        <b id="pageTitle">Загальне</b>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+        <b id="pageTitle">Дашборд</b>
       </div>
-      <div class="topbar-right">
-        <button class="btn btn-ghost btn-sm" id="previewToggle">Превью ▸</button>
-        <div id="settingsControls" class="topbar-right">
-          <span class="saved-stamp" id="savedAt"></span>
-          <span class="save-wrap" id="saveWrap">
-            <button class="btn btn-primary btn-sm" id="saveBtn">Зберегти і опублікувати</button>
-            <span class="save-dot"></span>
-          </span>
-        </div>
-      </div>
+      <div id="topbarRight" style="display:flex;align-items:center;gap:10px"></div>
     </div>
-    <div class="main-body" id="panels"></div>
+    <div class="page-body" id="pageBody"></div>
   </div>
-
-  <!-- LIVE PREVIEW -->
-  <aside class="preview-pane collapsed" id="previewPane">
-    <div class="pv-head">
-      <h3>Live Preview</h3>
-      <span class="pv-tag" id="pvTag"></span>
-    </div>
-    <div class="pv-body" id="pvBody"></div>
-  </aside>
 </div>
 
 <!-- MODAL -->
 <div id="modalBg" class="modal-bg hidden">
-  <div class="modal">
-    <h3 id="modalTitle"></h3>
+  <div class="modal" role="dialog">
+    <div class="modal-head">
+      <h3 id="modalTitle"></h3>
+      <button class="modal-close" id="modalClose" aria-label="Закрити">&times;</button>
+    </div>
     <div id="modalBody"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost btn-sm" id="modalCancel">Скасувати</button>
+    <div class="modal-foot">
       <button class="btn btn-danger btn-sm hidden" id="modalDelete">Видалити</button>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-sm" id="modalCancel">Скасувати</button>
       <button class="btn btn-primary btn-sm" id="modalSave">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div id="confirmBg" class="modal-bg hidden">
+  <div class="modal" style="max-width:420px" role="alertdialog">
+    <div class="modal-head"><h3 id="confirmTitle">Видалити?</h3></div>
+    <p id="confirmText" style="color:var(--muted);font-size:14px;margin-bottom:8px"></p>
+    <div class="modal-foot">
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-sm" id="confirmNo">Скасувати</button>
+      <button class="btn btn-danger btn-sm" id="confirmYes">Видалити</button>
     </div>
   </div>
 </div>
@@ -385,41 +378,21 @@ code{background:rgba(0,159,227,.1);color:var(--acc);padding:2px 7px;border-radiu
 <script>
 'use strict';
 
-const $ = (s, r = document) => r.querySelector(s);
-let S = null, activeTab = 'general';
-let gamesCache = [], kikCache = [];
-let editingType = null, editingId = null;
-let dirty = false;
-let previewOpen = false;
+const $ = (s, ctx = document) => ctx.querySelector(s);
+let S = {}, gamesCache = [], kikCache = [];
+let activeTab = 'dash';
+let editType = null, editId = null;
+let settingsDirty = false;
+let confirmResolve = null;
 
-// ── Sidebar nav config ──────────────────────────────────────────
-const NAV = [
-  { group: 'Сайт' },
-  { id: 'general', label: 'Загальне', icon: '<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>' },
-  { id: 'homepage', label: 'Головна сторінка', icon: '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
-  { id: 'banner', label: 'Банер', icon: '<rect x="3" y="5" width="18" height="4" rx="1"/><rect x="3" y="13" width="18" height="8" rx="1"/>' },
-  { id: 'maintenance', label: 'Тех. режим', icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
-  { id: 'contacts', label: 'Контакти', icon: '<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.64A2 2 0 012 .98h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>' },
-  { group: 'Контент' },
-  { id: 'games', label: 'Ігри', badge: 'games', icon: '<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>' },
-  { id: 'kik', label: 'КІК-проекти', badge: 'kik', icon: '<path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>' },
-  { group: 'Просунуте' },
-  { id: 'seo', label: 'SEO', icon: '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>' },
-  { id: 'integrations', label: 'Аналітика', icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>' },
-  { id: 'appearance', label: 'Кастомний CSS', icon: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>' },
-  { group: 'Система' },
-  { id: 'audit', label: 'Журнал дій', icon: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>' },
-];
-
-const SETTINGS_TABS = new Set(['general','homepage','banner','maintenance','contacts','seo','integrations','appearance']);
-const PREVIEWABLE = new Set(['general','homepage','banner','maintenance','appearance','games','kik']);
-
-// ── Utils ──────────────────────────────────────────────────────
-function esc(x){return String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function toast(msg, isErr){
+/* ─── Helpers ─── */
+function esc(x){ return String(x ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, isErr = false){
   const t = $('#toast');
-  t.textContent = msg; t.className = 'toast show' + (isErr ? ' err' : '');
-  setTimeout(() => t.className = 'toast', 2800);
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.className = 'toast', 2800);
 }
 async function api(method, url, body){
   const r = await fetch(url, {
@@ -430,760 +403,785 @@ async function api(method, url, body){
   if (r.status === 401){ showLogin(); throw new Error('unauth'); }
   return r.json();
 }
-function setDirty(v){
-  dirty = v;
-  $('#saveWrap').classList.toggle('dirty', v);
+function confirm2(title, text){
+  return new Promise(res => {
+    confirmResolve = res;
+    $('#confirmTitle').textContent = title;
+    $('#confirmText').textContent = text;
+    $('#confirmBg').classList.remove('hidden');
+  });
+}
+$('#confirmYes').addEventListener('click', () => { $('#confirmBg').classList.add('hidden'); if (confirmResolve){ confirmResolve(true); confirmResolve=null; } });
+$('#confirmNo').addEventListener('click', () => { $('#confirmBg').classList.add('hidden'); if (confirmResolve){ confirmResolve(false); confirmResolve=null; } });
+
+function statusBadge(s){
+  const map = {
+    published: ['badge-green','Опубліковано'],
+    active:    ['badge-green','Активний'],
+    draft:     ['badge-yellow','Чернетка'],
+    paused:    ['badge-yellow','Призупинено'],
+    archived:  ['badge-gray','Архів'],
+    ended:     ['badge-gray','Завершено'],
+  };
+  const [cls, lbl] = map[s] || ['badge-gray', s];
+  return `<span class="badge ${cls}">${lbl}</span>`;
 }
 
-// ── Sidebar render ─────────────────────────────────────────────
-function renderSidebar(){
-  $('#sbNav').innerHTML = NAV.map(item => {
-    if (item.group) return `<div class="sb-group-label">${item.group}</div>`;
-    let badge = '';
-    if (item.badge === 'games') badge = `<span class="sb-badge">${gamesCache.length}</span>`;
-    if (item.badge === 'kik') badge = `<span class="sb-badge">${kikCache.length}</span>`;
-    return `<button class="sb-btn${item.id===activeTab?' active':''}" data-tab="${item.id}">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${item.icon}</svg>
-      ${item.label}${badge}
-    </button>`;
-  }).join('');
-  $('#pageTitle').textContent = NAV.find(n=>n.id===activeTab)?.label || '';
+function updateBadges(){
+  $('#sb_games_cnt').textContent = gamesCache.length;
+  $('#sb_kik_cnt').textContent = kikCache.length;
 }
 
-$('#sbNav').addEventListener('click', e => {
+/* ─── Sidebar ─── */
+$('.sb-nav').addEventListener('click', e => {
   const b = e.target.closest('[data-tab]');
   if (b) switchTab(b.dataset.tab);
 });
-
-function switchTab(id){
-  if (dirty && SETTINGS_TABS.has(activeTab)) collectSettings();
-  activeTab = id;
-  const isSettings = SETTINGS_TABS.has(id);
-  $('#settingsControls').classList.toggle('hidden', !isSettings);
-  // preview availability
-  $('#previewToggle').classList.toggle('hidden', !PREVIEWABLE.has(id));
-  renderSidebar();
-  draw();
-  if (previewOpen) renderPreview();
-}
-
-// ── Field helpers ──────────────────────────────────────────────
-function field(label, note, inner){
-  return `<div class="field"><label>${label}</label>${note?`<span class="note" style="margin-bottom:6px;display:block">${note}</span>`:''} ${inner}</div>`;
-}
-function input(path, val, type='text', ph=''){
-  return `<input type="${type}" data-path="${path}" value="${esc(val)}" placeholder="${ph}">`;
-}
-function textarea(path, val, ph=''){
-  return `<textarea data-path="${path}" placeholder="${ph}">${esc(val)}</textarea>`;
-}
-function toggle(path, val, lbl){
-  return `<div class="switch-row"><input type="checkbox" class="switch-input" data-path="${path}"${val?' checked':''}><label class="switch-label">${lbl}</label></div>`;
-}
-function colorField(path, val){
-  return `<div class="color-row"><input type="color" data-path="${path}" value="${val||'#009fe3'}"><input type="text" data-path="${path}" value="${esc(val)}"></div>`;
-}
-function selField(path, val, opts){
-  return `<select data-path="${path}">${opts.map(o=>`<option value="${o.v}"${o.v===val?' selected':''}>${o.l}</option>`).join('')}</select>`;
-}
-function card(title, hint, body){
-  return `<div class="card"><div class="card-head"><h2>${title}</h2>${hint?`<p>${hint}</p>`:''}</div>${body}</div>`;
-}
-
-// ── Settings panels (with inline previews) ─────────────────────
-function renderSettings(id){
-  const g=S.general||{}, b=S.banner||{}, m=S.maintenance||{}, c=S.contacts||{},
-        seo=S.seo||{}, ig=S.integrations||{}, ap=S.appearance||{}, hp=S.homepage||{};
-  switch(id){
-    case 'general': return card('Загальні налаштування','Назва сайту, гасло, основний колір',
-      field('Назва сайту','',input('general.siteTitle',g.siteTitle,'text','Blue Ferret'))+
-      field('Гасло (підзаголовок)','',input('general.tagline',g.tagline,'text','Незалежне видавництво настільних ігор'))+
-      field('Основний колір','CSS-змінна --bf-accent на всіх сторінках',colorField('general.primaryColor',g.primaryColor))+
-      `<div class="inline-pv"><div class="inline-pv-label">Прев'ю кольору</div>
-        <div class="pv-color-row">
-          <div class="pv-color-dot" id="ip_colorDot" style="background:${esc(g.primaryColor||'#009fe3')}"></div>
-          <div>
-            <div class="pv-color-hex" id="ip_colorHex">${esc(g.primaryColor||'#009fe3')}</div>
-            <div class="pv-color-sample" id="ip_colorSample" style="color:${esc(g.primaryColor||'#009fe3')}">${esc(g.siteTitle||'Blue Ferret')}</div>
-          </div>
-        </div></div>`);
-
-    case 'homepage': return [
-      card('Hero-секція','Головний заголовок і кнопка',
-        field('Заголовок (h1)','Замінює статичний заголовок на головній сторінці',input('homepage.heroTitle',hp.heroTitle,'text','Blue Ferret'))+
-        field('Підзаголовок','',input('homepage.heroSubtitle',hp.heroSubtitle,'text','Незалежне видавництво настільних ігор'))+
-        `<div class="row">
-          ${field('Текст кнопки CTA','',input('homepage.heroCta',hp.heroCta,'text','Переглянути ігри'))}
-          ${field('Посилання кнопки','',input('homepage.heroCtaLink',hp.heroCtaLink,'url','/igry'))}
-        </div>`+
-        `<div class="inline-pv"><div class="inline-pv-label">Прев'ю hero</div>
-          <div class="pv-hero">
-            <h4 id="ip_hTitle">${esc(hp.heroTitle||g.siteTitle||'Blue Ferret')}</h4>
-            <p id="ip_hSub">${esc(hp.heroSubtitle||g.tagline||'Незалежне видавництво настільних ігор')}</p>
-            <span class="pv-cta" id="ip_hCta">${esc(hp.heroCta||'Переглянути ігри')}</span>
-          </div></div>`),
-      card('Секція "Про нас"','Опис видавництва',
-        field('Текст','Відображається в блоці "Про нас" на головній',textarea('homepage.aboutText',hp.aboutText,'Ми — маленьке незалежне видавництво...'))),
-      card('Анонс / Featured','Довільний блок перед іграми',
-        field('Заголовок анонсу','',input('homepage.featureTitle',hp.featureTitle,'text',''))+
-        field('Текст анонсу','',textarea('homepage.featureText',hp.featureText,''))+
-        field('Посилання анонсу','',input('homepage.featureLink',hp.featureLink,'url',''))),
-    ].join('');
-
-    case 'banner': return card('Банер угорі сайту','Смужка над усіма сторінками, підтягується через runtime.js',
-      field('','',toggle('banner.enabled',b.enabled,'Показувати банер'))+
-      field('Текст банера','',input('banner.text',b.text,'text',''))+
-      field('Посилання','необов\'язково',input('banner.link',b.link,'url','https://...'))+
-      `<div class="row">
-        ${field('Колір фону','',colorField('banner.bg',b.bg||'#009fe3'))}
-        ${field('Колір тексту','',colorField('banner.fg',b.fg||'#ffffff'))}
-      </div>`+
-      `<div class="inline-pv"><div class="inline-pv-label">Прев'ю банера</div>
-        <div class="pv-banner-strip" id="ip_banner" style="background:${esc(b.bg||'#009fe3')};color:${esc(b.fg||'#ffffff')}">${esc(b.text||'Текст банера з\'явиться тут')}</div>
-      </div>`);
-
-    case 'maintenance': return card('Режим технічного обслуговування','Повна заглушка поверх сайту',
-      field('','',toggle('maintenance.enabled',m.enabled,'Увімкнути режим обслуговування'))+
-      field('Повідомлення','',textarea('maintenance.message',m.message,'Сайт тимчасово на технічному обслуговуванні...'))+
-      `<div class="inline-pv"><div class="inline-pv-label">Прев'ю заглушки</div>
-        <div class="pv-maint"><div class="pv-otter">🦦</div><p id="ip_maint">${esc(m.message||'Сайт тимчасово на технічному обслуговуванні. Скоро повернемось!')}</p></div>
-      </div>`);
-
-    case 'contacts': return card('Контакти та соцмережі','Контактна інформація видавництва',
-      field('Email','',input('contacts.email',c.email,'email','rogachovanika@gmail.com'))+
-      `<div class="row">
-        ${field('Telegram','',input('contacts.telegram',c.telegram,'url','https://t.me/...'))}
-        ${field('Instagram','',input('contacts.instagram',c.instagram,'url','https://instagram.com/...'))}
-      </div>`+
-      `<div class="row">
-        ${field('Facebook','',input('contacts.facebook',c.facebook,'url','https://facebook.com/...'))}
-        ${field('X (Twitter)','',input('contacts.x',c.x,'url','https://x.com/...'))}
-      </div>`);
-
-    case 'seo': return card('SEO-налаштування','Мета-теги для пошукових систем',
-      field('Title за замовчуванням','',input('seo.defaultTitle',seo.defaultTitle))+
-      field('Description','',textarea('seo.defaultDescription',seo.defaultDescription))+
-      field('OG-зображення (URL)','',input('seo.ogImage',seo.ogImage,'url','https://...'))+
-      field('','',toggle('seo.noindex',seo.noindex,'Закрити сайт від індексації')));
-
-    case 'integrations': return card('Аналітика та зовнішні скрипти','Google Analytics, Meta Pixel, etc.',
-      field('Скрипти у &lt;head&gt;','вставляються на всіх сторінках',textarea('integrations.headScripts',ig.headScripts,'<!-- Google Analytics -->'))+
-      field('Скрипти у &lt;body&gt;','',textarea('integrations.bodyScripts',ig.bodyScripts)));
-
-    case 'appearance': return card('Кастомний CSS','Стилі застосовуються поверх сайту миттєво',
-      field('CSS','',textarea('appearance.customCss',ap.customCss,'.hero-title { font-size: 3rem; }'))+
-      `<div class="inline-pv"><div class="inline-pv-label">Прев'ю з накладеним CSS</div>
-        <div class="pv-css-demo" id="ip_cssDemo">
-          <h3 class="hero-title" style="font-family:'Libre Baskerville',serif;font-size:18px;color:#1e293b;margin-bottom:6px">Заголовок сторінки</h3>
-          <p style="color:#64748b;font-size:13px">Абзац тексту для перегляду стилів.</p>
-          <a href="#" class="bf-cta" style="display:inline-block;margin-top:10px;background:#009fe3;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700" onclick="return false">Кнопка</a>
-        </div>
-        <style id="ip_cssStyle">${ap.customCss||''}</style>
-      </div>`);
-  }
-}
-
-// ── Live inline-preview updates while typing ───────────────────
-function updateInlinePreviews(path, val){
-  const set = (sel, fn) => { const e = $(sel); if (e) fn(e); };
-  switch(path){
-    case 'general.primaryColor':
-      set('#ip_colorDot', e=>e.style.background=val);
-      set('#ip_colorHex', e=>e.textContent=val);
-      set('#ip_colorSample', e=>e.style.color=val);
-      break;
-    case 'general.siteTitle':
-      set('#ip_colorSample', e=>e.textContent=val||'Blue Ferret');
-      set('#ip_hTitle', e=>{ if(!($('[data-path="homepage.heroTitle"]')||{}).value) e.textContent=val; });
-      break;
-    case 'banner.text': set('#ip_banner', e=>e.textContent=val||'Текст банера з\'явиться тут'); break;
-    case 'banner.bg': set('#ip_banner', e=>e.style.background=val); break;
-    case 'banner.fg': set('#ip_banner', e=>e.style.color=val); break;
-    case 'homepage.heroTitle': set('#ip_hTitle', e=>e.textContent=val||(S.general&&S.general.siteTitle)||'Blue Ferret'); break;
-    case 'homepage.heroSubtitle': set('#ip_hSub', e=>e.textContent=val||(S.general&&S.general.tagline)||''); break;
-    case 'homepage.heroCta': set('#ip_hCta', e=>e.textContent=val||'Переглянути ігри'); break;
-    case 'maintenance.message': set('#ip_maint', e=>e.textContent=val||'Сайт тимчасово на технічному обслуговуванні. Скоро повернемось!'); break;
-    case 'appearance.customCss': set('#ip_cssStyle', e=>e.textContent=val); break;
-  }
-}
-
-// ── Collect settings from DOM ──────────────────────────────────
-function collectSettings(){
-  document.querySelectorAll('[data-path]').forEach(el => {
-    const parts = el.dataset.path.split('.');
-    const [k, f] = parts;
-    if (!S[k]) S[k] = {};
-    if (el.type === 'checkbox') S[k][f] = el.checked;
-    else S[k][f] = el.value;
-  });
-}
-
-// ── Games panel ────────────────────────────────────────────────
-function renderGames(){
-  const rows = gamesCache.length
-    ? gamesCache.map(g=>`
-      <tr class="drag-row" data-id="${g.id}">
-        <td style="width:26px"><span class="drag-handle" data-drag="game" title="Перетягніть для зміни порядку">⠿</span></td>
-        <td>${g.cover_url?`<img class="thumb" src="${esc(g.cover_url)}" loading="lazy" onerror="this.style.opacity='.2'">`:
-          `<div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:20px">🎲</div>`}</td>
-        <td>
-          <div style="font-weight:700">${esc(g.title)}</div>
-          <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${esc(g.slug)}</div>
-        </td>
-        <td><span class="badge badge-${g.status}">${g.status}</span></td>
-        <td style="color:var(--muted);font-size:12px">${[g.players,g.age,g.duration].filter(Boolean).join(' · ')||'—'}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="openGameModal(${g.id})">Редагувати</button></td>
-      </tr>`).join('')
-    : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Ігор ще немає — додайте першу</td></tr>`;
-  return `<div class="card">
-    <div class="list-header">
-      <div><h2>Каталог ігор</h2><p>Усі ігри Blue Ferret, ${gamesCache.length} шт. Перетягуйте за ⠿ для зміни порядку.</p></div>
-      <button class="btn btn-primary btn-sm" onclick="openGameModal(null)">+ Додати гру</button>
-    </div>
-    <table class="list-tbl">
-      <thead><tr><th></th><th style="width:60px"></th><th>Назва</th><th>Статус</th><th>Характеристики</th><th style="width:120px"></th></tr></thead>
-      <tbody id="gamesBody">${rows}</tbody>
-    </table>
-  </div>`;
-}
-
-function openGameModal(id){
-  editingType = 'game'; editingId = id;
-  const g = id ? gamesCache.find(x=>x.id===id) : {};
-  $('#modalTitle').textContent = id ? `Редагувати: ${g.title}` : 'Нова гра';
-  $('#modalDelete').classList.toggle('hidden', !id);
-  const coverPrev = g.cover_url ? `<img class="cover-preview" src="${esc(g.cover_url)}" id="coverPreview">` : `<div id="coverPreview"></div>`;
-  const descLen = (g.description||'').length;
-  $('#modalBody').innerHTML = `
-    <div class="row">
-      ${field('Назва','',`<input type="text" id="mf_title" value="${esc(g.title||'')}" required>`)}
-      ${field('Slug','Латиниця, дефіс. Згенерується з назви, якщо порожній',`<input type="text" id="mf_slug" value="${esc(g.slug||'')}" placeholder="trymaysia">`)}
-    </div>
-    ${field('Підзаголовок','',`<input type="text" id="mf_subtitle" value="${esc(g.subtitle||'')}">`)}
-    ${field('Опис','макс. 500 символів',`<textarea id="mf_description" maxlength="600" style="min-height:90px">${esc(g.description||'')}</textarea><div class="char-counter${descLen>500?' over':''}" id="mf_descCount">${descLen} / 500</div>`)}
-    <div class="row">
-      ${field('Статус','',`<select id="mf_status">
-        <option value="published"${(g.status||'published')==='published'?' selected':''}>published</option>
-        <option value="draft"${g.status==='draft'?' selected':''}>draft</option>
-        <option value="archived"${g.status==='archived'?' selected':''}>archived</option>
-      </select>`)}
-      ${field('Порядок сортування','',`<input type="number" id="mf_sort_order" value="${g.sort_order||0}">`)}
-    </div>
-    ${field('Обкладинка','URL або завантажте файл',`
-      <input type="url" id="mf_cover_url" value="${esc(g.cover_url||'')}" placeholder="https://...">
-      <div class="upload-zone" id="uploadZone" style="margin-top:8px" onclick="$('#mf_file').click()">
-        <input type="file" id="mf_file" accept="image/*">
-        <div>Клацніть або перетягніть зображення</div>
-      </div>
-      ${coverPrev}
-    `)}
-    <div class="row">
-      ${field('Гравці','',`<input type="text" id="mf_players" value="${esc(g.players||'')}" placeholder="2–5">`)}
-      ${field('Вік','',`<input type="text" id="mf_age" value="${esc(g.age||'')}" placeholder="12+">`)}
-      ${field('Тривалість','',`<input type="text" id="mf_duration" value="${esc(g.duration||'')}" placeholder="30–60 хв">`)}
-    </div>
-    ${field('Посилання «Купити»','',`<input type="url" id="mf_buy_url" value="${esc(g.buy_url||'')}" placeholder="https://rozetka.com.ua/...">`)}`;
-  setupUploadZone();
-  setupGameModalAids();
-  $('#modalBg').classList.remove('hidden');
-}
-
-function setupGameModalAids(){
-  const title = $('#mf_title'), slug = $('#mf_slug');
-  const desc = $('#mf_description'), count = $('#mf_descCount');
-  const coverUrl = $('#mf_cover_url');
-  // slug auto-gen from title if slug empty
-  if (title && slug){
-    title.addEventListener('input', () => {
-      if (!slug.value.trim() || slug.dataset.auto === '1'){
-        slug.dataset.auto = '1';
-        slug.value = slugify(title.value);
-      }
-    });
-    slug.addEventListener('input', () => { slug.dataset.auto = ''; });
-  }
-  // char counter
-  if (desc && count){
-    desc.addEventListener('input', () => {
-      const n = desc.value.length;
-      count.textContent = n + ' / 500';
-      count.classList.toggle('over', n > 500);
-    });
-  }
-  // cover preview on url change
-  if (coverUrl){
-    coverUrl.addEventListener('input', () => { if (coverUrl.value.trim()) showCoverPreview(coverUrl.value.trim()); });
-  }
-}
-
-function slugify(s){
-  return String(s||'').toLowerCase().trim()
-    .replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
-}
-
-function setupUploadZone(){
-  const zone = $('#uploadZone');
-  const fileInput = $('#mf_file');
-  if (!zone || !fileInput) return;
-  fileInput.addEventListener('change', e => { if (e.target.files[0]) uploadFile(e.target.files[0]); });
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
-  zone.addEventListener('drop', e => {
-    e.preventDefault(); zone.classList.remove('drag');
-    if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
-  });
-}
-
-async function uploadFile(file){
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      const r = await api('POST', '/api/admin/upload', { filename: file.name, data: e.target.result });
-      if (r.url){ $('#mf_cover_url').value = r.url; showCoverPreview(r.url); toast('Завантажено ✓'); }
-      else toast('Помилка завантаження', true);
-    } catch(_){ toast('Помилка завантаження', true); }
-  };
-  reader.readAsDataURL(file);
-}
-
-function showCoverPreview(url){
-  let p = $('#coverPreview');
-  if (!p) return;
-  if (p.tagName === 'IMG'){ p.src = url; }
-  else { p.outerHTML = `<img class="cover-preview" id="coverPreview" src="${esc(url)}">`; }
-}
-
-// ── KIK panel ─────────────────────────────────────────────────
-function renderKik(){
-  const rows = kikCache.length
-    ? kikCache.map(k => {
-        const pct = k.goal ? Math.min(100, Math.round(k.raised / k.goal * 100)) : 0;
-        return `<tr class="drag-row" data-id="${k.id}">
-          <td style="width:26px"><span class="drag-handle" data-drag="kik" title="Перетягніть для зміни порядку">⠿</span></td>
-          <td>${k.cover_url?`<img class="thumb" src="${esc(k.cover_url)}" loading="lazy">`:
-            `<div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:20px">🚀</div>`}</td>
-          <td>
-            <div style="font-weight:700">${esc(k.title)}</div>
-            <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${esc(k.subtitle||'')}</div>
-          </td>
-          <td><span class="badge badge-${k.status}">${k.status}</span></td>
-          <td style="min-width:140px">
-            <div style="font-size:12px;color:var(--muted)">${k.raised.toLocaleString('uk')} / ${k.goal.toLocaleString('uk')} ₴ · ${k.backers} бекерів</div>
-            <div class="prog"><span style="width:${pct}%"></span></div>
-          </td>
-          <td><button class="btn btn-ghost btn-sm" onclick="openKikModal(${k.id})">Редагувати</button></td>
-        </tr>`;
-      }).join('')
-    : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Проектів ще немає</td></tr>`;
-  return `<div class="card">
-    <div class="list-header">
-      <div><h2>КІК-проекти</h2><p>Краудфандингові кампанії, ${kikCache.length} шт. Перетягуйте за ⠿ для зміни порядку.</p></div>
-      <button class="btn btn-kik btn-sm" onclick="openKikModal(null)">+ Новий проект</button>
-    </div>
-    <table class="list-tbl">
-      <thead><tr><th></th><th style="width:60px"></th><th>Назва</th><th>Статус</th><th>Збори</th><th style="width:120px"></th></tr></thead>
-      <tbody id="kikBody">${rows}</tbody>
-    </table>
-  </div>`;
-}
-
-function openKikModal(id){
-  editingType = 'kik'; editingId = id;
-  const k = id ? kikCache.find(x=>x.id===id) : {};
-  $('#modalTitle').textContent = id ? `Редагувати: ${k.title}` : 'Новий КІК-проект';
-  $('#modalDelete').classList.toggle('hidden', !id);
-  const endsVal = k.ends_at ? new Date(k.ends_at).toISOString().slice(0,10) : '';
-  $('#modalBody').innerHTML = `
-    ${field('Назва','',`<input type="text" id="mf_title" value="${esc(k.title||'')}" required>`)}
-    ${field('Підзаголовок','',`<input type="text" id="mf_subtitle" value="${esc(k.subtitle||'')}">`)}
-    ${field('Опис','',`<textarea id="mf_description" style="min-height:80px">${esc(k.description||'')}</textarea>`)}
-    <div class="row">
-      ${field('Статус','',`<select id="mf_status">
-        <option value="active"${(k.status||'active')==='active'?' selected':''}>active</option>
-        <option value="ended"${k.status==='ended'?' selected':''}>ended</option>
-        <option value="paused"${k.status==='paused'?' selected':''}>paused</option>
-      </select>`)}
-      ${field('Порядок','',`<input type="number" id="mf_sort_order" value="${k.sort_order||0}">`)}
-    </div>
-    <div class="row">
-      ${field('Ціль, ₴','',`<input type="number" id="mf_goal" value="${k.goal||0}">`)}
-      ${field('Зібрано, ₴','',`<input type="number" id="mf_raised" value="${k.raised||0}">`)}
-      ${field('Бекерів','',`<input type="number" id="mf_backers" value="${k.backers||0}">`)}
-    </div>
-    ${field('URL обкладинки','',`<input type="url" id="mf_cover_url" value="${esc(k.cover_url||'')}">` )}
-    ${field('Посилання на кампанію','',`<input type="url" id="mf_campaign_url" value="${esc(k.campaign_url||'')}">` )}
-    ${field('Кінець кампанії','',`<input type="date" id="mf_ends_at" value="${endsVal}">`)}`;
-  $('#modalBg').classList.remove('hidden');
-}
-
-// ── Modal save / delete ────────────────────────────────────────
-async function modalSave(){
-  $('#modalSave').disabled = true;
-  try {
-    if (editingType === 'game'){
-      const body = {
-        title: $('#mf_title').value, slug: $('#mf_slug').value || slugify($('#mf_title').value),
-        subtitle: $('#mf_subtitle').value, description: $('#mf_description').value,
-        status: $('#mf_status').value, cover_url: $('#mf_cover_url').value,
-        players: $('#mf_players').value, age: $('#mf_age').value,
-        duration: $('#mf_duration').value, buy_url: $('#mf_buy_url').value,
-        sort_order: Number($('#mf_sort_order').value)||0,
-      };
-      if (!body.title){ toast('Назва обов\'язкова', true); return; }
-      if (editingId) await api('PUT',`/api/admin/games/${editingId}`,body);
-      else await api('POST','/api/admin/games',body);
-      gamesCache = await api('GET','/api/admin/games');
-      toast(editingId ? 'Гру оновлено ✓' : 'Гру додано ✓');
-    } else {
-      const endsRaw = $('#mf_ends_at').value;
-      const body = {
-        title: $('#mf_title').value, subtitle: $('#mf_subtitle').value,
-        description: $('#mf_description').value, status: $('#mf_status').value,
-        goal: Number($('#mf_goal').value)||0, raised: Number($('#mf_raised').value)||0,
-        backers: Number($('#mf_backers').value)||0,
-        cover_url: $('#mf_cover_url').value, campaign_url: $('#mf_campaign_url').value,
-        ends_at: endsRaw ? new Date(endsRaw).getTime() : null,
-        sort_order: Number($('#mf_sort_order').value)||0,
-      };
-      if (!body.title){ toast('Назва обов\'язкова', true); return; }
-      if (editingId) await api('PUT',`/api/admin/kik/${editingId}`,body);
-      else await api('POST','/api/admin/kik',body);
-      kikCache = await api('GET','/api/admin/kik');
-      toast(editingId ? 'Проект оновлено ✓' : 'Проект додано ✓');
-    }
-    closeModal(); renderSidebar(); draw();
-    if (previewOpen) renderPreview();
-  } catch(e){ if (e.message !== 'unauth') toast('Помилка: ' + e.message, true); }
-  finally { $('#modalSave').disabled = false; }
-}
-
-async function modalDelete(){
-  if (!editingId || !confirm('Видалити назавжди?')) return;
-  try {
-    if (editingType === 'game'){
-      await api('DELETE',`/api/admin/games/${editingId}`);
-      gamesCache = await api('GET','/api/admin/games');
-    } else {
-      await api('DELETE',`/api/admin/kik/${editingId}`);
-      kikCache = await api('GET','/api/admin/kik');
-    }
-    toast('Видалено'); closeModal(); renderSidebar(); draw();
-    if (previewOpen) renderPreview();
-  } catch(e){ if (e.message !== 'unauth') toast('Помилка', true); }
-}
-
-function closeModal(){
-  $('#modalBg').classList.add('hidden');
-  editingType = null; editingId = null;
-}
-
-$('#modalCancel').addEventListener('click', closeModal);
-$('#modalSave').addEventListener('click', modalSave);
-$('#modalDelete').addEventListener('click', modalDelete);
-$('#modalBg').addEventListener('click', e => { if (e.target === $('#modalBg')) closeModal(); });
-window.openGameModal = openGameModal;
-window.openKikModal = openKikModal;
-window.$ = $;
-
-// ── Drag and drop reorder (pure JS) ────────────────────────────
-let drag = null;
-
-document.addEventListener('mousedown', e => {
-  const handle = e.target.closest('[data-drag]');
-  if (!handle) return;
-  e.preventDefault();
-  const row = handle.closest('.drag-row');
-  if (!row) return;
-  const tbody = row.parentNode;
-  const type = handle.dataset.drag;
-  const rows = Array.from(tbody.querySelectorAll('.drag-row'));
-  drag = { type, row, tbody, rows, startY: e.clientY, ghost: null, moved: false };
-  document.body.style.userSelect = 'none';
-});
-
-document.addEventListener('mousemove', e => {
-  if (!drag) return;
-  if (!drag.moved && Math.abs(e.clientY - drag.startY) < 4) return;
-  drag.moved = true;
-  drag.row.classList.add('dragging');
-  // ghost
-  if (!drag.ghost){
-    drag.ghost = document.createElement('div');
-    drag.ghost.className = 'drag-ghost';
-    const titleCell = drag.row.querySelector('td:nth-child(3)');
-    drag.ghost.innerHTML = `<span class="drag-handle">⠿</span>${titleCell ? titleCell.querySelector('div').textContent : 'Елемент'}`;
-    document.body.appendChild(drag.ghost);
-  }
-  drag.ghost.style.left = (e.clientX + 12) + 'px';
-  drag.ghost.style.top = (e.clientY - 12) + 'px';
-  // determine insertion point
-  const others = drag.rows.filter(r => r !== drag.row);
-  let placed = false;
-  for (const r of others){
-    const rect = r.getBoundingClientRect();
-    if (e.clientY < rect.top + rect.height/2){
-      drag.tbody.insertBefore(drag.row, r);
-      placed = true;
-      break;
-    }
-  }
-  if (!placed) drag.tbody.appendChild(drag.row);
-});
-
-document.addEventListener('mouseup', async () => {
-  if (!drag) return;
-  const d = drag; drag = null;
-  document.body.style.userSelect = '';
-  if (d.ghost) d.ghost.remove();
-  d.row.classList.remove('dragging');
-  if (!d.moved) return;
-  // new order
-  const ids = Array.from(d.tbody.querySelectorAll('.drag-row')).map(r => Number(r.dataset.id));
-  try {
-    if (d.type === 'game'){
-      await Promise.all(ids.map((id, i) => api('PUT', `/api/admin/games/${id}`, { sort_order: i })));
-      gamesCache = await api('GET','/api/admin/games');
-    } else {
-      await Promise.all(ids.map((id, i) => api('PUT', `/api/admin/kik/${id}`, { sort_order: i })));
-      kikCache = await api('GET','/api/admin/kik');
-    }
-    toast('Порядок збережено ✓');
-    if (previewOpen) renderPreview();
-  } catch(e){ if (e.message !== 'unauth') toast('Помилка зміни порядку', true); }
-});
-
-// ── Draw ───────────────────────────────────────────────────────
-function draw(){
-  const isSettings = SETTINGS_TABS.has(activeTab);
-  if (isSettings){
-    $('#panels').innerHTML = renderSettings(activeTab) || '';
-  } else if (activeTab === 'games'){
-    $('#panels').innerHTML = renderGames();
-  } else if (activeTab === 'kik'){
-    $('#panels').innerHTML = renderKik();
-  } else if (activeTab === 'audit'){
-    $('#panels').innerHTML = `<div class="card"><div class="card-head"><h2>Журнал дій</h2><p>Останні 100 записів</p></div><div id="auditBox" style="color:var(--muted);font-size:13px">Завантаження…</div></div>`;
-    loadAudit();
-  }
-  // Sync color pickers
-  document.querySelectorAll('[data-path]').forEach(el => {
-    if (el.type === 'color'){
-      const pair = document.querySelector(`input[type=text][data-path="${el.dataset.path}"]`);
-      if (pair) { el.value = pair.value || '#009fe3'; }
-    }
-  });
-}
-
-// Color pair sync + dirty + inline previews
-document.addEventListener('input', e => {
-  const el = e.target;
-  if (!el.dataset || !el.dataset.path) return;
-  setDirty(true);
-  if (el.type === 'color' || el.type === 'text'){
-    document.querySelectorAll(`[data-path="${el.dataset.path}"]`).forEach(o => {
-      if (o !== el) o.value = el.value;
-    });
-  }
-  const val = (el.type === 'checkbox') ? el.checked : el.value;
-  updateInlinePreviews(el.dataset.path, val);
-});
-document.addEventListener('change', e => {
-  const el = e.target;
-  if (el.dataset && el.dataset.path) setDirty(true);
-});
-
-// ── Live Preview panel ─────────────────────────────────────────
-function togglePreview(){
-  previewOpen = !previewOpen;
-  $('#previewPane').classList.toggle('collapsed', !previewOpen);
-  $('#previewToggle').textContent = previewOpen ? '◂ Сховати' : 'Превью ▸';
-  if (previewOpen) renderPreview();
-}
-$('#previewToggle').addEventListener('click', togglePreview);
-
-function curVal(path, fallback){
-  const el = document.querySelector(`[data-path="${path}"]`);
-  if (el){ return el.type === 'checkbox' ? el.checked : el.value; }
-  const [k,f] = path.split('.');
-  return (S[k] && S[k][f] != null) ? S[k][f] : fallback;
-}
-
-function browserChrome(url, inner){
-  return `<div class="pv-frame">
-    <div class="pv-browserbar"><i></i><i></i><i></i><span class="pv-url">${esc(url)}</span></div>
-    <div class="pv-content">${inner}</div>
-  </div>`;
-}
-
-function renderPreview(){
-  const body = $('#pvBody'), tag = $('#pvTag');
-  tag.textContent = NAV.find(n=>n.id===activeTab)?.label || '';
-  let html = '';
-
-  if (activeTab === 'banner'){
-    const en = curVal('banner.enabled', false);
-    const txt = curVal('banner.text','');
-    const bg = curVal('banner.bg','#009fe3'), fg = curVal('banner.fg','#ffffff');
-    const strip = en && txt
-      ? `<div style="background:${esc(bg)};color:${esc(fg)};padding:10px;text-align:center;font-weight:600;font-size:12px">${esc(txt)}</div>`
-      : `<div style="background:#f1f5f9;color:#94a3b8;padding:10px;text-align:center;font-size:11px">Банер вимкнено</div>`;
-    html = browserChrome('blueferret.com.ua',
-      strip + `<div style="padding:24px 4px"><h4 style="font-family:'Libre Baskerville',serif;font-size:18px;color:#1e293b">Головна сторінка</h4>
-        <p style="color:#64748b;font-size:12px;margin-top:6px">Банер з'являється над усім вмістом сайту.</p></div>`);
-  }
-  else if (activeTab === 'general'){
-    const col = curVal('general.primaryColor','#009fe3');
-    const title = curVal('general.siteTitle','Blue Ferret');
-    html = browserChrome('blueferret.com.ua',
-      `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-        <div style="width:40px;height:40px;border-radius:12px;background:${esc(col)};box-shadow:0 4px 14px ${esc(col)}55"></div>
-        <div><div style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:#1e293b">${esc(title)}</div>
-        <div style="font-family:ui-monospace,monospace;font-size:12px;color:${esc(col)};font-weight:700">${esc(col)}</div></div>
-      </div>
-      <p style="font-size:13px;color:#334155;line-height:1.6">Текст з <b style="color:${esc(col)}">основним кольором</b> акценту.</p>
-      <a href="#" onclick="return false" style="display:inline-block;margin-top:14px;background:${esc(col)};color:#fff;padding:9px 20px;border-radius:9px;font-weight:700;font-size:13px;text-decoration:none">Кнопка</a>`);
-  }
-  else if (activeTab === 'homepage'){
-    const col = curVal('general.primaryColor','#009fe3');
-    const t = curVal('homepage.heroTitle','') || curVal('general.siteTitle','Blue Ferret');
-    const sub = curVal('homepage.heroSubtitle','') || curVal('general.tagline','Незалежне видавництво настільних ігор');
-    const cta = curVal('homepage.heroCta','') || 'Переглянути ігри';
-    html = browserChrome('blueferret.com.ua',
-      `<div style="border-radius:12px;padding:26px 20px;color:#fff;background:linear-gradient(135deg,#0f172a,#1e293b);position:relative;overflow:hidden">
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 80% 10%,${esc(col)}55,transparent 60%)"></div>
-        <h4 style="font-family:'Libre Baskerville',serif;font-size:22px;line-height:1.2;position:relative">${esc(t)}</h4>
-        <p style="font-size:13px;color:rgba(255,255,255,.65);margin:8px 0 16px;position:relative">${esc(sub)}</p>
-        <a href="#" onclick="return false" style="display:inline-block;background:${esc(col)};color:#fff;font-weight:700;font-size:13px;padding:9px 20px;border-radius:9px;text-decoration:none;position:relative">${esc(cta)}</a>
-      </div>`);
-  }
-  else if (activeTab === 'maintenance'){
-    const en = curVal('maintenance.enabled', false);
-    const msg = curVal('maintenance.message','Сайт тимчасово на технічному обслуговуванні. Скоро повернемось!');
-    html = en
-      ? `<div class="pv-frame"><div class="pv-browserbar"><i></i><i></i><i></i><span class="pv-url">blueferret.com.ua</span></div>
-          <div style="background:#0b1f33;color:#fff;padding:46px 24px;text-align:center">
-            <div style="font-size:42px;margin-bottom:14px">🦦</div>
-            <p style="font-size:14px;line-height:1.6;color:rgba(255,255,255,.9)">${esc(msg)}</p>
-          </div></div>`
-      : browserChrome('blueferret.com.ua', `<div style="padding:20px 4px;color:#64748b;font-size:13px">Тех. режим вимкнено — сайт працює звичайно.</div>`);
-  }
-  else if (activeTab === 'appearance'){
-    const css = curVal('appearance.customCss','');
-    html = browserChrome('blueferret.com.ua',
-      `<div id="pvCssBox"><h3 class="hero-title" style="font-family:'Libre Baskerville',serif;font-size:18px;color:#1e293b;margin-bottom:6px">Заголовок</h3>
-        <p style="color:#64748b;font-size:13px">Абзац тексту сайту для перегляду CSS.</p>
-        <a href="#" class="bf-cta" onclick="return false" style="display:inline-block;margin-top:10px;background:#009fe3;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700">Кнопка</a>
-      </div><style>${css}</style>`);
-  }
-  else if (activeTab === 'games'){
-    const cards = gamesCache.length
-      ? `<div class="pvg-grid">${gamesCache.slice(0,6).map(g=>`
-          <div class="pvg-card">
-            <div class="pvg-thumb"${g.cover_url?` style="background-image:url('${esc(g.cover_url)}')"`:''}>${g.cover_url?'':'🎲'}</div>
-            <div class="pvg-meta"><div class="pvg-title">${esc(g.title)}</div>
-            <div class="pvg-sub">${esc([g.players,g.age].filter(Boolean).join(' · ')||g.status)}</div></div>
-          </div>`).join('')}</div>`
-      : `<p style="color:#94a3b8;font-size:12px;text-align:center;padding:20px">Немає ігор</p>`;
-    html = browserChrome('blueferret.com.ua/igry',
-      `<h4 style="font-family:'Libre Baskerville',serif;font-size:16px;color:#1e293b;margin-bottom:12px">Наші ігри</h4>${cards}`);
-  }
-  else if (activeTab === 'kik'){
-    const items = kikCache.length
-      ? kikCache.slice(0,5).map(k=>{
-          const pct = k.goal ? Math.min(100, Math.round(k.raised/k.goal*100)) : 0;
-          return `<div class="pvk-item">
-            <div class="pvk-title">${esc(k.title)}</div>
-            <div class="pvk-nums">${k.raised.toLocaleString('uk')} / ${k.goal.toLocaleString('uk')} ₴ · ${pct}%</div>
-            <div class="prog"><span style="width:${pct}%"></span></div>
-          </div>`;
-        }).join('')
-      : `<p style="color:#94a3b8;font-size:12px;text-align:center;padding:20px">Немає проектів</p>`;
-    html = browserChrome('blueferret.com.ua/kik',
-      `<h4 style="font-family:'Libre Baskerville',serif;font-size:16px;color:#1e293b;margin-bottom:12px">КІК-проекти</h4>${items}`);
-  }
-  else {
-    html = `<div class="pv-empty">Прев'ю недоступне для цієї вкладки<div class="pv-hint">Оберіть Загальне, Головна, Банер, Тех. режим, CSS, Ігри або КІК</div></div>`;
-  }
-
-  body.innerHTML = html + `<div class="pv-hint">Орієнтовний вигляд. Натисніть «Зберегти», щоб опублікувати.</div>`;
-}
-
-// ── Save settings ──────────────────────────────────────────────
-$('#saveBtn').addEventListener('click', saveSettings);
-
-async function saveSettings(){
-  if (!SETTINGS_TABS.has(activeTab)) return;
-  collectSettings();
-  $('#saveBtn').disabled = true;
-  try {
-    const res = await api('PUT', '/api/admin/settings', S);
-    S = res.settings;
-    setDirty(false);
-    toast('Збережено і опубліковано ✓');
-    stamp();
-    if (previewOpen) renderPreview();
-  } catch(e){ if (e.message !== 'unauth') toast('Помилка збереження', true); }
-  finally { $('#saveBtn').disabled = false; }
-}
-
-// Cmd/Ctrl+S
-document.addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')){
-    e.preventDefault();
-    if ($('#app').classList.contains('hidden')) return;
-    if (SETTINGS_TABS.has(activeTab)) saveSettings();
-  }
-});
-
-function stamp(){
-  const t = S?.general?.publishedAt;
-  $('#savedAt').textContent = t ? 'Опубліковано: ' + new Date(t).toLocaleString('uk-UA') : '';
-}
-
-// ── Audit ──────────────────────────────────────────────────────
-async function loadAudit(){
-  try {
-    const rows = await api('GET','/api/admin/audit');
-    const box = $('#auditBox');
-    if (!box) return;
-    box.innerHTML = rows.length
-      ? `<table class="audit-tbl">${rows.map(r=>`<tr>
-          <td>${new Date(r.ts).toLocaleString('uk-UA')}</td>
-          <td><code>${esc(r.action)}</code></td>
-          <td>${esc(r.ip||'')}</td>
-          <td style="max-width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(r.detail||'')}</td>
-        </tr>`).join('')}</table>`
-      : '<p style="color:var(--muted)">Журнал порожній</p>';
-  } catch(e){}
-}
-
-// ── Auth ───────────────────────────────────────────────────────
-function showApp(){ $('#login').classList.add('hidden'); $('#app').classList.remove('hidden'); }
-function showLogin(){ $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#pw').value=''; setTimeout(()=>$('#pw').focus(),50); }
-
-$('#loginForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  $('#loginBtn').disabled = true;
-  $('#loginErr').classList.add('hidden');
-  try {
-    const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#pw').value})});
-    if (r.ok){ await boot(); }
-    else {
-      const j = await r.json().catch(()=>({}));
-      $('#loginErr').textContent = j.error==='too_many_attempts' ? 'Забагато спроб. Зачекайте 10 хвилин.' : 'Невірний пароль';
-      $('#loginErr').classList.remove('hidden');
-    }
-  } catch(e){ $('#loginErr').textContent='Помилка з\'єднання'; $('#loginErr').classList.remove('hidden'); }
-  finally { $('#loginBtn').disabled = false; }
-});
-
 $('#logoutBtn').addEventListener('click', async () => {
   await fetch('/api/admin/logout',{method:'POST'}).catch(()=>{});
   toast('Ви вийшли з системи');
   setTimeout(showLogin, 300);
 });
 
-// ── Boot ───────────────────────────────────────────────────────
+function switchTab(id){
+  activeTab = id;
+  document.querySelectorAll('.sb-item').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  const labels = {dash:'Дашборд',games:'Ігри',kik:'КІК-проекти',settings:'Налаштування',audit:'Журнал дій'};
+  $('#pageTitle').textContent = labels[id] || id;
+  $('#topbarRight').innerHTML = '';
+  settingsDirty = false;
+  render();
+}
+
+/* ─── Render dispatcher ─── */
+function render(){
+  const b = $('#pageBody');
+  if (activeTab === 'dash')     b.innerHTML = renderDash();
+  else if (activeTab === 'games')    renderGamesPage();
+  else if (activeTab === 'kik')      renderKikPage();
+  else if (activeTab === 'settings') renderSettingsPage();
+  else if (activeTab === 'audit')    renderAuditPage();
+}
+
+/* ─── DASHBOARD ─── */
+function renderDash(){
+  const g = S.general || {};
+  const bannerOn = (S.banner || {}).enabled;
+  const maintOn  = (S.maintenance || {}).enabled;
+  const statusLabel = maintOn ? '<span class="badge badge-yellow">Тех. режим</span>'
+    : bannerOn ? '<span class="badge badge-green">Із банером</span>'
+    : '<span class="badge badge-green">Працює</span>';
+
+  return `
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-num">${gamesCache.length}</div><div class="stat-label">Ігор опубліковано</div></div>
+      <div class="stat-card"><div class="stat-num">${kikCache.length}</div><div class="stat-label">КІК-проектів</div></div>
+      <div class="stat-card" style="display:flex;flex-direction:column;justify-content:center">
+        <div class="stat-label" style="margin-bottom:6px">Стан сайту</div>
+        ${statusLabel}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-text"><h2>Швидкі дії</h2><p>Найпоширеніші операції</p></div>
+      </div>
+      <div class="qa-row">
+        <button class="btn btn-primary" onclick="switchTab('games');setTimeout(openGameModal,50,null)">+ Нова гра</button>
+        <button class="btn btn-kik" onclick="switchTab('kik');setTimeout(openKikModal,50,null)">+ Новий КІК-проект</button>
+        <button class="btn btn-ghost" onclick="switchTab('settings')">⚙ Налаштування сайту</button>
+      </div>
+    </div>
+    ${gamesCache.length ? `<div class="card">
+      <div class="card-head"><div class="card-head-text"><h2>Останні ігри</h2></div>
+        <button class="btn btn-ghost btn-sm" onclick="switchTab('games')">Усі ігри →</button>
+      </div>
+      <div class="content-grid">${gamesCache.slice(0,3).map(g=>gameCard(g,true)).join('')}</div>
+    </div>` : ''}
+  `;
+}
+
+/* ─── GAMES ─── */
+function renderGamesPage(){
+  const pb = $('#pageBody');
+  const tb = $('#topbarRight');
+  tb.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openGameModal(null)">+ Додати гру</button>`;
+
+  if (!gamesCache.length){
+    pb.innerHTML = `<div class="empty">
+      <div class="empty-icon">🎲</div>
+      <div class="empty-text">Ігор поки немає</div>
+      <div class="empty-hint">Додайте першу гру — вона з'явиться на сайті одразу після збереження</div>
+      <button class="btn btn-primary" onclick="openGameModal(null)">+ Додати першу гру</button>
+    </div>`;
+    return;
+  }
+
+  pb.innerHTML = `<div class="card">
+    <div class="card-head">
+      <div class="card-head-text"><h2>Каталог ігор</h2><p>${gamesCache.length} ${plural(gamesCache.length,'гра','гри','ігор')} · натисніть картку для редагування</p></div>
+      <button class="btn btn-primary btn-sm" onclick="openGameModal(null)">+ Додати</button>
+    </div>
+    <div class="content-grid">${gamesCache.map(g=>gameCard(g,false)).join('')}</div>
+  </div>`;
+}
+
+function gameCard(g, small){
+  const cover = g.cover_url
+    ? `<div class="item-cover" style="position:relative"><img src="${esc(g.cover_url)}" loading="lazy" onerror="this.style.display='none'"></div>`
+    : `<div class="item-cover">🎲</div>`;
+  const chars = [g.players,g.age,g.duration].filter(Boolean).join(' · ');
+  return `<div class="item-card" onclick="openGameModal(${g.id})">
+    ${cover}
+    <div class="item-body">
+      <div class="item-title">${esc(g.title)}</div>
+      ${g.subtitle ? `<div class="item-sub">${esc(g.subtitle)}</div>` : ''}
+      ${chars ? `<div style="font-size:11.5px;color:var(--muted);margin-top:4px;margin-bottom:6px">${esc(chars)}</div>` : ''}
+      <div class="item-foot">${statusBadge(g.status)}<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openGameModal(${g.id})">Редагувати</button></div>
+    </div>
+  </div>`;
+}
+
+function openGameModal(id){
+  editType = 'game'; editId = id;
+  const g = id ? (gamesCache.find(x=>x.id===id)||{}) : {};
+  $('#modalTitle').textContent = id ? `✏️ ${g.title || 'Редагувати гру'}` : '+ Нова гра';
+  $('#modalDelete').classList.toggle('hidden', !id);
+  const descLen = (g.description||'').length;
+
+  $('#modalBody').innerHTML = `
+    <div class="row2">
+      <div class="field">
+        <label>Назва гри *</label>
+        <input type="text" id="mf_title" value="${esc(g.title||'')}" placeholder="Наприклад: Кухня шефа" required>
+      </div>
+      <div class="field" style="max-width:180px">
+        <label>URL-ключ (slug)</label>
+        <input type="text" id="mf_slug" value="${esc(g.slug||'')}" placeholder="kuhnya-shefa">
+        <span class="hint">Автозаповнюється з назви</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Підзаголовок</label>
+      <input type="text" id="mf_subtitle" value="${esc(g.subtitle||'')}" placeholder="Коротко про гру">
+    </div>
+    <div class="field">
+      <label>Опис</label>
+      <textarea id="mf_description" placeholder="Детальний опис гри для сторінки товару…">${esc(g.description||'')}</textarea>
+      <div class="char-counter ${descLen>500?'over':''}" id="mf_descCount">${descLen} / 500</div>
+    </div>
+    <div class="field">
+      <label>Обкладинка</label>
+      <div class="upload-zone" id="uploadZone" onclick="$('#mf_file').click()">
+        <input type="file" id="mf_file" accept="image/*">
+        📷 Натисніть для завантаження фото або перетягніть файл сюди
+      </div>
+      <input type="url" id="mf_cover_url" value="${esc(g.cover_url||'')}" placeholder="або вставте посилання на фото" style="margin-top:8px">
+      ${g.cover_url ? `<img class="cover-preview" id="coverPreview" src="${esc(g.cover_url)}">` : `<div id="coverPreview"></div>`}
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Кількість гравців</label>
+        <input type="text" id="mf_players" value="${esc(g.players||'')}" placeholder="2–5">
+      </div>
+      <div class="field">
+        <label>Вік</label>
+        <input type="text" id="mf_age" value="${esc(g.age||'')}" placeholder="12+">
+      </div>
+      <div class="field">
+        <label>Тривалість</label>
+        <input type="text" id="mf_duration" value="${esc(g.duration||'')}" placeholder="30–60 хв">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Посилання «Купити»</label>
+        <input type="url" id="mf_buy_url" value="${esc(g.buy_url||'')}" placeholder="https://rozetka.com.ua/...">
+      </div>
+      <div class="field" style="max-width:180px">
+        <label>Статус</label>
+        <select id="mf_status">
+          <option value="published" ${(g.status||'published')==='published'?'selected':''}>✅ Опубліковано</option>
+          <option value="draft" ${g.status==='draft'?'selected':''}>📝 Чернетка</option>
+          <option value="archived" ${g.status==='archived'?'selected':''}>📦 Архів</option>
+        </select>
+      </div>
+    </div>`;
+
+  setupUploadZone('mf_cover_url', 'coverPreview');
+  setupGameAids();
+  $('#modalBg').classList.remove('hidden');
+  setTimeout(()=>$('#mf_title')?.focus(), 50);
+}
+
+function setupGameAids(){
+  const title = $('#mf_title'), slug = $('#mf_slug');
+  title?.addEventListener('input', () => {
+    if (!slug.value.trim() || slug.dataset.auto === '1'){
+      slug.dataset.auto = '1';
+      slug.value = slugify(title.value);
+    }
+  });
+  slug?.addEventListener('input', () => slug.dataset.auto = '');
+  const desc = $('#mf_description'), cnt = $('#mf_descCount');
+  desc?.addEventListener('input', () => {
+    const n = desc.value.length;
+    cnt.textContent = n + ' / 500';
+    cnt.classList.toggle('over', n > 500);
+  });
+  $('#mf_cover_url')?.addEventListener('input', e => { if (e.target.value.trim()) showCoverPreview(e.target.value.trim()); });
+}
+
+/* ─── KIK ─── */
+function renderKikPage(){
+  const pb = $('#pageBody');
+  const tb = $('#topbarRight');
+  tb.innerHTML = `<button class="btn btn-kik btn-sm" onclick="openKikModal(null)">+ Новий проект</button>`;
+
+  if (!kikCache.length){
+    pb.innerHTML = `<div class="empty">
+      <div class="empty-icon">🚀</div>
+      <div class="empty-text">КІК-проектів поки немає</div>
+      <div class="empty-hint">Додайте краудфандингову кампанію — вона відразу з'явиться на сторінці /kik</div>
+      <button class="btn btn-kik" onclick="openKikModal(null)">+ Додати перший проект</button>
+    </div>`;
+    return;
+  }
+
+  pb.innerHTML = `<div class="card">
+    <div class="card-head">
+      <div class="card-head-text"><h2>КІК-проекти</h2><p>${kikCache.length} ${plural(kikCache.length,'проект','проекти','проектів')} · натисніть для редагування</p></div>
+      <button class="btn btn-kik btn-sm" onclick="openKikModal(null)">+ Новий</button>
+    </div>
+    <div class="content-grid">${kikCache.map(k=>kikCard(k)).join('')}</div>
+  </div>`;
+}
+
+function kikCard(k){
+  const pct = k.goal ? Math.min(100, Math.round(k.raised / k.goal * 100)) : 0;
+  const cover = k.cover_url
+    ? `<div class="item-cover" style="position:relative"><img src="${esc(k.cover_url)}" loading="lazy" onerror="this.style.display='none'"></div>`
+    : `<div class="item-cover" style="background:var(--kik-l)">🚀</div>`;
+  return `<div class="item-card" onclick="openKikModal(${k.id})">
+    ${cover}
+    <div class="item-body">
+      <div class="item-title">${esc(k.title)}</div>
+      ${k.subtitle ? `<div class="item-sub">${esc(k.subtitle)}</div>` : ''}
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">
+        ${k.raised.toLocaleString('uk')} / ${k.goal.toLocaleString('uk')} ₴ · ${k.backers} бекерів
+      </div>
+      <div class="prog"><div class="prog-bar" style="width:${pct}%"></div></div>
+      <div class="item-foot" style="margin-top:10px">${statusBadge(k.status)}
+        <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openKikModal(${k.id})">Редагувати</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openKikModal(id){
+  editType = 'kik'; editId = id;
+  const k = id ? (kikCache.find(x=>x.id===id)||{}) : {};
+  $('#modalTitle').textContent = id ? `✏️ ${k.title || 'Редагувати проект'}` : '+ Новий КІК-проект';
+  $('#modalDelete').classList.toggle('hidden', !id);
+  const endsVal = k.ends_at ? new Date(k.ends_at).toISOString().slice(0,10) : '';
+  $('#modalSave').className = 'btn btn-kik btn-sm';
+
+  $('#modalBody').innerHTML = `
+    <div class="field">
+      <label>Назва проекту *</label>
+      <input type="text" id="mf_title" value="${esc(k.title||'')}" placeholder="Наприклад: Підтримати «Кухню шефа»" required>
+    </div>
+    <div class="field">
+      <label>Підзаголовок</label>
+      <input type="text" id="mf_subtitle" value="${esc(k.subtitle||'')}" placeholder="Коротко про проект">
+    </div>
+    <div class="field">
+      <label>Опис</label>
+      <textarea id="mf_description" placeholder="Детальний опис кампанії…">${esc(k.description||'')}</textarea>
+    </div>
+    <div class="field">
+      <label>Фото обкладинки</label>
+      <div class="upload-zone" id="uploadZone" onclick="$('#mf_file').click()">
+        <input type="file" id="mf_file" accept="image/*">
+        📷 Завантажте фото або перетягніть сюди
+      </div>
+      <input type="url" id="mf_cover_url" value="${esc(k.cover_url||'')}" placeholder="або вставте посилання" style="margin-top:8px">
+      ${k.cover_url ? `<img class="cover-preview" id="coverPreview" src="${esc(k.cover_url)}">` : `<div id="coverPreview"></div>`}
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Ціль збору, ₴</label>
+        <input type="number" id="mf_goal" value="${k.goal||0}" min="0">
+      </div>
+      <div class="field">
+        <label>Зібрано, ₴</label>
+        <input type="number" id="mf_raised" value="${k.raised||0}" min="0">
+      </div>
+      <div class="field">
+        <label>Кількість бекерів</label>
+        <input type="number" id="mf_backers" value="${k.backers||0}" min="0">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Посилання на кампанію</label>
+        <input type="url" id="mf_campaign_url" value="${esc(k.campaign_url||'')}" placeholder="https://kik.ua/...">
+      </div>
+      <div class="field" style="max-width:180px">
+        <label>Дата закінчення</label>
+        <input type="date" id="mf_ends_at" value="${endsVal}">
+      </div>
+    </div>
+    <div class="field" style="max-width:200px">
+      <label>Статус</label>
+      <select id="mf_status">
+        <option value="active" ${(k.status||'active')==='active'?'selected':''}>🟢 Активний</option>
+        <option value="paused" ${k.status==='paused'?'selected':''}>⏸ Призупинено</option>
+        <option value="ended" ${k.status==='ended'?'selected':''}>🏁 Завершено</option>
+      </select>
+    </div>`;
+
+  setupUploadZone('mf_cover_url', 'coverPreview');
+  $('#modalBg').classList.remove('hidden');
+  setTimeout(()=>$('#mf_title')?.focus(), 50);
+}
+
+/* ─── SETTINGS ─── */
+let settingsS = null;
+
+function renderSettingsPage(){
+  settingsS = JSON.parse(JSON.stringify(S));
+  const pb = $('#pageBody');
+  const tb = $('#topbarRight');
+  const stamp = S.general?.publishedAt ? `Збережено: ${new Date(S.general.publishedAt).toLocaleString('uk-UA')}` : '';
+  tb.innerHTML = `<span id="savedAt" style="font-size:12px;color:var(--muted)">${stamp}</span>
+    <button class="btn btn-primary btn-sm" id="settingsSaveBtn">Зберегти і опублікувати</button>`;
+  $('#settingsSaveBtn').addEventListener('click', saveAllSettings);
+
+  const g = settingsS.general || {};
+  const hp = settingsS.homepage || {};
+  const b = settingsS.banner || {};
+  const m = settingsS.maintenance || {};
+  const c = settingsS.contacts || {};
+  const seo = settingsS.seo || {};
+  const ig = settingsS.integrations || {};
+  const ap = settingsS.appearance || {};
+
+  pb.innerHTML = `<div class="settings-form">
+
+    <!-- GENERAL -->
+    <div class="section-head section-open" data-section="general">
+      <div class="section-head-icon">⚙️</div>
+      <div class="section-head-text"><h3>Загальне</h3><p>Назва сайту, акцентний колір</p></div>
+      <span class="section-arrow">›</span>
+    </div>
+    <div class="section-body" data-body="general">
+      <div class="field"><label>Назва сайту</label>
+        <input type="text" data-s="general.siteTitle" value="${esc(g.siteTitle||'Blue Ferret')}"></div>
+      <div class="field"><label>Гасло (підзаголовок)</label>
+        <input type="text" data-s="general.tagline" value="${esc(g.tagline||'')}"></div>
+      <div class="field"><label>Основний колір</label>
+        <div class="color-row">
+          <input type="color" data-s="general.primaryColor" value="${g.primaryColor||'#009fe3'}">
+          <input type="text" data-s="general.primaryColor" value="${esc(g.primaryColor||'#009fe3')}" style="max-width:130px">
+        </div>
+      </div>
+    </div>
+
+    <!-- HOMEPAGE -->
+    <div class="section-head" data-section="homepage">
+      <div class="section-head-icon">🏠</div>
+      <div class="section-head-text"><h3>Головна сторінка</h3><p>Заголовок, підзаголовок, кнопка</p></div>
+      <span class="section-arrow">›</span>
+    </div>
+    <div class="section-body hidden" data-body="homepage">
+      <div class="field"><label>Заголовок (H1)</label>
+        <input type="text" data-s="homepage.heroTitle" value="${esc(hp.heroTitle||'')}" placeholder="Blue Ferret"></div>
+      <div class="field"><label>Підзаголовок</label>
+        <input type="text" data-s="homepage.heroSubtitle" value="${esc(hp.heroSubtitle||'')}" placeholder="Незалежне видавництво…"></div>
+      <div class="row2">
+        <div class="field"><label>Текст кнопки</label>
+          <input type="text" data-s="homepage.heroCta" value="${esc(hp.heroCta||'')}" placeholder="Переглянути ігри"></div>
+        <div class="field"><label>Посилання кнопки</label>
+          <input type="url" data-s="homepage.heroCtaLink" value="${esc(hp.heroCtaLink||'')}" placeholder="/igry"></div>
+      </div>
+      <div class="field"><label>Текст про нас</label>
+        <textarea data-s="homepage.aboutText" placeholder="Ми — маленьке незалежне видавництво…">${esc(hp.aboutText||'')}</textarea></div>
+    </div>
+
+    <!-- BANNER -->
+    <div class="section-head" data-section="banner">
+      <div class="section-head-icon">📢</div>
+      <div class="section-head-text"><h3>Банер-смужка</h3><p>Рядок повідомлення на всіх сторінках</p></div>
+      <span class="section-arrow">›</span>
+    </div>
+    <div class="section-body hidden" data-body="banner">
+      <div class="field"><div class="switch-row">
+        <input type="checkbox" class="sw" data-s="banner.enabled" id="sw_banner" ${b.enabled?'checked':''}>
+        <label class="sw-label" for="sw_banner">Показувати банер на сайті</label>
+      </div></div>
+      <div class="field"><label>Текст банера</label>
+        <input type="text" data-s="banner.text" value="${esc(b.text||'')}" placeholder="Наша нова гра вже у продажу!"></div>
+      <div class="field"><label>Посилання (необов'язково)</label>
+        <input type="url" data-s="banner.link" value="${esc(b.link||'')}" placeholder="https://…"></div>
+      <div class="row2">
+        <div class="field"><label>Колір фону</label>
+          <div class="color-row">
+            <input type="color" data-s="banner.bg" value="${b.bg||'#009fe3'}">
+            <input type="text" data-s="banner.bg" value="${esc(b.bg||'#009fe3')}" style="max-width:130px">
+          </div>
+        </div>
+        <div class="field"><label>Колір тексту</label>
+          <div class="color-row">
+            <input type="color" data-s="banner.fg" value="${b.fg||'#ffffff'}">
+            <input type="text" data-s="banner.fg" value="${esc(b.fg||'#ffffff')}" style="max-width:130px">
+          </div>
+        </div>
+      </div>
+      <div class="banner-prev" id="ip_banner" style="background:${esc(b.bg||'#009fe3')};color:${esc(b.fg||'#fff')}">${esc(b.text||'Тут з'явиться текст вашого банера')}</div>
+    </div>
+
+    <!-- MAINTENANCE -->
+    <div class="section-head" data-section="maint">
+      <div class="section-head-icon">🔧</div>
+      <div class="section-head-text"><h3>Технічний режим</h3><p>Заглушка поверх всього сайту</p></div>
+      <span class="section-arrow">›</span>
+    </div>
+    <div class="section-body hidden" data-body="maint">
+      <div class="field"><div class="switch-row">
+        <input type="checkbox" class="sw" data-s="maintenance.enabled" id="sw_maint" ${m.enabled?'checked':''}>
+        <label class="sw-label" for="sw_maint">⚠️ Увімкнути технічний режим</label>
+      </div><span class="hint" style="display:block;margin-top:6px">Сайт буде прихований для відвідувачів</span></div>
+      <div class="field"><label>Повідомлення</label>
+        <textarea data-s="maintenance.message" placeholder="Сайт тимчасово на обслуговуванні…">${esc(m.message||'')}</textarea></div>
+      <div class="maint-prev"><div class="mo">🦦</div><p id="ip_maint">${esc(m.message||'Сайт тимчасово на обслуговуванні. Скоро повернемось!')}</p></div>
+    </div>
+
+    <!-- CONTACTS -->
+    <div class="section-head" data-section="contacts">
+      <div class="section-head-icon">📬</div>
+      <div class="section-head-text"><h3>Контакти</h3><p>Email і соціальні мережі</p></div>
+      <span class="section-arrow">›</span>
+    </div>
+    <div class="section-body hidden" data-body="contacts">
+      <div class="field"><label>Email</label>
+        <input type="email" data-s="contacts.email" value="${esc(c.email||'')}" placeholder="info@blueferret.com.ua"></div>
+      <div class="row2">
+        <div class="field"><label>Telegram</label>
+          <input type="url" data-s="contacts.telegram" value="${esc(c.telegram||'')}" placeholder="https://t.me/…"></div>
+        <div class="field"><label>Instagram</label>
+          <input type="url" data-s="contacts.instagram" value="${esc(c.instagram||'')}" placeholder="https://instagram.com/…"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Facebook</label>
+          <input type="url" data-s="contacts.facebook" value="${esc(c.facebook||'')}" placeholder="https://facebook.com/…"></div>
+        <div class="field"><label>X (Twitter)</label>
+          <input type="url" data-s="contacts.x" value="${esc(c.x||'')}" placeholder="https://x.com/…"></div>
+      </div>
+    </div>
+
+    <!-- SEO -->
+    <div class="section-head" data-section="seo">
+      <div class="section-head-icon">🔍</div>
+      <div class="section-head-text"><h3>SEO</h3><p>Теги для Google та соцмереж</p></div>
+      <span class="section-arrow">›</span>
+    </div>
+    <div class="section-body hidden" data-body="seo">
+      <div class="field"><label>Заголовок сторінки (title)</label>
+        <input type="text" data-s="seo.defaultTitle" value="${esc(seo.defaultTitle||'')}"></div>
+      <div class="field"><label>Опис (meta description)</label>
+        <textarea data-s="seo.defaultDescription" style="min-height:70px" placeholder="Опис сайту для пошукової видачі…">${esc(seo.defaultDescription||'')}</textarea></div>
+      <div class="field"><label>OG-зображення (посилання)</label>
+        <input type="url" data-s="seo.ogImage" value="${esc(seo.ogImage||'')}" placeholder="https://…"></div>
+      <div class="field"><div class="switch-row">
+        <input type="checkbox" class="sw" data-s="seo.noindex" id="sw_noindex" ${seo.noindex?'checked':''}>
+        <label class="sw-label" for="sw_noindex">Закрити сайт від індексації Google</label>
+      </div></div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div class="section-head" data-section="analytics">
+      <div class="section-head-icon">📊</div>
+      <div class="section-head-text"><h3>Аналітика та скрипти</h3><p>Google Analytics, Meta Pixel тощо</p></div>
+      <span class="section-arrow">›</span>
+    </div>
+    <div class="section-body hidden" data-body="analytics">
+      <div class="field"><label>Скрипти у &lt;head&gt;</label>
+        <textarea data-s="integrations.headScripts" placeholder="&lt;!-- Google Analytics --&gt;&#10;&lt;script&gt;…&lt;/script&gt;">${esc(ig.headScripts||'')}</textarea></div>
+      <div class="field"><label>Скрипти у &lt;body&gt;</label>
+        <textarea data-s="integrations.bodyScripts" placeholder="&lt;!-- Meta Pixel --&gt;&#10;&lt;script&gt;…&lt;/script&gt;">${esc(ig.bodyScripts||'')}</textarea></div>
+    </div>
+
+    <!-- CSS -->
+    <div class="section-head" data-section="css">
+      <div class="section-head-icon">🎨</div>
+      <div class="section-head-text"><h3>Кастомний CSS</h3><p>Додаткові стилі поверх сайту</p></div>
+      <span class="section-arrow">›</span>
+    </div>
+    <div class="section-body hidden" data-body="css">
+      <div class="field">
+        <textarea data-s="appearance.customCss" style="min-height:180px;font-family:ui-monospace,monospace;font-size:12.5px" placeholder=".hero-title { font-size: 3rem; }&#10;/* Ваші стилі тут */">${esc(ap.customCss||'')}</textarea>
+      </div>
+    </div>
+
+    <div style="height:60px"></div>
+  </div>`;
+
+  // Section accordion
+  document.querySelectorAll('.section-head').forEach(h => {
+    h.addEventListener('click', () => {
+      const key = h.dataset.section;
+      const body = document.querySelector(`[data-body="${key}"]`);
+      const open = !h.classList.contains('section-open');
+      h.classList.toggle('section-open', open);
+      body.classList.toggle('hidden', !open);
+    });
+  });
+
+  // Color pair sync + banner/maint preview
+  document.querySelectorAll('[data-s]').forEach(el => {
+    el.addEventListener('input', () => {
+      const path = el.dataset.s;
+      if (el.type === 'color' || el.type === 'text'){
+        document.querySelectorAll(`[data-s="${path}"]`).forEach(o => { if (o!==el) o.value = el.value; });
+      }
+      // live previews
+      if (path === 'banner.text') { const b=$('#ip_banner'); if(b) b.textContent=el.value||'Тут з'явиться текст вашого банера'; }
+      if (path === 'banner.bg') { const b=$('#ip_banner'); if(b) b.style.background=el.value; }
+      if (path === 'banner.fg') { const b=$('#ip_banner'); if(b) b.style.color=el.value; }
+      if (path === 'maintenance.message') { const m=$('#ip_maint'); if(m) m.textContent=el.value; }
+    });
+    el.addEventListener('change', () => settingsDirty = true);
+    el.addEventListener('input', () => settingsDirty = true);
+  });
+
+  // Cmd+S
+  document.addEventListener('keydown', kbHandler);
+}
+
+function kbHandler(e){
+  if ((e.metaKey||e.ctrlKey) && (e.key==='s'||e.key==='S') && activeTab==='settings'){
+    e.preventDefault(); saveAllSettings();
+  }
+}
+
+function collectSettings(){
+  document.querySelectorAll('[data-s]').forEach(el => {
+    const [k, f] = el.dataset.s.split('.');
+    if (!settingsS[k]) settingsS[k] = {};
+    if (el.type === 'checkbox') settingsS[k][f] = el.checked;
+    else settingsS[k][f] = el.value;
+  });
+}
+
+async function saveAllSettings(){
+  const btn = $('#settingsSaveBtn');
+  if (!btn) return;
+  collectSettings();
+  btn.disabled = true; btn.textContent = 'Зберігаю…';
+  try {
+    const res = await api('PUT', '/api/admin/settings', settingsS);
+    S = res.settings;
+    settingsS = JSON.parse(JSON.stringify(S));
+    settingsDirty = false;
+    toast('Збережено і опубліковано ✓');
+    const t = S.general?.publishedAt;
+    const savedAt = $('#savedAt');
+    if (savedAt && t) savedAt.textContent = 'Збережено: ' + new Date(t).toLocaleString('uk-UA');
+  } catch(e){ if (e.message!=='unauth') toast('Помилка збереження', true); }
+  finally { if (btn){ btn.disabled=false; btn.textContent='Зберегти і опублікувати'; } }
+}
+
+/* ─── AUDIT ─── */
+function renderAuditPage(){
+  $('#pageBody').innerHTML = `<div class="card">
+    <div class="card-head"><div class="card-head-text"><h2>Журнал дій</h2><p>Останні 100 змін</p></div></div>
+    <div id="auditList" style="color:var(--muted);font-size:13px">Завантаження…</div>
+  </div>`;
+  loadAudit();
+}
+
+const actionLabels = {
+  login_ok:'Вхід', login_fail:'Невдалий вхід', logout:'Вихід',
+  settings_save:'Налаштування збережено',
+  game_create:'Гру додано', game_update:'Гру змінено', game_delete:'Гру видалено',
+  kik_create:'КІК-проект додано', kik_update:'КІК-проект змінено', kik_delete:'КІК-проект видалено',
+  upload:'Файл завантажено',
+};
+
+async function loadAudit(){
+  try {
+    const rows = await api('GET', '/api/admin/audit');
+    const box = $('#auditList');
+    if (!box) return;
+    box.innerHTML = rows.length
+      ? rows.map(r => `<div class="audit-row">
+          <span class="audit-time">${new Date(r.ts).toLocaleString('uk-UA')}</span>
+          <span class="audit-action">${actionLabels[r.action] || r.action}</span>
+          <span class="audit-detail">${esc(r.detail||'')}</span>
+        </div>`).join('')
+      : '<p>Журнал порожній</p>';
+  } catch(e){}
+}
+
+/* ─── Upload ─── */
+function setupUploadZone(urlFieldId, previewId){
+  const zone = $('#uploadZone'), fileInput = $('#mf_file');
+  if (!zone||!fileInput) return;
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) uploadFile(e.target.files[0], urlFieldId, previewId); });
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag');
+    if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0], urlFieldId, previewId);
+  });
+}
+
+async function uploadFile(file, urlFieldId, previewId){
+  toast('Завантажую…');
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const r = await api('POST', '/api/admin/upload', { filename: file.name, data: e.target.result });
+      if (r.url){
+        const f = document.getElementById(urlFieldId);
+        if (f) f.value = r.url;
+        showCoverPreview(r.url, previewId);
+        toast('Фото завантажено ✓');
+      } else toast('Помилка', true);
+    } catch { toast('Помилка завантаження', true); }
+  };
+  reader.readAsDataURL(file);
+}
+
+function showCoverPreview(url, id = 'coverPreview'){
+  let p = document.getElementById(id);
+  if (!p) return;
+  if (p.tagName === 'IMG') p.src = url;
+  else p.outerHTML = `<img class="cover-preview" id="${id}" src="${esc(url)}">`;
+}
+
+/* ─── Modal save/delete ─── */
+$('#modalSave').addEventListener('click', modalSave);
+$('#modalDelete').addEventListener('click', modalDeleteClick);
+$('#modalClose').addEventListener('click', closeModal);
+$('#modalCancel').addEventListener('click', closeModal);
+$('#modalBg').addEventListener('click', e => { if (e.target === $('#modalBg')) closeModal(); });
+
+async function modalSave(){
+  const btn = $('#modalSave');
+  btn.disabled = true;
+  try {
+    if (editType === 'game'){
+      const body = {
+        title: $('#mf_title').value.trim(),
+        slug: $('#mf_slug').value.trim() || slugify($('#mf_title').value),
+        subtitle: $('#mf_subtitle').value,
+        description: $('#mf_description').value,
+        status: $('#mf_status').value,
+        cover_url: $('#mf_cover_url').value,
+        players: $('#mf_players').value,
+        age: $('#mf_age').value,
+        duration: $('#mf_duration').value,
+        buy_url: $('#mf_buy_url').value,
+      };
+      if (!body.title){ toast('Введіть назву гри', true); return; }
+      if (editId) await api('PUT', `/api/admin/games/${editId}`, body);
+      else await api('POST', '/api/admin/games', body);
+      gamesCache = await api('GET', '/api/admin/games');
+      toast(editId ? 'Гру оновлено ✓' : 'Гру додано ✓');
+    } else {
+      const endsRaw = $('#mf_ends_at').value;
+      const body = {
+        title: $('#mf_title').value.trim(),
+        subtitle: $('#mf_subtitle').value,
+        description: $('#mf_description').value,
+        status: $('#mf_status').value,
+        goal: Number($('#mf_goal').value)||0,
+        raised: Number($('#mf_raised').value)||0,
+        backers: Number($('#mf_backers').value)||0,
+        cover_url: $('#mf_cover_url').value,
+        campaign_url: $('#mf_campaign_url').value,
+        ends_at: endsRaw ? new Date(endsRaw).getTime() : null,
+      };
+      if (!body.title){ toast('Введіть назву проекту', true); return; }
+      if (editId) await api('PUT', `/api/admin/kik/${editId}`, body);
+      else await api('POST', '/api/admin/kik', body);
+      kikCache = await api('GET', '/api/admin/kik');
+      toast(editId ? 'Проект оновлено ✓' : 'Проект додано ✓');
+    }
+    closeModal(); updateBadges(); render();
+  } catch(e){ if (e.message!=='unauth') toast('Помилка збереження', true); }
+  finally { if (btn) { btn.disabled=false; btn.className='btn btn-primary btn-sm'; } }
+}
+
+async function modalDeleteClick(){
+  const name = editType==='game'
+    ? (gamesCache.find(x=>x.id===editId)||{}).title || 'гру'
+    : (kikCache.find(x=>x.id===editId)||{}).title || 'проект';
+  const ok = await confirm2('Видалити назавжди?', `«${name}» буде видалено безповоротно.`);
+  if (!ok) return;
+  try {
+    if (editType==='game'){
+      await api('DELETE', `/api/admin/games/${editId}`);
+      gamesCache = await api('GET', '/api/admin/games');
+      toast('Гру видалено');
+    } else {
+      await api('DELETE', `/api/admin/kik/${editId}`);
+      kikCache = await api('GET', '/api/admin/kik');
+      toast('Проект видалено');
+    }
+    closeModal(); updateBadges(); render();
+  } catch(e){ if (e.message!=='unauth') toast('Помилка', true); }
+}
+
+function closeModal(){
+  $('#modalBg').classList.add('hidden');
+  $('#modalSave').className = 'btn btn-primary btn-sm';
+  editType = null; editId = null;
+}
+
+/* ─── Utils ─── */
+function slugify(s){
+  return String(s||'').toLowerCase().trim()
+    .replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
+}
+
+function plural(n, one, few, many){
+  const m = n % 100;
+  if (m >= 11 && m <= 19) return many;
+  const r = n % 10;
+  if (r === 1) return one;
+  if (r >= 2 && r <= 4) return few;
+  return many;
+}
+
+/* ─── Auth ─── */
+function showApp(){ $('#login').classList.add('hidden'); $('#app').classList.remove('hidden'); }
+function showLogin(){
+  $('#app').classList.add('hidden');
+  $('#login').classList.remove('hidden');
+  $('#pw').value = '';
+  setTimeout(() => $('#pw').focus(), 50);
+}
+
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = 'Входжу…';
+  $('#loginErr').classList.add('hidden');
+  try {
+    const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#pw').value})});
+    if (r.ok){ await boot(); }
+    else {
+      const j = await r.json().catch(()=>({}));
+      const msg = j.error==='too_many_attempts' ? 'Забагато спроб. Зачекайте 10 хвилин.' : 'Невірний пароль';
+      $('#loginErr').textContent = msg;
+      $('#loginErr').classList.remove('hidden');
+    }
+  } catch { $('#loginErr').textContent = 'Помилка з\'єднання'; $('#loginErr').classList.remove('hidden'); }
+  finally { btn.disabled=false; btn.textContent='Увійти →'; }
+});
+
+/* ─── Boot ─── */
 async function boot(){
   try {
     const me = await fetch('/api/admin/me').then(r=>r.json()).catch(()=>({authenticated:false}));
@@ -1194,12 +1192,16 @@ async function boot(){
       api('GET','/api/admin/kik'),
     ]);
     showApp();
-    renderSidebar();
-    switchTab(activeTab);
-    stamp();
-    setDirty(false);
-  } catch(e){ showLogin(); }
+    updateBadges();
+    switchTab('dash');
+  } catch { showLogin(); }
 }
+
+window.openGameModal = id => openGameModal(id);
+window.openKikModal = id => openKikModal(id);
+window.switchTab = t => switchTab(t);
+window.$ = $;
+
 boot();
 </script>
 </body>
