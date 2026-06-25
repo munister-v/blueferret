@@ -159,7 +159,11 @@ app.post('/api/admin/login-form', (req, res) => {
   const ok = sha256(pw) === PASS_HASH;
   bump(ip, ok); audit(ip, ok?'login_ok':'login_fail', null);
   if (!ok) return res.redirect('/admin?err=wrong');
-  res.redirect('/admin#tk=' + makeToken());
+  const tok = makeToken();
+  res.send(`<!doctype html><html><head><meta charset="utf-8"></head><body><script>
+try{localStorage.setItem('bf_tok','${tok}');}catch(e){}
+location.replace('/admin');
+<\/script></body></html>`);
 });
 app.post('/api/admin/logout', (_req, res) => { res.json({ ok:true }); });
 app.get('/api/admin/me', (req, res) => {
