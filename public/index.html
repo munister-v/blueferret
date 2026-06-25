@@ -33,10 +33,8 @@ body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg);color:var
   border:1px solid rgba(255,255,255,.1);border-radius:22px;padding:44px 40px;
   width:100%;max-width:380px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
 .login-logo{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:8px}
-.login-icon{width:42px;height:42px;border-radius:13px;background:var(--acc);
-  box-shadow:0 6px 20px rgba(0,159,227,.45);flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-size:20px}
-.login-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#fff}
+.login-icon{height:48px;max-width:180px;object-fit:contain;flex-shrink:0;filter:brightness(0) invert(1)}
+.login-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#fff;display:none}
 .login-sub{color:rgba(255,255,255,.4);font-size:13px;text-align:center;margin-bottom:30px}
 .login-label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
   color:rgba(255,255,255,.45);margin-bottom:8px;margin-top:20px}
@@ -61,8 +59,7 @@ body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg);color:var
   border-right:1px solid rgba(255,255,255,.05)}
 .sb-brand{padding:20px 16px 18px;display:flex;align-items:center;gap:10px;
   border-bottom:1px solid rgba(255,255,255,.06)}
-.sb-icon{width:34px;height:34px;border-radius:10px;background:var(--acc);flex-shrink:0;
-  box-shadow:0 3px 12px rgba(0,159,227,.4);display:flex;align-items:center;justify-content:center;font-size:16px}
+.sb-icon{height:28px;max-width:110px;object-fit:contain;flex-shrink:0;filter:brightness(0) invert(1)}
 .sb-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#fff;line-height:1.1}
 .sb-name small{display:block;font-family:'Comfortaa',sans-serif;font-size:10px;color:rgba(255,255,255,.3);font-weight:400}
 .sb-nav{padding:12px 8px;flex:1;overflow-y:auto}
@@ -250,19 +247,44 @@ textarea{min-height:100px;resize:vertical;font-family:'Comfortaa',sans-serif;fon
 /* ─── Audit ─── */
 code{background:var(--acc-l);color:var(--acc);padding:2px 7px;border-radius:6px;font-size:11.5px}
 
+/* ─── Mobile header ─── */
+.mob-header{display:none;position:sticky;top:0;z-index:40;
+  background:var(--dark);padding:12px 16px;
+  align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+.mob-logo{height:24px;filter:brightness(0) invert(1);object-fit:contain}
+.mob-burger{background:none;border:none;color:#fff;cursor:pointer;padding:6px;
+  display:flex;flex-direction:column;gap:5px}
+.mob-burger span{display:block;width:22px;height:2px;background:rgba(255,255,255,.7);border-radius:2px}
+/* Mobile drawer overlay */
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45;backdrop-filter:blur(4px)}
+.mob-overlay.open{display:block}
+.sb.mob-open{display:flex!important;position:fixed;top:0;left:0;bottom:0;z-index:50;
+  width:260px;max-width:85vw;animation:slideIn .25s ease}
+@keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+
 /* ─── Responsive ─── */
 @media(max-width:700px){
   .sb{display:none}
-  .page-body{padding:16px}
+  .mob-header{display:flex}
+  .topbar{padding:12px 16px}
+  .topbar .breadcrumb{font-size:12px}
+  .page-body{padding:14px}
   .row2{flex-direction:column}
   .modal{padding:20px;border-radius:16px;margin:0}
   .modal-bg{padding:0;align-items:flex-end}
   .modal{border-radius:20px 20px 0 0;max-width:100%}
   .content-grid{grid-template-columns:1fr 1fr}
   .stat-row{grid-template-columns:1fr 1fr}
+  .card{padding:18px}
+  .qa-row{flex-direction:column}
+  .qa-row .btn{width:100%;justify-content:center}
+  .modal-foot{flex-wrap:wrap}
+  #topbarRight .btn{font-size:12px;padding:7px 12px}
 }
 @media(max-width:480px){
   .content-grid{grid-template-columns:1fr}
+  .stat-row{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
@@ -272,22 +294,30 @@ code{background:var(--acc-l);color:var(--acc);padding:2px 7px;border-radius:6px;
 <div id="login" class="login-wrap">
   <form id="loginForm" class="login-box">
     <div class="login-logo">
-      <div class="login-icon">🦦</div>
-      <div class="login-title">Blue Ferret</div>
+      <img class="login-icon" src="/logo-blue-ferret.png" alt="Blue Ferret" onerror="this.outerHTML='<div style=\'font-family:Playfair Display,serif;font-size:22px;font-weight:700;color:#fff\'>Blue Ferret</div>'">
     </div>
     <p class="login-sub">Панель керування · Введіть пароль</p>
     <label class="login-label">Пароль адміністратора</label>
-    <input type="password" id="pw" class="login-input" autocomplete="current-password" required autofocus placeholder="••••••••">
+    <input type="password" id="pw" name="password" class="login-input" autocomplete="current-password" required autofocus placeholder="••••••••">
     <button type="submit" class="login-btn" id="loginBtn">Увійти →</button>
     <p id="loginErr" class="login-err hidden"></p>
   </form>
 </div>
 
+<!-- MOBILE HEADER -->
+<div id="mobHeader" class="mob-header hidden">
+  <img class="mob-logo" src="/logo-blue-ferret.png" alt="Blue Ferret" onerror="this.outerHTML='<span style=\'color:#fff;font-weight:700\'>Blue Ferret</span>'">
+  <button class="mob-burger" id="mobBurger" aria-label="Меню">
+    <span></span><span></span><span></span>
+  </button>
+</div>
+<div id="mobOverlay" class="mob-overlay"></div>
+
 <!-- APP -->
 <div id="app" class="shell hidden">
   <aside class="sb">
     <div class="sb-brand">
-      <div class="sb-icon">🦦</div>
+      <img class="sb-icon" src="/logo-blue-ferret.png" alt="Blue Ferret" onerror="this.outerHTML='<span style=\'color:#fff;font-weight:700;font-size:14px\'>BF</span>'">
       <div class="sb-name">Blue Ferret<small>CMS v4</small></div>
     </div>
     <nav class="sb-nav">
@@ -1155,10 +1185,29 @@ function plural(n, one, few, many){
   return many;
 }
 
+/* ─── Mobile nav ─── */
+function initMobileNav(){
+  const burger = $('#mobBurger'), overlay = $('#mobOverlay'), sb = $('.sb');
+  function openSb(){ sb.classList.add('mob-open'); overlay.classList.add('open'); document.body.style.overflow='hidden'; }
+  function closeSb(){ sb.classList.remove('mob-open'); overlay.classList.remove('open'); document.body.style.overflow=''; }
+  burger?.addEventListener('click', openSb);
+  overlay.addEventListener('click', closeSb);
+  // close on nav item click
+  document.querySelector('.sb-nav')?.addEventListener('click', e => {
+    if (e.target.closest('[data-tab]') && window.innerWidth <= 700) closeSb();
+  });
+  $('#logoutBtn')?.addEventListener('click', closeSb);
+}
+
 /* ─── Auth ─── */
-function showApp(){ $('#login').classList.add('hidden'); $('#app').classList.remove('hidden'); }
+function showApp(){
+  $('#login').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  $('#mobHeader').classList.remove('hidden');
+}
 function showLogin(){
   $('#app').classList.add('hidden');
+  $('#mobHeader').classList.add('hidden');
   $('#login').classList.remove('hidden');
   $('#pw').value = '';
   setTimeout(() => $('#pw').focus(), 50);
@@ -1192,6 +1241,7 @@ async function boot(){
       api('GET','/api/admin/kik'),
     ]);
     showApp();
+    initMobileNav();
     updateBadges();
     switchTab('dash');
   } catch { showLogin(); }
