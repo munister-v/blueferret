@@ -147,7 +147,7 @@ app.post('/api/admin/login', (req, res) => {
   const ok = sha256(req.body?.password || '') === PASS_HASH;
   bump(ip, ok); audit(ip, ok?'login_ok':'login_fail', null);
   if (!ok) return res.status(401).json({ error:'invalid_password' });
-  res.setHeader('Set-Cookie', `bf_session=${makeToken()}; HttpOnly; Path=/; Max-Age=${7*24*3600}; SameSite=Lax`);
+  res.setHeader('Set-Cookie', `bf_session=${makeToken()}; HttpOnly; Path=/; Max-Age=${7*24*3600}; SameSite=Lax; Secure`);
   res.json({ ok:true });
 });
 app.post('/api/admin/logout', (_req, res) => {

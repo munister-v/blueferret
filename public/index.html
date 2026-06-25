@@ -1393,27 +1393,28 @@ $('#loginForm').addEventListener('submit', async e => {
   try {
     const pw = $('#pw').value;
     const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const j = await r.json().catch(()=>({}));
     if (r.ok){
-      if (window.PasswordCredential) {
-        try { await navigator.credentials.store(new PasswordCredential({id:'admin',password:pw,name:'Blue Ferret CMS'})); } catch(_){}
-      }
       await boot();
-    }
-    else {
-      const j = await r.json().catch(()=>({}));
-      const msg = j.error==='too_many_attempts' ? 'Забагато спроб. Зачекайте 10 хвилин.' : 'Невірний пароль';
+    } else {
+      const msg = j.error==='too_many_attempts' ? 'Забагато спроб. Зачекайте 2 хв.' : `Невірний пароль (${r.status})`;
       $('#loginErr').textContent = msg;
       $('#loginErr').classList.remove('hidden');
     }
-  } catch { $('#loginErr').textContent = 'Помилка з\'єднання'; $('#loginErr').classList.remove('hidden'); }
+  } catch(err) { $('#loginErr').textContent = 'Помилка: '+err.message; $('#loginErr').classList.remove('hidden'); }
   finally { btn.disabled=false; btn.textContent='Увійти →'; }
 });
 
 /* ─── Boot ─── */
 async function boot(){
   try {
-    const me = await fetch('/api/admin/me').then(r=>r.json()).catch(()=>({authenticated:false}));
-    if (!me.authenticated){ showLogin(); return; }
+    const meR = await fetch('/api/admin/me');
+    const me = await meR.json().catch(()=>({authenticated:false}));
+    if (!me.authenticated){
+      $('#loginErr').textContent = `Сесія не встановилась (${meR.status}). Спробуй ще раз.`;
+      $('#loginErr').classList.remove('hidden');
+      showLogin(); return;
+    }
     [S, gamesCache, kikCache] = await Promise.all([
       api('GET','/api/admin/settings'),
       api('GET','/api/admin/games'),
