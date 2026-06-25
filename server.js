@@ -150,6 +150,16 @@ app.post('/api/admin/login', (req, res) => {
   res.setHeader('Set-Cookie', `bf_session=${makeToken()}; HttpOnly; Path=/; Max-Age=${7*24*3600}; SameSite=Lax; Secure`);
   res.json({ ok:true });
 });
+app.post('/api/admin/login-form', (req, res) => {
+  const ip = req.ip;
+  if (throttled(ip)){ return res.redirect('/admin?err=locked'); }
+  const pw = req.body?.password || '';
+  const ok = sha256(pw) === PASS_HASH;
+  bump(ip, ok); audit(ip, ok?'login_ok':'login_fail', null);
+  if (!ok) return res.redirect('/admin?err=wrong');
+  res.setHeader('Set-Cookie', `bf_session=${makeToken()}; HttpOnly; Path=/; Max-Age=${7*24*3600}; SameSite=Lax; Secure`);
+  res.redirect('/admin');
+});
 app.post('/api/admin/logout', (_req, res) => {
   res.setHeader('Set-Cookie', 'bf_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
   res.json({ ok:true });

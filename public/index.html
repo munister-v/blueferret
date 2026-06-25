@@ -465,7 +465,7 @@ code{
 
 <!-- LOGIN -->
 <div id="login" class="login-wrap">
-  <form id="loginForm" class="login-box">
+  <form id="loginForm" class="login-box" action="/api/admin/login-form" method="POST">
     <div class="login-logo">
       <img class="login-icon" src="/logo-blue-ferret.png" alt="Blue Ferret" onerror="this.outerHTML='<div style=\'font-family:Playfair Display,serif;font-size:22px;font-weight:700;color:#fff\'>Blue Ferret</div>'">
     </div>
@@ -474,6 +474,14 @@ code{
     <input type="password" id="pw" name="password" class="login-input" autocomplete="current-password" required autofocus placeholder="••••••••">
     <button type="submit" class="login-btn" id="loginBtn">Увійти →</button>
     <p id="loginErr" class="login-err hidden"></p>
+    <script>
+      (function(){
+        var p=new URLSearchParams(location.search);
+        var e=p.get('err');
+        if(e){var el=document.getElementById('loginErr');el.textContent=e==='locked'?'Забагато спроб. Зачекайте 2 хв.':'Невірний пароль';el.classList.remove('hidden');}
+        history.replaceState(null,'',location.pathname);
+      })();
+    </script>
   </form>
 </div>
 
