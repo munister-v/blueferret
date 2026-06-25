@@ -97,6 +97,7 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false }));
 
 app.use((req, _res, next) => {
   req.cookies = {};
