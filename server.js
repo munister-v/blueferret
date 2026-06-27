@@ -375,41 +375,69 @@ function decodeHtmlEnts(s){
 function encodeHtmlEnts(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 }
+function cleanInner(raw){
+  // strip tags inserting spaces so adjacent elements don't concatenate, collapse whitespace
+  return decodeHtmlEnts(raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim());
+}
+function hasNestedTag(raw){ return /<[a-z]/i.test(raw); }
+
 function extractBlocks(html){
-  // strip scripts to avoid matching text inside JSON
-  const safe = html.replace(/<script[\s\S]*?<\/script>/gi,'');
-  const blocks=[], seen=new Set();
-  const add=(id,type,label,icon,value,orig,origVal)=>{
-    if(seen.has(orig))return; seen.add(orig);
-    if(value && value.trim()) blocks.push({id,type,label,icon,value:decodeHtmlEnts(value),orig,origVal});
+  // strip non-content regions so their text never leaks into blocks
+  const safe = html
+    .replace(/<script[\s\S]*?<\/script>/gi,'')
+    .replace(/<style[\s\S]*?<\/style>/gi,'')
+    .replace(/<svg[\s\S]*?<\/svg>/gi,'')
+    .replace(/<header[\s\S]*?<\/header>/gi,'')
+    .replace(/<nav[\s\S]*?<\/nav>/gi,'')
+    .replace(/<footer[\s\S]*?<\/footer>/gi,'');
+  const headOnly = html.slice(0, html.indexOf('</head>')+7 || 2000);
+
+  const blocks=[], seenText=new Set();
+  const add=(id,type,label,icon,value,orig,origVal,idx)=>{
+    const v=(value||'').trim();
+    if(!v) return;
+    const key=type+'|'+v;
+    if(seenText.has(key)) return; seenText.add(key);
+    blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx});
   };
-  // title
-  const tm=safe.match(/<title>([^<]+)<\/title>/);
-  if(tm) add('title','seo','Заголовок сторінки (SEO)','🔍',tm[1],tm[0],tm[1]);
-  // og:title
-  const otm=safe.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/);
-  if(otm) add('og_title','seo','OG Title (соцмережі)','📲',otm[1],otm[0],otm[1]);
-  // meta description
-  const dm=safe.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/);
-  if(dm) add('meta_desc','seo','Meta Description','📝',dm[1],dm[0],dm[1]);
-  // headings H1
-  let m; const h1r=/<h1[^>]*>([\s\S]*?)<\/h1>/gi;
-  while((m=h1r.exec(safe))!==null){const t=m[1].replace(/<[^>]+>/g,'').trim();if(t&&t.length<300)add(`h1_${blocks.length}`,'h1','Заголовок H1','H₁',t,m[0],m[1]);}
-  // H2
-  const h2r=/<h2[^>]*>([\s\S]*?)<\/h2>/gi;
-  while((m=h2r.exec(safe))!==null){const t=m[1].replace(/<[^>]+>/g,'').trim();if(t&&t.length<300)add(`h2_${blocks.length}`,'h2','Заголовок H2','H₂',t,m[0],m[1]);}
-  // H3
-  const h3r=/<h3[^>]*>([\s\S]*?)<\/h3>/gi;
-  while((m=h3r.exec(safe))!==null){const t=m[1].replace(/<[^>]+>/g,'').trim();if(t&&t.length<300)add(`h3_${blocks.length}`,'h3','Підзаголовок','H₃',t,m[0],m[1]);}
-  // paragraphs — skip nav/footer/menu patterns
-  const skipPat=/^(Наш|© |Navigation|Навіг|Меню|Перейти|Skip|Cookie)/i;
-  const pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; let pc=0;
-  while((m=pr.exec(safe))!==null&&pc<10){
-    const t=m[1].replace(/<[^>]+>/g,'').trim();
-    // skip: too short, too long, looks like nav/footer, contains newlines with many words (rendered nav)
-    if(t&&t.length>30&&t.length<600&&!skipPat.test(t)&&(t.match(/\n/g)||[]).length<3){
-      add(`p_${blocks.length}`,'p','Абзац текст','¶',t,m[0],m[1]);pc++;
+
+  // ── SEO (from <head>) ──
+  const tm=headOnly.match(/<title>([^<]+)<\/title>/);
+  if(tm) add('title','seo','Заголовок сторінки (SEO)','🔍',decodeHtmlEnts(tm[1]),tm[0],tm[1]);
+  const otm=headOnly.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/);
+  if(otm) add('og_title','seo','OG Title (соцмережі)','📲',decodeHtmlEnts(otm[1]),otm[0],otm[1]);
+  const dm=headOnly.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/);
+  if(dm) add('meta_desc','seo','Meta Description','📝',decodeHtmlEnts(dm[1]),dm[0],dm[1]);
+
+  let m;
+  // ── Headings (allow nested inline tags, clean with spaces) ──
+  for(const tag of ['h1','h2','h3']){
+    const re=new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`,'gi');
+    let i=0;
+    while((m=re.exec(safe))!==null){
+      const t=cleanInner(m[1]);
+      // skip garbage: empty, too long, or concatenated nav (many words, no sentence)
+      if(t && t.length>=2 && t.length<=160){
+        add(`${tag}_${i}`, tag, tag==='h1'?'Заголовок H1':tag==='h2'?'Заголовок H2':'Підзаголовок',
+            tag==='h1'?'H₁':tag==='h2'?'H₂':'H₃', t, m[0], m[1], i);
+      }
+      i++;
     }
+  }
+
+  // ── Paragraphs — ONLY pure-text <p> (nested tags = likely concatenated UI) ──
+  const pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; let pi=0, kept=0;
+  while((m=pr.exec(safe))!==null && kept<14){
+    const inner=m[1];
+    const t=cleanInner(inner);
+    // require: real sentence-length text, no nested tags (avoids nav/footer concatenation),
+    // must contain a space (single jammed word = bad), reasonable length
+    const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t); // lowercase→Uppercase with no space
+    if(t && !hasNestedTag(inner) && !looksConcat && t.includes(' ') && t.length>=25 && t.length<=900){
+      add(`p_${pi}`,'p','Абзац текст','¶',t,m[0],inner,pi);
+      kept++;
+    }
+    pi++;
   }
   return blocks;
 }

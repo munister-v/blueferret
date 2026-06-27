@@ -245,12 +245,34 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .p-row.ap .p-path{color:#fff}
 .p-mt{color:rgba(255,255,255,.3);font-size:10px;margin-top:1px}
 /* editor */
-.pages-editor{flex:0 0 420px;background:var(--bg);border-right:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column}
-.ped-top{padding:16px 18px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.ped-path{font-size:12px;font-family:ui-monospace,monospace;color:var(--txt-m);background:#f1f5f9;padding:4px 10px;border-radius:6px}
-.ped-body{flex:1;padding:16px 18px;overflow-y:auto}
+.pages-editor{flex:0 0 440px;background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;transition:flex-basis .25s ease}
+.pages-editor.collapsed{flex-basis:0;overflow:hidden}
+/* sticky toolbar */
+.ped-toolbar{padding:10px 14px;background:var(--dark2);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ped-filename{font-size:11px;font-family:ui-monospace,monospace;color:rgba(255,255,255,.5);background:rgba(255,255,255,.06);padding:3px 9px;border-radius:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+/* editor tabs */
+.ped-tabs{display:flex;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0}
+.ped-tab{flex:1;padding:9px 8px;text-align:center;font:700 11.5px inherit;cursor:pointer;color:var(--txt-m);border:none;background:transparent;border-bottom:2.5px solid transparent;transition:.15s;position:relative}
+.ped-tab:hover{color:var(--txt);background:#f8fafc}
+.ped-tab.on{color:var(--bf);border-bottom-color:var(--bf);background:#fff}
+.ped-tab .tab-cnt{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:99px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.ped-tab.on .tab-cnt{background:var(--bf);color:#fff}
+.ped-tab:not(.on) .tab-cnt{background:#e2e8f0;color:var(--txt-m)}
+.ped-tab .tab-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#f59e0b;display:none}
+.ped-tab.has-changes .tab-dot{display:block}
+.ped-tab.has-changes .tab-cnt{display:none}
+.ped-body{flex:1;padding:14px 16px;overflow-y:auto}
 .ped-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 20px;text-align:center;color:var(--txt-m)}
 .ped-empty .big{font-size:42px;margin-bottom:12px}
+/* search */
+.ped-search{position:relative;margin-bottom:14px}
+.ped-search input{padding-left:30px;font-size:13px;background:#fff}
+.ped-search::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none}
+/* empty tab state */
+.tab-empty{text-align:center;padding:32px 16px;color:var(--txt-m);font-size:13px}
+/* sidebar collapse toggle */
+.sb-toggle{position:absolute;right:-14px;top:50%;transform:translateY(-50%);width:28px;height:28px;background:#fff;border:1.5px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;z-index:30;box-shadow:0 2px 8px rgba(0,0,0,.1);transition:.2s}
+.sb-toggle:hover{border-color:var(--bf);color:var(--bf)}
 /* block card */
 .blk{background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:10px;transition:.15s}
 .blk:focus-within{border-color:var(--bf);box-shadow:0 0 0 3px var(--bf-m)}
@@ -1229,6 +1251,76 @@ const PICO={'/':{i:'🏠'},igry:{i:'🎲'},kik:{i:'🚀'},kontakty:{i:'📬'}};
 function pIco(p){const s=p==='/'?'/':p.split('/')[0];return(PICO[s]||{i:'📄'}).i;}
 function gPages(ps){const g={};for(const p of ps){const s=p.path==='/'?'__root__':p.path.split('/')[0];const l=s==='__root__'?'Головна':s==='igry'?'🎲 Ігри':s==='kik'?'🚀 КІК':s==='kontakty'?'📬 Контакти':s;if(!g[s])g[s]={l,items:[]};g[s].items.push(p);}return g;}
 
+let pedTab='seo', pedSearch='';
+
+function buildBlocksHtml(blocks, tabFilter, search){
+  const SEO_LIMITS={title:60,og_title:60,meta_desc:160};
+  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts'};
+  let filtered=blocks.filter(b=>(typeToTab[b.type]||'texts')===tabFilter);
+  if(search) filtered=filtered.filter(b=>b.value.toLowerCase().includes(search)||b.label.toLowerCase().includes(search));
+  if(!filtered.length) return`<div class="tab-empty">${search?'Нічого не знайдено':'Немає блоків'}</div>`;
+  return filtered.map(b=>{
+    const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc');
+    const maxLen=SEO_LIMITS[b.id]||0;
+    const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
+    const curLen=curVal.length;
+    const cntClass='char-cnt'+(maxLen&&curLen>maxLen?' over':maxLen&&curLen>maxLen*.85?' warn':'');
+    const edited=pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value;
+    return`<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="${typeToTab[b.type]||'texts'}" style="padding:14px 16px 12px">
+      <div class="blk-head" style="margin-bottom:6px">
+        <div class="blk-ico ${b.type==='seo'?'seo':b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
+        <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
+        <div class="blk-actions">
+          <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
+        </div>
+      </div>
+      ${isLong
+        ?`<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:${b.type==='p'?80:52}px;padding:4px 0">${esc(curVal)}</textarea>`
+        :`<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`}
+      ${maxLen?`<div class="char-bar">
+        <span id="cc_${esc(b.id)}" class="${cntClass}" data-max="${maxLen}">${curLen} / ${maxLen}</span>
+        <span style="font-size:10px;color:var(--txt-s)">${maxLen===60?'оптим. 50–60':'оптим. 140–160'}</span>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function countTabChanges(tab){
+  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts'};
+  return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab&&pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value).length;
+}
+function countTab(tab){
+  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts'};
+  return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab).length;
+}
+
+function switchPedTab(tab){
+  pedTab=tab;
+  // re-render just the body content
+  const body=$('#ped-tab-body');if(!body)return;
+  body.innerHTML=`
+    <div class="ped-search"><input type="text" id="pedSearchInp" placeholder="Пошук блоків…" value="${esc(pedSearch)}" oninput="pedSearch=this.value;switchPedTab('${tab}')"></div>
+    ${buildBlocksHtml(pageBlocks,tab,pedSearch)}`;
+  $$('.ped-tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
+  updateTabBadges();
+  // auto-resize textareas
+  setTimeout(()=>$$('#ped-tab-body textarea').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px';}),50);
+}
+window.switchPedTab=switchPedTab;
+
+function updateTabBadges(){
+  $$('.ped-tab').forEach(t=>{
+    const tab=t.dataset.tab;if(!tab)return;
+    const changes=countTabChanges(tab);
+    const cnt=t.querySelector('.tab-cnt');
+    if(cnt)cnt.textContent=countTab(tab);
+    t.classList.toggle('has-changes',changes>0);
+  });
+  // update unsaved badge total
+  const total=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length;
+  const badge=$('#unsaved-badge');if(badge){badge.textContent=total+' змін';badge.classList.toggle('show',total>0);}
+}
+
 async function renderPages(){
   pages=await api('GET','/api/admin/pages');
   const gr=gPages(pages);
@@ -1246,47 +1338,24 @@ async function renderPages(){
   // build editor area
   let edHtml='', pvSrc='';
   if(activePage && pageBlocks.length){
-    const typeOrder=['seo','h1','h2','h3','p'];
-    const grouped={};
-    for(const b of pageBlocks){if(!grouped[b.type])grouped[b.type]=[];grouped[b.type].push(b);}
-    const groupLabels={seo:'🔍 SEO та мета',h1:'Заголовки',h2:'Підзаголовки',h3:'Підзаголовки',p:'Текстові блоки'};
-    const rendered=new Set();
-    const SEO_LIMITS={title:60,og_title:60,meta_desc:160};
-    edHtml=typeOrder.map(type=>{
-      if(!grouped[type]||rendered.has(type))return'';
-      const mergedType=['h1','h2','h3'].includes(type)?'headings':type;
-      if(rendered.has(mergedType))return'';rendered.add(mergedType);
-      const finalItems=mergedType==='headings'?[...(grouped.h1||[]),...(grouped.h2||[]),...(grouped.h3||[])]:grouped[type]||[];
-      const typeIcon={seo:'🔍',h1:'H',h2:'H',h3:'H',p:'¶'};
-      return`<div style="margin-bottom:24px">
-        <div class="sect-head">${groupLabels[type]||type}<span class="sect-cnt">${finalItems.length}</span></div>
-        ${finalItems.map(b=>{
-          const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc');
-          const maxLen=SEO_LIMITS[b.id]||0;
-          const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
-          const curLen=curVal.length;
-          const cntClass='char-cnt'+(maxLen&&curLen>maxLen?' over':maxLen&&curLen>maxLen*.85?' warn':'');
-          const edited=pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value;
-          return`<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" style="padding:14px 16px 12px">
-            <div class="blk-head" style="margin-bottom:6px">
-              <div class="blk-ico ${b.type==='seo'?'seo':b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
-              <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
-              <div class="blk-actions">
-                <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути до оригіналу">↩ скинути</button>
-              </div>
-            </div>
-            ${isLong
-              ?`<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:${b.type==='p'?80:52}px;padding:4px 0">${esc(curVal)}</textarea>`
-              :`<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`}
-            ${maxLen?`<div class="char-bar">
-              <span id="cc_${esc(b.id)}" class="${cntClass}" data-max="${maxLen}">${curLen} / ${maxLen}</span>
-              <span style="font-size:10px;color:var(--txt-s)">${maxLen===60?'оптим. 50–60':'оптим. 140–160'}</span>
-            </div>`:''}
-          </div>`;
-        }).join('')}
+    const seoCount=countTab('seo'), hCount=countTab('headings'), tCount=countTab('texts');
+    const editorContent=`
+      <div class="ped-tabs">
+        <button class="ped-tab${pedTab==='seo'?' on':''}" data-tab="seo" onclick="switchPedTab('seo')">
+          🔍 SEO<span class="tab-cnt">${seoCount}</span><span class="tab-dot"></span>
+        </button>
+        <button class="ped-tab${pedTab==='headings'?' on':''}" data-tab="headings" onclick="switchPedTab('headings')">
+          H Заголовки<span class="tab-cnt">${hCount}</span><span class="tab-dot"></span>
+        </button>
+        <button class="ped-tab${pedTab==='texts'?' on':''}" data-tab="texts" onclick="switchPedTab('texts')">
+          ¶ Тексти<span class="tab-cnt">${tCount}</span><span class="tab-dot"></span>
+        </button>
+      </div>
+      <div class="ped-body" id="ped-tab-body">
+        <div class="ped-search"><input type="text" id="pedSearchInp" placeholder="Пошук блоків…" value="${esc(pedSearch)}" oninput="pedSearch=this.value;switchPedTab('${pedTab}')"></div>
+        ${buildBlocksHtml(pageBlocks,pedTab,pedSearch)}
       </div>`;
-    }).join('');
-    // page path for iframe (e.g. kontakty/index.html → /kontakty/)
+    edHtml=editorContent;
     const pagePath='/'+activePage.replace(/\/?index\.html$/,'');
     pvSrc=pagePath+'?t='+Date.now();
   }
@@ -1300,21 +1369,15 @@ async function renderPages(){
     <!-- editor -->
     <div class="pages-editor">
       ${activePage?`
-        <div class="ped-top" style="background:var(--dark2);border-bottom:1px solid rgba(255,255,255,.07)">
-          <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span style="font-size:14px">📄</span>
-            <span class="ped-path" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.1);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">/${activePage}</span>
-            <span id="unsaved-badge" class="unsaved-badge"></span>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.1)" onclick="closePagesEditor()">✕</button>
-            <button class="btn btn-sm" id="pedSaveBtn" onclick="savePatchedPage()" style="background:var(--bf);color:#fff;box-shadow:0 3px 12px rgba(0,159,227,.3)">💾 Зберегти зміни</button>
+        <div class="ped-toolbar">
+          <span class="ped-filename">/${activePage}</span>
+          <span id="unsaved-badge" class="unsaved-badge" style="font-size:10px"></span>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px" onclick="closePagesEditor()" title="Закрити (Esc)">✕</button>
+            <button class="btn btn-sm" id="pedSaveBtn" onclick="savePatchedPage()" style="background:var(--bf);color:#fff;padding:6px 14px;box-shadow:0 2px 10px rgba(0,159,227,.35)" title="Зберегти (Cmd+S)">💾 Зберегти</button>
           </div>
         </div>
-        <div class="ped-body">
-          <div class="ped-hint">✏️ Клікніть на поле і редагуйте. <strong>Жовте поле</strong> = є зміни. Натисніть ↩ щоб скинути або «Зберегти зміни».</div>
-          ${edHtml||'<div style="color:var(--txt-m);padding:32px;text-align:center;font-size:13px">Немає редагованих блоків на цій сторінці</div>'}
-        </div>
+        ${edHtml||'<div class="ped-empty"><div class="big">📄</div><div>Немає блоків на цій сторінці</div></div>'}
       `:`<div class="ped-empty"><div class="big">📄</div><div style="font-size:15px;font-weight:700;color:var(--txt);margin-bottom:6px">Виберіть сторінку</div><div style="font-size:13px">Оберіть зі списку зліва</div></div>`}
     </div>
     <!-- drag handle -->
@@ -1356,9 +1419,10 @@ async function renderPages(){
   }));
   // init after render
   initDragHandle();
-  // restore device/zoom
+  updateTabBadges();
   if(pvDevice!=='desktop')setDevice(pvDevice);
   if(pvZoom!==100)applyZoom();
+  setTimeout(()=>$$('.blk textarea').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px';}),100);
   // restore edited values
   for(const[id,val] of Object.entries(pageEdited)){
     const el=document.querySelector(`[data-blk="${id}"]`);
@@ -1370,18 +1434,15 @@ function markEdited(id){
   const el=document.querySelector(`[data-blk="${id}"]`);
   if(!el)return;
   pageEdited[id]=el.value;
-  // visual: highlight changed block
   const blk=el.closest('.blk');
   const orig=pageBlocks.find(b=>b.id===id);
   const changed=orig&&el.value!==orig.value;
   if(blk)blk.classList.toggle('edited',changed);
-  // update char counter
   updateCharCounter(id,el.value);
-  // update unsaved count
-  const cnt=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length;
-  const badge=$('#unsaved-badge');if(badge){badge.textContent=cnt+' змін';badge.classList.toggle('show',cnt>0);}
-  // auto-resize textarea
+  updateTabBadges();
   if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+  // live preview sync
+  syncToPreview(id,el.value);
 }
 function updateCharCounter(id,val){
   const cnt=$(`#cc_${CSS.escape(id)}`);if(!cnt)return;
@@ -1446,11 +1507,96 @@ function applyZoom(){
 function changeZoom(d){pvZoom=Math.max(30,Math.min(150,pvZoom+d));applyZoom();}
 window.changeZoom=changeZoom;
 
+let blockElMap={}; // block.id -> DOM element in iframe
+function normTxt(s){return String(s||'').replace(/\s+/g,' ').trim();}
+
 function onPvLoad(){
   const f=$('#pvIframe');if(!f)return;
   f.classList.remove('pv-refreshing');f.classList.add('pv-refreshed');
+  try{
+    const doc=f.contentDocument;if(!doc)return;
+    // wire up click-to-edit + mapping after a tick (let hydration settle)
+    setTimeout(()=>{ try{ mapBlocksToDom(doc); injectPreviewHelpers(doc,f); }catch(e){} },350);
+    // gentle scroll past header
+    setTimeout(()=>{ try{const h=doc.querySelector('header');if(h)f.contentWindow.scrollTo({top:h.offsetHeight+8,behavior:'smooth'});}catch{} },400);
+  }catch{}
 }
 window.onPvLoad=onPvLoad;
+
+function mapBlocksToDom(doc){
+  blockElMap={};
+  const usedEls=new Set();
+  const candidates=[...doc.querySelectorAll('h1,h2,h3,p')];
+  for(const b of pageBlocks){
+    if(b.type==='seo'){
+      if(b.id==='title'){ blockElMap[b.id]={set:v=>{doc.title=v;}}; }
+      continue;
+    }
+    const tag=b.type; // h1/h2/h3/p
+    const want=normTxt(b.value);
+    const el=candidates.find(e=>!usedEls.has(e)&&e.tagName.toLowerCase()===tag&&normTxt(e.textContent)===want);
+    if(el){usedEls.add(el);el.__bf=b.id;blockElMap[b.id]=el;}
+  }
+}
+
+function injectPreviewHelpers(doc,iframe){
+  // inject highlight styles once
+  if(!doc.getElementById('bf-edit-style')){
+    const st=doc.createElement('style');st.id='bf-edit-style';
+    st.textContent=`
+      [data-bf-editable]{outline:1.5px dashed rgba(0,159,227,.35);outline-offset:3px;cursor:pointer;transition:outline-color .15s,background .15s;border-radius:3px}
+      [data-bf-editable]:hover{outline:2px solid var(--bf-accent,#009fe3);background:rgba(0,159,227,.06)}
+      .bf-edit-flash{animation:bfFlash 1s ease}
+      @keyframes bfFlash{0%{background:rgba(0,159,227,.25)}100%{background:transparent}}
+      #bf-edit-tip{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#0a0f1a;color:#fff;font:600 12px Comfortaa,sans-serif;padding:6px 14px;border-radius:99px;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:0;transition:opacity .2s}
+      #bf-edit-tip.show{opacity:1}`;
+    doc.head.appendChild(st);
+  }
+  // tip
+  let tip=doc.getElementById('bf-edit-tip');
+  if(!tip){tip=doc.createElement('div');tip.id='bf-edit-tip';tip.textContent='✏️ Режим редагування — клікніть на текст';doc.body.appendChild(tip);}
+  // mark mapped elements
+  Object.entries(blockElMap).forEach(([id,el])=>{
+    if(el&&el.nodeType===1){
+      el.setAttribute('data-bf-editable','1');
+      el.onclick=(e)=>{e.preventDefault();e.stopPropagation();openBlockForEdit(id);};
+    }
+  });
+  // show tip briefly
+  if(Object.keys(blockElMap).length){tip.classList.add('show');setTimeout(()=>tip.classList.remove('show'),2200);}
+}
+
+function blockTab(b){return b.type==='seo'?'seo':(b.type==='p'?'texts':'headings');}
+
+function openBlockForEdit(id){
+  const b=pageBlocks.find(x=>x.id===id);if(!b)return;
+  const tab=blockTab(b);
+  if(pedTab!==tab) switchPedTab(tab);
+  setTimeout(()=>{
+    const blk=document.querySelector(`.blk[data-id="${id}"]`);
+    if(blk){
+      blk.scrollIntoView({behavior:'smooth',block:'center'});
+      blk.style.transition='box-shadow .3s';
+      blk.style.boxShadow='0 0 0 3px var(--bf)';
+      setTimeout(()=>{blk.style.boxShadow='';},1200);
+      const inp=blk.querySelector('[data-blk]');if(inp){inp.focus();}
+    }
+  },60);
+}
+window.openBlockForEdit=openBlockForEdit;
+
+// live-sync editor → preview element
+function syncToPreview(id,val){
+  const el=blockElMap[id];if(!el)return;
+  try{
+    if(el.set){el.set(val);return;} // title setter
+    if(el.nodeType===1){
+      el.textContent=val;
+      el.classList.add('bf-edit-flash');
+      setTimeout(()=>el.classList.remove('bf-edit-flash'),900);
+    }
+  }catch{}
+}
 
 function refreshPreview(){
   const f=$('#pvIframe');if(!f)return;
