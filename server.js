@@ -573,8 +573,12 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
     }
   }
   if(!applied) return res.json({ok:true, applied:0});
-  // re-serialize blob (valid JSON == valid JS object literal)
-  const newBlob=JSON.stringify(sc.obj);
+  // Re-serialize. The blob sits inside a JS single-quoted string literal
+  // (JSON.parse('...')), so a bare apostrophe in any field (very common in
+  // Ukrainian text, e.g. "Зв'яжіться") would terminate that string early and
+  // corrupt the whole chunk — escape it the same way jsToJson() un-escapes
+  // it on read.
+  const newBlob=JSON.stringify(sc.obj).replace(/'/g,"\\'");
   const oldContent=sc.bundle.content;
   const newContent=oldContent.slice(0,sc.loc.start)+newBlob+oldContent.slice(sc.loc.end);
   // cache-bust: rename bundle with fresh hash, update all HTML refs
