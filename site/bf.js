@@ -1,4 +1,20 @@
 /* Blue Ferret Site Enhancements */
+
+// ── Missing-chunk workaround ──
+// Every route's client bundle waits on webpack chunk id 8441 before it will
+// hydrate real content (e.O(0,[...,8441,...], cb)) — it was never captured
+// during the original site migration (source lost, see repo README) and no
+// shipped chunk anywhere actually imports from it (grepped every chunk file:
+// zero `a(8441)` calls). Routes whose main content is server-rendered are
+// unaffected, but any route that bails out to client-only rendering (uses
+// useSearchParams, e.g. /igry/) hangs forever on the loading fallback
+// waiting for a chunk that will never arrive. Since nothing consumes its
+// exports, satisfying the wait with an empty stub is safe — this just marks
+// chunk 8441 "loaded" so webpack's pending callbacks can fire.
+(function () {
+  (self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([[8441], {}]);
+})();
+
 (function () {
   'use strict';
 
