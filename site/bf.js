@@ -150,6 +150,36 @@
   });
   menuObs.observe(document.body, { childList: true, subtree: true });
 
+  // ── Dynamic opacity:0 reveal (mobile menu, and anything else mounted after
+  //    load) ── nginx's sub_filter forces visible any whileInView element
+  //    already present in the server-rendered HTML (framer-motion leaves
+  //    them at opacity:0 under React 19 — source lost, can't rebuild), but
+  //    the mobile-nav panel and its backdrop are NOT in that HTML at all —
+  //    React only inserts them after the hamburger button is clicked, so
+  //    nginx never gets a chance to touch them. Tapping the button toggles
+  //    state and the panel does mount, it's just invisible — looks like
+  //    "nothing happens". Runs on every open (unlike the one-shot observer
+  //    above), since the panel unmounts/remounts each time.
+  function revealStuckOpacity(root) {
+    root.querySelectorAll('[style*="opacity:0"],[style*="opacity: 0"]').forEach((el) => {
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    });
+  }
+  const revealObs = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      m.addedNodes.forEach((node) => {
+        if (node.nodeType !== 1) return;
+        if (node.getAttribute?.('style')?.includes('opacity:0') || node.getAttribute?.('style')?.includes('opacity: 0')) {
+          node.style.opacity = '1';
+          node.style.transform = 'none';
+        }
+        revealStuckOpacity(node);
+      });
+    }
+  });
+  revealObs.observe(document.body, { childList: true, subtree: true });
+
   // ── "Наші ігри" desktop nav fix ──
   // The desktop header dropdown only opens on hover (onMouseEnter/onMouseLeave),
   // with no click handler on the trigger <button>. Mouse users are fine, but
