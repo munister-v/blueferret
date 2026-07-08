@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" fill="none">
+  <defs>
+    <linearGradient id="pg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4BB272"/>
+      <stop offset="50%" style="stop-color:#0f766e"/>
+      <stop offset="100%" style="stop-color:#0f4c3a"/>
+    </linearGradient>
+    <linearGradient id="pg2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.2)"/>
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0.02)"/>
+    </linearGradient>
+    <pattern id="pgrid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="400" height="250" fill="url(#pg1)"/>
+  <rect width="400" height="250" fill="url(#pgrid)"/>
+  <rect width="400" height="250" fill="url(#pg2)"/>
+  <circle cx="200" cy="110" r="45" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+  <circle cx="200" cy="110" r="28" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+  <path d="M200 95c-15-20-40-15-40 10 0 25 40 45 40 45s40-20 40-45c0-25-25-30-40-10z" fill="rgba(255,255,255,0.6)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+  <text x="200" y="175" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-family="system-ui" font-size="10" letter-spacing="0.2em">KIK ПРОЄКТ</text>
+</svg>

@@ -1,0 +1,209 @@
+/* ===== Blue Ferret Site Enhancements ===== */
+
+/* ── Smooth scroll ── */
+html { scroll-behavior: smooth; }
+* { -webkit-tap-highlight-color: transparent; }
+
+/* ── Mobile menu improvements ── */
+#mobile-site-nav {
+  transition: box-shadow .3s ease !important;
+}
+#mobile-site-nav::before {
+  content: '';
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--bf-accent) 40%, var(--kik-accent) 70%, transparent);
+  margin-bottom: 8px;
+}
+/* Enhanced nav links */
+#mobile-site-nav a {
+  position: relative;
+  overflow: hidden;
+  transition: all .2s cubic-bezier(.4,0,.2,1) !important;
+}
+#mobile-site-nav a::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--bf-accent);
+  transform: scaleY(0);
+  transition: transform .2s cubic-bezier(.4,0,.2,1);
+}
+#mobile-site-nav a:hover::after,
+#mobile-site-nav a[class*="bg-[var(--bf-accent)]"]::after { transform: scaleY(1); }
+/* Section dividers */
+#mobile-site-nav > div > [class*="px-4 py-2"] {
+  position: relative;
+  letter-spacing: .12em;
+}
+#mobile-site-nav > div > [class*="px-4 py-2"]::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  background: var(--bf-accent);
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 2px;
+  opacity: .6;
+}
+/* Overlay backdrop enhancement */
+[class*="fixed inset-0 z-40"] {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* ── Header scroll shadow ── */
+header {
+  transition: box-shadow .3s ease, background .3s ease !important;
+}
+header.scrolled {
+  box-shadow: 0 4px 30px -8px rgba(0,0,0,.15) !important;
+}
+
+/* ── Page transitions ── */
+main { animation: pageFadeIn .4s ease both; }
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Scroll-triggered animations ── */
+.bf-reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity .65s cubic-bezier(.22,1,.36,1), transform .65s cubic-bezier(.22,1,.36,1);
+}
+.bf-reveal.visible { opacity: 1; transform: translateY(0); }
+.bf-reveal-left  { opacity: 0; transform: translateX(-32px); transition: opacity .6s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.22,1,.36,1); }
+.bf-reveal-left.visible { opacity: 1; transform: translateX(0); }
+.bf-reveal-scale { opacity: 0; transform: scale(.94); transition: opacity .55s ease, transform .55s cubic-bezier(.22,1,.36,1); }
+.bf-reveal-scale.visible { opacity: 1; transform: scale(1); }
+
+/* Stagger delays for grid children */
+.bf-stagger > *:nth-child(1)  { transition-delay: 0ms !important; }
+.bf-stagger > *:nth-child(2)  { transition-delay: 80ms !important; }
+.bf-stagger > *:nth-child(3)  { transition-delay: 160ms !important; }
+.bf-stagger > *:nth-child(4)  { transition-delay: 240ms !important; }
+.bf-stagger > *:nth-child(5)  { transition-delay: 320ms !important; }
+.bf-stagger > *:nth-child(6)  { transition-delay: 400ms !important; }
+
+/* ── Card hover polish ── */
+[class*="rounded-2xl"][class*="border"] {
+  transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, border-color .2s ease !important;
+}
+
+/* ── Footer enhancements ── */
+footer .bf-reveal { opacity: 0; transform: translateY(24px); }
+footer .bf-reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* Footer social icon hover */
+footer a[href*="instagram"],
+footer a[href*="facebook"],
+footer a[href*="t.me"] {
+  transition: transform .2s ease, opacity .2s ease !important;
+}
+footer a[href*="instagram"]:hover,
+footer a[href*="facebook"]:hover,
+footer a[href*="t.me"]:hover {
+  transform: translateY(-3px) scale(1.08) !important;
+  opacity: 1 !important;
+}
+
+/* Footer nav link underline animation */
+footer nav a, footer ul a {
+  position: relative;
+  display: inline-block;
+}
+footer nav a::after, footer ul a::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: -2px;
+  width: 0; height: 1.5px;
+  background: var(--bf-accent);
+  transition: width .25s ease;
+  border-radius: 2px;
+}
+footer nav a:hover::after, footer ul a:hover::after { width: 100%; }
+
+/* ── Button ripple effect ── */
+.bf-ripple { position: relative; overflow: hidden; }
+.bf-ripple::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle, rgba(255,255,255,.3) 0%, transparent 60%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform .4s ease, opacity .4s ease;
+}
+.bf-ripple:active::after { transform: scale(2); opacity: 1; transition: 0s; }
+
+/* ── Scroll progress bar ── */
+#bf-scroll-progress {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, var(--bf-accent), var(--kik-accent));
+  transform-origin: left;
+  transform: scaleX(0);
+  z-index: 999;
+  transition: transform .1s linear;
+  pointer-events: none;
+}
+
+/* ── Back to top button ── */
+#bf-back-top {
+  position: fixed;
+  bottom: 24px; right: 20px;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: var(--bf-accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 20px rgba(0,159,227,.4);
+  opacity: 0;
+  transform: translateY(12px) scale(.9);
+  transition: opacity .3s ease, transform .3s cubic-bezier(.22,1,.36,1);
+  z-index: 90;
+  pointer-events: none;
+}
+#bf-back-top.show {
+  opacity: 1; transform: none; pointer-events: auto;
+}
+#bf-back-top:hover { background: #0077b3; transform: translateY(-2px); }
+
+/* ── Image lazy load fade ── */
+img[loading="lazy"] {
+  transition: opacity .4s ease;
+}
+img[loading="lazy"]:not([src]) { opacity: 0; }
+
+/* ── Focus styles ── */
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--bf-accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ── Mobile improvements ── */
+@media (max-width: 768px) {
+  /* Prevent horizontal scroll */
+  body { overflow-x: hidden; }
+
+  /* Touch-friendly tap targets */
+  a, button { min-height: 44px; display: inline-flex; align-items: center; }
+
+  /* Better text rendering */
+  h1, h2, h3 { text-wrap: balance; }
+}
+
+/* ── Selection color ── */
+::selection { background: rgba(0,159,227,.2); color: inherit; }

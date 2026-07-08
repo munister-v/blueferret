@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#009FE3"/>
+      <stop offset="50%" style="stop-color:#283D57"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.15)"/>
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0.02)"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="400" height="300" fill="url(#g1)"/>
+  <rect width="400" height="300" fill="url(#grid)"/>
+  <rect width="400" height="300" fill="url(#g2)"/>
+  <circle cx="200" cy="130" r="55" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+  <circle cx="200" cy="130" r="35" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+  <path d="M185 115h30v30h-30v-30zm0 35h30v30h-30v-30zm35 0h30v30h-30v-30zm35-35h30v30h-30v-30z" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+  <circle cx="200" cy="130" r="4" fill="rgba(255,255,255,0.7)"/>
+  <circle cx="235" cy="165" r="4" fill="rgba(255,255,255,0.7)"/>
+  <text x="200" y="195" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-family="system-ui" font-size="11" letter-spacing="0.15em">GAME</text>
+</svg>

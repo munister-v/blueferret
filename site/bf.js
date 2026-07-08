@@ -1,0 +1,201 @@
+/* Blue Ferret Site Enhancements */
+(function () {
+  'use strict';
+
+  // ── Scroll progress bar ──
+  const prog = document.createElement('div');
+  prog.id = 'bf-scroll-progress';
+  document.body.prepend(prog);
+
+  // ── Back to top ──
+  const top = document.createElement('button');
+  top.id = 'bf-back-top';
+  top.innerHTML = '↑';
+  top.setAttribute('aria-label', 'Вгору');
+  top.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.body.appendChild(top);
+
+  // ── Scroll handler ──
+  let ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const s = window.scrollY;
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      // progress bar
+      prog.style.transform = `scaleX(${h > 0 ? s / h : 0})`;
+      // back to top
+      top.classList.toggle('show', s > 400);
+      // header shadow
+      const hdr = document.querySelector('header');
+      if (hdr) hdr.classList.toggle('scrolled', s > 20);
+      ticking = false;
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // ── IntersectionObserver for scroll animations ──
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  // Elements to animate on scroll
+  const SELECTORS = [
+    // Section headings
+    'h2:not([class*="heading-2"])',
+    // Cards
+    '[class*="rounded-2xl"][class*="border-2"]',
+    '[class*="rounded-2xl"][class*="shadow"]',
+    // Sections
+    'section > div > div',
+    // Footer blocks
+    'footer [class*="col-span"]',
+  ];
+
+  function initAnimations() {
+    // Already animated elements (have inline opacity:0 transform) — handled by existing code
+    // Add bf-reveal to new elements that don't already have animation
+    const allEls = document.querySelectorAll(SELECTORS.join(','));
+    let delay = 0;
+
+    allEls.forEach(el => {
+      // Skip if already has a visibility style set or is in nav/header
+      if (
+        el.closest('header') ||
+        el.closest('nav') ||
+        el.closest('#mobile-site-nav') ||
+        el.getAttribute('style')?.includes('opacity') ||
+        el.classList.contains('bf-reveal') ||
+        el.classList.contains('bf-reveal-done')
+      ) return;
+
+      // Check if it's in viewport already
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.top > 0) {
+        // Already in view — animate quickly
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = `opacity .5s ease ${delay}ms, transform .5s cubic-bezier(.22,1,.36,1) ${delay}ms`;
+        delay += 50;
+        setTimeout(() => {
+          el.style.opacity = '';
+          el.style.transform = '';
+          el.classList.add('bf-reveal-done');
+        }, 50 + delay);
+      } else if (rect.top >= window.innerHeight) {
+        // Below viewport — add reveal class
+        el.classList.add('bf-reveal');
+        io.observe(el);
+      }
+    });
+
+    // Footer elements
+    const footerEls = document.querySelectorAll('footer [class*="col-span"], footer h3, footer h4, footer ul, footer [class*="space-y"]');
+    footerEls.forEach((el, i) => {
+      if (!el.classList.contains('bf-reveal')) {
+        el.classList.add('bf-reveal');
+        el.style.transitionDelay = `${i * 80}ms`;
+        io.observe(el);
+      }
+    });
+  }
+
+  // ── Mobile menu enhancements ──
+  function enhanceMenu() {
+    const nav = document.getElementById('mobile-site-nav');
+    if (!nav) return;
+
+    // Add subtle entry animation enhancement
+    nav.style.transition = 'box-shadow .3s ease';
+
+    // Add ripple to menu links
+    nav.querySelectorAll('a').forEach(link => {
+      link.classList.add('bf-ripple');
+    });
+
+    // Close menu on outside tap (enhance existing behavior)
+    const closeBtn = document.querySelector('[aria-label="Відкрити меню"]');
+    if (closeBtn) {
+      // Already has aria-expanded handling
+    }
+  }
+
+  // ── Mobile menu observer ──
+  const menuObs = new MutationObserver(() => {
+    const nav = document.getElementById('mobile-site-nav');
+    if (nav) { enhanceMenu(); menuObs.disconnect(); }
+  });
+  menuObs.observe(document.body, { childList: true, subtree: true });
+
+  // ── "Наші ігри" desktop nav fix ──
+  // The desktop header dropdown only opens on hover (onMouseEnter/onMouseLeave),
+  // with no click handler on the trigger <button>. Mouse users are fine, but
+  // touch devices at md+ viewport width (iPad and similar tablets, which get
+  // the desktop nav, not the mobile hamburger) have no hover — tapping the
+  // button does nothing. Give the trigger a real click target: navigate to
+  // the games catalog, same as its "all games" dropdown item and the mobile
+  // nav link already do. Hover-to-reveal-submenu keeps working for mouse users.
+  function fixGamesNavButton() {
+    document.querySelectorAll('header button').forEach((btn) => {
+      if (btn.dataset.bfGamesFixed) return;
+      if (!btn.textContent.trim().startsWith('Наші ігри')) return;
+      btn.dataset.bfGamesFixed = '1';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = '/igry/';
+      });
+    });
+  }
+
+  // ── Image load fade ──
+  function initImages() {
+    document.querySelectorAll('img[loading="lazy"]').forEach(img => {
+      if (!img.complete) {
+        img.style.opacity = '0';
+        img.style.transition = 'opacity .4s ease';
+        img.addEventListener('load', () => { img.style.opacity = ''; }, { once: true });
+      }
+    });
+  }
+
+  // ── Button ripple on all CTA buttons ──
+  function initRipples() {
+    document.querySelectorAll('button, a[class*="btn"], a[class*="rounded-xl"][class*="bg-"]').forEach(el => {
+      if (!el.classList.contains('bf-ripple')) el.classList.add('bf-ripple');
+    });
+  }
+
+  // ── Run after DOM ready ──
+  function init() {
+    initAnimations();
+    initImages();
+    initRipples();
+    fixGamesNavButton();
+    // Re-run after a short delay to catch dynamically rendered content
+    setTimeout(() => {
+      initAnimations();
+      initRipples();
+      fixGamesNavButton();
+    }, 800);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Re-run on visibility change (tab switch back)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) setTimeout(initAnimations, 100);
+  });
+
+})();

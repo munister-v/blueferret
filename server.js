@@ -443,6 +443,185 @@ function extractBlocks(html){
 }
 
 app.get('/api/admin/pages', requireAuth, (_req, res) => res.json(listPages()));
+
+// ── create page ──
+function slugify(s){ return s.toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,''); }
+
+function makePageHtml(slug, title){
+  // Minimal page using the site's layout shell — inherits header/footer from hydration
+  // Cloned from index.html shell but with custom title & blank main
+  const tpl = fs.existsSync(path.join(PAGES_ROOT,'index.html'))
+    ? fs.readFileSync(path.join(PAGES_ROOT,'index.html'),'utf8')
+    : null;
+  if(tpl){
+    // Derive a clean page from the home page template — replace title & clear main content
+    return tpl
+      .replace(/<title>[^<]*<\/title>/, `<title>${encodeHtmlEnts(title)} | Blue Ferret</title>`)
+      .replace(/<meta[^>]+property="og:title"[^>]+content="[^"]*"/, m=>m.replace(/content="[^"]*"/, `content="${encodeHtmlEnts(title)} | Blue Ferret"`))
+      .replace(/<meta[^>]+name="description"[^>]+content="[^"]*"/, m=>m.replace(/content="[^"]*"/, 'content=""'))
+      .replace(/<main[^>]*>[\s\S]*?<\/main>/, `<main class="flex-1"><div class="max-w-4xl mx-auto px-4 py-24 text-center"><h1 class="heading-1 text-4xl mb-6">${encodeHtmlEnts(title)}</h1><p class="text-slate-500">Ваш контент тут</p></div></main>`);
+  }
+  // Fallback — minimal standalone page
+  return `<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${encodeHtmlEnts(title)} | Blue Ferret</title><meta name="description" content=""><link rel="stylesheet" href="/bf.css"></head><body><main style="max-width:800px;margin:0 auto;padding:80px 20px"><h1>${encodeHtmlEnts(title)}</h1><p>Ваш контент тут</p></main><script src="/bf.js" defer></script></body></html>`;
+}
+
+app.post('/api/admin/pages/create', requireAuth, (req,res)=>{
+  const {slug:rawSlug, title, copyFrom} = req.body||{};
+  if(!rawSlug&&!title) return res.status(400).json({error:'slug or title required'});
+  const slug = slugify(rawSlug||title);
+  if(!slug) return res.status(400).json({error:'invalid slug'});
+  const dir = path.join(PAGES_ROOT, slug);
+  if(fs.existsSync(dir)) return res.status(409).json({error:'page_exists', slug});
+  fs.mkdirSync(dir,{recursive:true});
+  let html;
+  if(copyFrom){
+    const srcFull = path.join(PAGES_ROOT, copyFrom.replace(/\.\./g,''));
+    if(fs.existsSync(srcFull)){
+      html = fs.readFileSync(srcFull,'utf8');
+      if(title) html = html.replace(/<title>[^<]*<\/title>/,`<title>${encodeHtmlEnts(title)} | Blue Ferret</title>`);
+    }
+  }
+  if(!html) html = makePageHtml(slug, title||slug);
+  const outFile = path.join(dir,'index.html');
+  fs.writeFileSync(outFile, html, 'utf8');
+  audit(req.ip,'page_create',{slug,title});
+  res.status(201).json({ok:true, slug, file:`${slug}/index.html`, path:`/${slug}/`});
+});
+
+// ── delete page ──
+app.delete('/api/admin/pages/delete', requireAuth, (req,res)=>{
+  const rel = req.query.path;
+  if(!rel||rel.includes('..')||rel==='index.html') return res.status(400).json({error:'invalid'});
+  const dir = path.join(PAGES_ROOT, path.dirname(rel));
+  if(!dir.startsWith(PAGES_ROOT)||dir===PAGES_ROOT) return res.status(403).json({error:'forbidden'});
+  if(!fs.existsSync(dir)) return res.status(404).json({error:'not_found'});
+  // safety: only delete if it contains only index.html (+ .bak)
+  const contents = fs.readdirSync(dir).filter(f=>!f.startsWith('.'));
+  const safe = contents.every(f=>f==='index.html'||f.endsWith('.bak')||f.endsWith('.html'));
+  if(!safe) return res.status(400).json({error:'directory has unexpected files, delete manually'});
+  contents.forEach(f=>fs.unlinkSync(path.join(dir,f)));
+  fs.rmdirSync(dir);
+  audit(req.ip,'page_delete',{path:rel});
+  res.json({ok:true});
+});
+
+// ════════════════════════════════════════════════════════
+//  SITE CONTENT DICTIONARY (client-rendered pages' text)
+//  Content lives as a JSON object embedded in a JS chunk.
+// ════════════════════════════════════════════════════════
+const { execFileSync } = require('child_process');
+
+function jsToJson(s){
+  return s.replace(/\\'/g,"'").replace(/\\x([0-9a-fA-F]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+}
+function findContentBundle(){
+  const dir = path.join(SITE_ROOT,'_next','static','chunks');
+  let files=[]; try{files=fs.readdirSync(dir);}catch{return null;}
+  for(const f of files){
+    if(!f.endsWith('.js')) continue;
+    const full=path.join(dir,f);
+    let t; try{t=fs.readFileSync(full,'utf8');}catch{continue;}
+    if(t.includes('"metadata":{"siteTitle"')) return {file:full, name:f, dir, content:t};
+  }
+  return null;
+}
+function locateObj(js){
+  const i=js.indexOf('"metadata":'); if(i<0) return null;
+  const b=js.lastIndexOf('{',i); let depth=0,k=b;
+  while(k<js.length){
+    const c=js[k];
+    if(c==='"'){ k++; while(k<js.length&&js[k]!=='"'){ if(js[k]==='\\')k++; k++; } }
+    else if(c==='{') depth++;
+    else if(c==='}'){ depth--; if(depth===0) return {start:b,end:k+1}; }
+    k++;
+  }
+  return null;
+}
+function readSiteContent(){
+  const bundle=findContentBundle(); if(!bundle) return null;
+  const loc=locateObj(bundle.content); if(!loc) return null;
+  const raw=bundle.content.slice(loc.start,loc.end);
+  let obj; try{ obj=JSON.parse(jsToJson(raw)); }catch(e){ return null; }
+  return { bundle, loc, obj };
+}
+function setByPath(obj,pathStr,val){
+  const parts=pathStr.split('.'); let o=obj;
+  for(let i=0;i<parts.length-1;i++){
+    const k=/^\d+$/.test(parts[i])?+parts[i]:parts[i];
+    if(o==null) return false; o=o[k];
+  }
+  const last=/^\d+$/.test(parts[parts.length-1])?+parts[parts.length-1]:parts[parts.length-1];
+  if(o==null||typeof o[last]==='undefined') return false;
+  o[last]=val; return true;
+}
+
+app.get('/api/admin/site-content', requireAuth, (_req,res)=>{
+  const sc=readSiteContent();
+  if(!sc) return res.status(404).json({error:'content bundle not found'});
+  res.json({ content: sc.obj, bundle: sc.bundle.name });
+});
+
+app.put('/api/admin/site-content', requireAuth, (req,res)=>{
+  const { changes } = req.body||{};
+  if(!Array.isArray(changes)||!changes.length) return res.status(400).json({error:'no changes'});
+  const sc=readSiteContent();
+  if(!sc) return res.status(404).json({error:'content bundle not found'});
+  let applied=0;
+  for(const c of changes){
+    if(c && typeof c.path==='string' && typeof c.value==='string'){
+      if(setByPath(sc.obj,c.path,c.value)) applied++;
+    }
+  }
+  if(!applied) return res.json({ok:true, applied:0});
+  // re-serialize blob (valid JSON == valid JS object literal)
+  const newBlob=JSON.stringify(sc.obj);
+  const oldContent=sc.bundle.content;
+  const newContent=oldContent.slice(0,sc.loc.start)+newBlob+oldContent.slice(sc.loc.end);
+  // cache-bust: rename bundle with fresh hash, update all HTML refs
+  const oldName=sc.bundle.name;                    // e.g. 6398-abc.js
+  const prefix=oldName.split('-')[0];              // 6398
+  const hash=crypto.createHash('sha256').update(newContent).digest('hex').slice(0,16);
+  const newName=`${prefix}-${hash}.js`;
+  const newPath=path.join(sc.bundle.dir,newName);
+  try{
+    fs.writeFileSync(newPath,newContent,'utf8');
+    if(newName!==oldName) fs.unlinkSync(sc.bundle.file);
+    // update references across all HTML
+    let htmlChanged=0;
+    (function walk(d){
+      for(const f of fs.readdirSync(d)){
+        if(f.startsWith('.')||f==='_next'||f==='uploads'||f==='cdn-cgi') continue;
+        const full=path.join(d,f), st=fs.statSync(full);
+        if(st.isDirectory()) walk(full);
+        else if(f==='index.html'){
+          let h=fs.readFileSync(full,'utf8');
+          if(h.includes(oldName)){ h=h.split(oldName).join(newName); fs.writeFileSync(full,h,'utf8'); htmlChanged++; }
+        }
+      }
+    })(SITE_ROOT);
+    // best-effort SELinux restore
+    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+    audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged});
+    res.json({ok:true, applied, bundle:newName, htmlChanged});
+  }catch(e){
+    res.status(500).json({error:e.message});
+  }
+});
+
+// ── duplicate page ──
+app.post('/api/admin/pages/duplicate', requireAuth, (req,res)=>{
+  const {from, slug:rawSlug} = req.body||{};
+  if(!from||!rawSlug) return res.status(400).json({error:'from and slug required'});
+  const slug=slugify(rawSlug);
+  const srcFull=path.join(PAGES_ROOT,from.replace(/\.\./g,''));
+  if(!srcFull.startsWith(PAGES_ROOT)||!fs.existsSync(srcFull)) return res.status(404).json({error:'source not found'});
+  const dir=path.join(PAGES_ROOT,slug);
+  if(fs.existsSync(dir)) return res.status(409).json({error:'page_exists'});
+  fs.mkdirSync(dir,{recursive:true});
+  fs.copyFileSync(srcFull,path.join(dir,'index.html'));
+  audit(req.ip,'page_duplicate',{from,slug});
+  res.status(201).json({ok:true,slug,file:`${slug}/index.html`,path:`/${slug}/`});
+});
 // extract editable blocks from a page
 app.get('/api/admin/page-extract', requireAuth, (req, res) => {
   const rel = req.query.path;
