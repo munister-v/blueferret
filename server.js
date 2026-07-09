@@ -170,7 +170,12 @@ function makeToken(long = false) {
   return `${payload}.${sig}`;
 }
 function requireAuth(req, res, next) {
-  if (validToken(req.cookies.bf_session)) return next();
+  if (validToken(req.cookies.bf_session)) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    return next();
+  }
   res.status(401).json({ error: 'unauthorized' });
 }
 
@@ -248,6 +253,64 @@ app.get('/api/admin/stats', requireAuth, (_req, res) => {
 // ---------- games CRUD ----------
 function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
 function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery) } : null; }
+
+function regenGamesCatalog() {
+  const p = path.join(PAGES_ROOT, 'igry/index.html');
+  if (!fs.existsSync(p)) return;
+  let html = fs.readFileSync(p, 'utf8');
+
+  const startIdx = html.indexOf('data-bf-games-grid="true"');
+  if (startIdx === -1) return;
+  const divStart = html.lastIndexOf('<div', startIdx);
+  
+  let depth = 0;
+  let tagRegex = /<\/?div[^>]*>/gi;
+  tagRegex.lastIndex = divStart;
+  let match;
+  let gridEnd = -1;
+  while ((match = tagRegex.exec(html)) !== null) {
+    if (match[0].startsWith('</')) depth--;
+    else depth++;
+    if (depth === 0) {
+      gridEnd = match.index + match[0].length;
+      break;
+    }
+  }
+  
+  if (gridEnd === -1) return;
+  
+  const gridOuterHTML = html.slice(divStart, gridEnd);
+  const aMatch = gridOuterHTML.match(/<a [^>]*href="\/igry\/[^"]+"[^>]*>[\s\S]*?<\/a>/i);
+  if (!aMatch) return;
+  const template = aMatch[0];
+  
+  function getStatusName(s) { return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс'; }
+  const games = gAll.all().filter(g => g.status !== 'archived').map(gameRow);
+  
+  const newCards = games.map(g => {
+    let card = template;
+    card = card.replace(/href="\/igry\/[^"]+"\/?/, `href="${g.buy_url || '/igry/'+g.slug+'/'}"`);
+    card = card.replace(/src="[^"]+"/, `src="${g.cover_url || '/images/placeholder-game.svg'}"`);
+    card = card.replace(/alt="[^"]*"/, `alt="${escapeHtml(g.title||'')}"`);
+    card = card.replace(/(<h2[^>]*>)([\s\S]*?)(<\/h2>)/i, `$1${escapeHtml(g.title||'')}$3`);
+    card = card.replace(/(<p[^>]*>)([\s\S]*?)(<\/p>)/i, `$1${escapeHtml(g.description||g.subtitle||'')}$3`);
+    card = card.replace(/(<span[^>]*board-game-badge[^>]*>)([\s\S]*?)(<\/span>)/i, `$1${getStatusName(g.status)}$3`);
+    return card;
+  });
+  
+  const firstCloseBracket = gridOuterHTML.indexOf('>');
+  const newGridHTML = gridOuterHTML.slice(0, firstCloseBracket + 1) + newCards.join('') + '</div>';
+  
+  let newHtml = html.slice(0, divStart) + newGridHTML + html.slice(gridEnd);
+  
+  const countRegex = /(<span[^>]*>)\s*\d+\s*(ігри|гра|ігор)\s+в\s+каталозі\s*(<\/span>)/i;
+  newHtml = newHtml.replace(countRegex, `$1${games.length} ${games.length===1?'гра':'ігри'} в каталозі$3`);
+  
+  newHtml = newHtml.replace(/<script>window\.__BF_IGRY_HTML=[\s\S]*?<\/script>/i, '');
+  
+  writeAtomic(p, newHtml);
+}
+
 function cleanText(v) { return String(v ?? '').trim(); }
 function escapeHtml(s) {
   return cleanText(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;'}[c]));
@@ -413,6 +476,7 @@ app.post('/api/admin/games', requireAuth, (req, res) => {
   if (gSlug.get(data.slug)) return res.status(409).json({error:'slug_exists'});
   const info = gIns.run(data);
   writeGeneratedGamePage(gOne.get(info.lastInsertRowid));
+  regenGamesCatalog();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_create',{id:info.lastInsertRowid,slug:data.slug,publishedAt});
   res.status(201).json({...gameRow(gOne.get(info.lastInsertRowid)), publishedAt});
@@ -426,6 +490,7 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   gUpd.run({...data,id});
   if (ex.slug !== data.slug) removeGeneratedGamePage(ex.slug);
   writeGeneratedGamePage(gOne.get(id));
+  regenGamesCatalog();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_update',{id,publishedAt});
   res.json({...gameRow(gOne.get(id)), publishedAt});
@@ -436,6 +501,7 @@ app.delete('/api/admin/games/:id', requireAuth, (req, res) => {
   if (!ex) return res.status(404).json({error:'not_found'});
   removeGeneratedGamePage(ex.slug);
   gDel.run(id);
+  regenGamesCatalog();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_delete',{id,publishedAt});
   res.json({ok:true,publishedAt});
@@ -569,6 +635,14 @@ function cleanInner(raw){
 }
 function hasNestedTag(raw){ return /<[a-z]/i.test(raw); }
 
+function hasOnlyInlineTags(raw){
+  // Returns true if nested tags are only simple inline (strong, em, a, b, i, br, span)
+  const tags = raw.match(/<([a-z][a-z0-9]*)/gi);
+  if(!tags) return true;
+  const allowed = new Set(['strong','em','a','b','i','br','span','small','mark','u','s','sub','sup']);
+  return tags.every(t => allowed.has(t.slice(1).toLowerCase()));
+}
+
 function extractBlocks(html){
   // strip non-content regions so their text never leaks into blocks
   const safe = html
@@ -604,7 +678,6 @@ function extractBlocks(html){
     let i=0;
     while((m=re.exec(safe))!==null){
       const t=cleanInner(m[1]);
-      // skip garbage: empty, too long, or concatenated nav (many words, no sentence)
       if(t && t.length>=2 && t.length<=160){
         add(`${tag}_${i}`, tag, tag==='h1'?'Заголовок H1':tag==='h2'?'Заголовок H2':'Підзаголовок',
             tag==='h1'?'H₁':tag==='h2'?'H₂':'H₃', t, m[0], m[1], i);
@@ -613,20 +686,69 @@ function extractBlocks(html){
     }
   }
 
-  // ── Paragraphs — ONLY pure-text <p> (nested tags = likely concatenated UI) ──
+  // ── Paragraphs — allow <p> with simple inline tags (strong, em, a) ──
   const pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; let pi=0, kept=0;
   while((m=pr.exec(safe))!==null && kept<14){
     const inner=m[1];
     const t=cleanInner(inner);
-    // require: real sentence-length text, no nested tags (avoids nav/footer concatenation),
-    // must contain a space (single jammed word = bad), reasonable length
-    const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t); // lowercase→Uppercase with no space
-    if(t && !hasNestedTag(inner) && !looksConcat && t.includes(' ') && t.length>=25 && t.length<=900){
-      add(`p_${pi}`,'p','Абзац текст','¶',t,m[0],inner,pi);
+    const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t);
+    // Allow paragraphs with simple inline tags (strong, em, a, etc.)
+    const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
+    if(t && inlineOk && !looksConcat && t.includes(' ') && t.length>=20 && t.length<=900){
+      add(`p_${pi}`,'p','Абзац тексту','¶',t,m[0],inner,pi);
       kept++;
     }
     pi++;
   }
+
+  // ── Links (<a> with meaningful text) ──
+  const ar=/<a[^>]*>([\s\S]*?)<\/a>/gi; let ai=0, aKept=0;
+  while((m=ar.exec(safe))!==null && aKept<10){
+    const inner=m[1];
+    const t=cleanInner(inner);
+    if(t && t.length>=3 && t.length<=120 && !/<img/i.test(inner)){
+      add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai);
+      aKept++;
+    }
+    ai++;
+  }
+
+  // ── Spans with meaningful text (badges, labels) ──
+  const sr=/<span[^>]*>([^<]{4,80})<\/span>/gi; let si=0, sKept=0;
+  while((m=sr.exec(safe))!==null && sKept<8){
+    const t=decodeHtmlEnts(m[1]).trim();
+    // skip very short or numeric-only spans
+    if(t && t.length>=4 && t.length<=80 && /[а-яіїєa-z]/i.test(t)){
+      add(`span_${si}`,'span','Мітка / бейдж','🏷',t,m[0],m[1],si);
+      sKept++;
+    }
+    si++;
+  }
+
+  // ── Images (<img> with src) ──
+  const ir=/<img[^>]+src="([^"]+)"[^>]*>/gi; let ii=0, iKept=0;
+  while((m=ir.exec(safe))!==null && iKept<8){
+    const src=decodeHtmlEnts(m[1]).trim();
+    // skip tiny icons, data URIs, tracking pixels
+    if(src && !src.startsWith('data:') && src.length>5 && !/favicon|icon/i.test(src)){
+      const alt=(m[0].match(/alt="([^"]*)"/)||[])[1]||'';
+      add(`img_${ii}`,'img',decodeHtmlEnts(alt)||'Зображення','🖼',src,m[0],m[1],ii);
+      iKept++;
+    }
+    ii++;
+  }
+
+  // ── List items (<li>) ──
+  const lr=/<li[^>]*>([\s\S]*?)<\/li>/gi; let li=0, lKept=0;
+  while((m=lr.exec(safe))!==null && lKept<6){
+    const t=cleanInner(m[1]);
+    if(t && t.length>=4 && t.length<=200 && t.includes(' ')){
+      add(`li_${li}`,'li','Елемент списку','📌',t,m[0],m[1],li);
+      lKept++;
+    }
+    li++;
+  }
+
   return blocks;
 }
 
@@ -844,10 +966,15 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   let changed = 0;
   for (const b of blocks) {
     if (!b.orig || b.origVal === b.newVal || b.newVal == null) continue;
-    const encoded = encodeHtmlEnts(b.newVal);
-    // replace origVal inside the orig element context
-    const newOrig = b.orig.replace(b.origVal, encoded);
-    if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
+    // img blocks: replace src attribute value, not text content
+    if (b.orig.match(/^<img\s/i)) {
+      const newOrig = b.orig.replace(`src="${b.origVal}"`, `src="${encodeHtmlEnts(b.newVal)}"`);
+      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
+    } else {
+      const encoded = encodeHtmlEnts(b.newVal);
+      const newOrig = b.orig.replace(b.origVal, encoded);
+      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
+    }
   }
   writeAtomic(full, html);
   const publishedAt = bumpPublishedAt();
@@ -914,19 +1041,33 @@ const RUNTIME_JS = `(function(){
     if(m.enabled){if(!mo){mo=document.createElement('div');mo.id='bf-maintenance';mo.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0b1f33;color:#fff;font:500 20px/1.6 Comfortaa,system-ui,sans-serif;';mo.innerHTML='<div style="max-width:560px"><div style="font-size:40px;margin-bottom:16px">🦦</div><div>'+esc(m.message||'')+'</div></div>';document.body.appendChild(mo);document.documentElement.style.overflow='hidden';}}else if(mo){mo.remove();document.documentElement.style.overflow='';}
   }catch(e){}}
   function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-  function gameHref(g){return g.buy_url||('/igry/'+encodeURIComponent(g.slug||'')+'/');}
-  function gameStatus(g){var s=g.status||'published';return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс';}
-	  function gameCard(g){var title=esc(g.title||g.slug||'Гра');var img=esc(g.cover_url||'/images/placeholder-game.svg');var desc=esc(g.description||g.subtitle||'Опис гри скоро з\\'явиться.');var href=esc(gameHref(g));return '<a href="'+href+'" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]"><div class="aspect-[4/3] relative overflow-hidden bg-slate-800"><img src="'+img+'" alt="'+title+'" class="absolute inset-0 h-full w-full object-cover" loading="lazy"><div class="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent"></div><div class="absolute bottom-3 sm:bottom-5 left-3 sm:left-5 right-3 sm:right-5 flex justify-between items-end gap-2"><span class="board-game-badge inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/95 text-slate-700 text-xs sm:text-sm shadow-md backdrop-blur-sm border border-[var(--bf-accent)]/30">'+esc(gameStatus(g))+'</span><span class="p-2.5 sm:p-3 rounded-xl bg-white/95 backdrop-blur-sm border border-white/60 shadow-sm text-bf">→</span></div></div><div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full"><h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800">'+title+'</h2><p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6">'+desc+'</p><span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span></div></a>';}
-	  function applyGames(list){try{if(!Array.isArray(list)||!list.length)return;var root=document.querySelector('[data-bf-static-igry]');if(!root)return;var grid=root.querySelector('[data-bf-games-grid]');if(!grid){var first=root.querySelector('a[href^="/igry/"]');grid=first&&first.parentElement;}if(!grid)return;grid.innerHTML=list.map(gameCard).join('');var count=root.querySelector('[data-bf-games-count]');if(!count){var spans=root.querySelectorAll('span');for(var i=0;i<spans.length;i++){if((spans[i].textContent||'').indexOf('ігри в каталозі')>-1){count=spans[i];break;}}}if(count)count.textContent=list.length+' '+(list.length===1?'гра':'ігри')+' в каталозі';}catch(e){}}
-	  function applyGameDetail(list){try{
-	    // Skip hydration for pre-generated static game pages — they already have correct HTML
-	    if(document.querySelector('[data-bf-generated-game]'))return;
-	    var m=location.pathname.match(/^\\/igry\\/([^\\/]+)\\/?$/);if(!m||!Array.isArray(list))return;var slug=decodeURIComponent(m[1]);var g=list.find(function(x){return x&&x.slug===slug;});if(!g)return;var title=g.title||g.slug||'';var desc=g.description||g.subtitle||'';var cover=g.cover_url||'';document.title=title?title+' | Blue Ferret':document.title;var h1=document.querySelector('main h1');if(h1&&title)h1.textContent=title;var meta=document.querySelector('meta[name="description"]');if(meta&&desc)meta.setAttribute('content',desc.slice(0,155));var og=document.querySelector('meta[property="og:title"]');if(og&&title)og.setAttribute('content',title+' | Blue Ferret');var img=document.querySelector('main img[src]');if(img&&cover&&!img.src.includes(cover)){img.src=cover;img.alt=title||img.alt;}var paragraphs=Array.prototype.slice.call(document.querySelectorAll('main p'));var longP=paragraphs.find(function(p){return (p.textContent||'').trim().length>20;});if(longP&&desc)longP.textContent=desc;
-	  }catch(e){}}
-	  function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
-	  function loadGames(){if(!/^\\/igry(?:\\/[^\\/]+)?\\/?$/.test(location.pathname))return;getJson('/api/public/games',8000).then(function(x){if(Array.isArray(x)){applyGames(x);applyGameDetail(x);}}).catch(function(){});}
-  function load(){getJson('/api/public/site.json',8000).then(apply).catch(function(){});}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();loadGames();});else{load();loadGames();}
+  function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
+  function load(){getJson('/api/public/site.json',8000).then(function(s){apply(s);startLiveRefresh(s);}).catch(function(){});}
+  // ── Live auto-refresh: poll publishedAt every 5s, reload if changed ──
+  var lastPub=0;
+  function startLiveRefresh(s){
+    try{lastPub=(s&&s.general&&s.general.publishedAt)||0;}catch(e){}
+    if(!lastPub)return;
+    setInterval(function(){
+      getJson('/api/public/site.json',4000).then(function(ns){
+        var newPub=(ns&&ns.general&&ns.general.publishedAt)||0;
+        if(newPub&&lastPub&&newPub!==lastPub){
+          lastPub=newPub;
+          var u=new URL(location.href);
+          u.searchParams.set('v',newPub);
+          location.href=u.toString();
+        }
+      }).catch(function(){});
+    },5000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();});else{load();}
+  try {
+    var su=new URL(location.href);
+    if(su.searchParams.has('v')) {
+      su.searchParams.delete('v');
+      history.replaceState(null, '', su.toString());
+    }
+  }catch(e){}
 })();`;
 
 app.get('/api/public/runtime.js', (_req, res) => {

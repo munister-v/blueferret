@@ -1537,7 +1537,7 @@ let pedTab='seo', pedSearch='';
 
 function buildBlocksHtml(blocks, tabFilter, search){
   const SEO_LIMITS={title:60,og_title:60,meta_desc:160};
-  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts'};
+  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images'};
   let filtered=blocks.filter(b=>(typeToTab[b.type]||'texts')===tabFilter);
   if(search) filtered=filtered.filter(b=>b.value.toLowerCase().includes(search)||b.label.toLowerCase().includes(search));
   if(!filtered.length) return`<div class="tab-empty">${search?'Нічого не знайдено':'Немає блоків'}</div>`;
@@ -1548,6 +1548,28 @@ function buildBlocksHtml(blocks, tabFilter, search){
     const curLen=curVal.length;
     const cntClass='char-cnt'+(maxLen&&curLen>maxLen?' over':maxLen&&curLen>maxLen*.85?' warn':'');
     const edited=pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value;
+
+    if (b.type === 'img') {
+      return `<div class="blk img${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="images" style="padding:14px 16px 12px">
+        <div class="blk-head" style="margin-bottom:6px">
+          <div class="blk-ico img">🖼</div>
+          <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
+          <div class="blk-actions">
+            <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+          <div style="width:64px;height:48px;border-radius:6px;overflow:hidden;background:rgba(255,255,255,0.05);flex-shrink:0;border:1px solid rgba(255,255,255,0.1)">
+            <img src="${esc(curVal)}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.opacity=0;setTimeout(()=>this.style.opacity=1,100)">
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <input type="text" id="inp_${esc(b.id)}" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}" style="padding:6px 10px;font-size:12.5px">
+            <button class="btn btn-sm" onclick="openPickerFor('inp_${esc(b.id)}', (v)=>{const el=document.getElementById('inp_${esc(b.id)}');if(el){el.value=v;markEdited('${esc(b.id)}');}})" style="align-self:flex-start;background:rgba(0,159,227,0.15);color:var(--bf);padding:4px 10px;font-size:11.5px;border:none">🖼 Обрати з медіа</button>
+          </div>
+        </div>
+      </div>`;
+    }
+
     return`<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="${typeToTab[b.type]||'texts'}" style="padding:14px 16px 12px">
       <div class="blk-head" style="margin-bottom:6px">
         <div class="blk-ico ${b.type==='seo'?'seo':b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
@@ -1568,11 +1590,11 @@ function buildBlocksHtml(blocks, tabFilter, search){
 }
 
 function countTabChanges(tab){
-  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts'};
+  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images'};
   return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab&&pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value).length;
 }
 function countTab(tab){
-  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts'};
+  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images'};
   return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab).length;
 }
 
@@ -1630,7 +1652,7 @@ async function renderPages(){
   // build editor area
   let edHtml='', pvSrc='';
   if(activePage && pageBlocks.length){
-    const seoCount=countTab('seo'), hCount=countTab('headings'), tCount=countTab('texts');
+    const seoCount=countTab('seo'), hCount=countTab('headings'), tCount=countTab('texts'), iCount=countTab('images');
     const editorContent=`
       <div class="ped-tabs">
         <button class="ped-tab${pedTab==='seo'?' on':''}" data-tab="seo" onclick="switchPedTab('seo')">
@@ -1642,8 +1664,11 @@ async function renderPages(){
         <button class="ped-tab${pedTab==='texts'?' on':''}" data-tab="texts" onclick="switchPedTab('texts')">
           ¶ Тексти<span class="tab-cnt">${tCount}</span><span class="tab-dot"></span>
         </button>
+        <button class="ped-tab${pedTab==='images'?' on':''}" data-tab="images" onclick="switchPedTab('images')">
+          🖼 Зображення<span class="tab-cnt">${iCount}</span><span class="tab-dot"></span>
+        </button>
       </div>
-      ${(hCount===0&&tCount===0)?`<div class="ped-hint" style="margin:14px 16px 0;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#92400e">
+      ${(hCount===0&&tCount===0&&iCount===0)?`<div class="ped-hint" style="margin:14px 16px 0;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#92400e">
         ⚡ Ця сторінка генерується динамічно — її заголовки й тексти редагуються в розділі
         <button onclick="activeTab='sitetext';saveTab('sitetext');render()" style="background:none;border:none;color:var(--bf);font:700 12px inherit;cursor:pointer;text-decoration:underline;padding:0">🌐 Тексти сайту</button>
       </div>`:''}
@@ -1978,15 +2003,20 @@ window.onPvLoad=onPvLoad;
 function mapBlocksToDom(doc){
   blockElMap={};
   const usedEls=new Set();
-  const candidates=[...doc.querySelectorAll('h1,h2,h3,p')];
+  const candidates=[...doc.querySelectorAll('h1,h2,h3,p,a,span,img,li')];
   for(const b of pageBlocks){
     if(b.type==='seo'){
       if(b.id==='title'){ blockElMap[b.id]={set:v=>{doc.title=v;}}; }
       continue;
     }
-    const tag=b.type; // h1/h2/h3/p
+    const tag=b.type; // h1/h2/h3/p/a/span/img/li
     const want=normTxt(b.value);
-    const el=candidates.find(e=>!usedEls.has(e)&&e.tagName.toLowerCase()===tag&&normTxt(e.textContent)===want);
+    const el=candidates.find(e=>{
+      if(usedEls.has(e)) return false;
+      if(e.tagName.toLowerCase()!==tag) return false;
+      if(tag==='img'){ return (e.getAttribute('src')||'').trim() === b.value.trim(); }
+      return normTxt(e.textContent)===want;
+    });
     if(el){usedEls.add(el);el.__bf=b.id;blockElMap[b.id]=el;}
   }
 }
@@ -2018,7 +2048,7 @@ function injectPreviewHelpers(doc,iframe){
   if(Object.keys(blockElMap).length){tip.classList.add('show');setTimeout(()=>tip.classList.remove('show'),2200);}
 }
 
-function blockTab(b){return b.type==='seo'?'seo':(b.type==='p'?'texts':'headings');}
+function blockTab(b){return b.type==='seo'?'seo':(b.type==='img'?'images':(b.type.startsWith('h')?'headings':'texts'));}
 
 function openBlockForEdit(id){
   const b=pageBlocks.find(x=>x.id===id);if(!b)return;
@@ -2043,7 +2073,11 @@ function syncToPreview(id,val){
   try{
     if(el.set){el.set(val);return;} // title setter
     if(el.nodeType===1){
-      el.textContent=val;
+      if(el.tagName==='IMG'){
+        el.src=val;
+      } else {
+        el.textContent=val;
+      }
       el.classList.add('bf-edit-flash');
       setTimeout(()=>el.classList.remove('bf-edit-flash'),900);
     }
