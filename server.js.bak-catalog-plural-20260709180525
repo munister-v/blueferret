@@ -257,13 +257,12 @@ function generatedGameHtml(g) {
   const subtitle = escapeHtml(g.subtitle || g.players || 'Настільна гра Blue Ferret');
   const desc = escapeHtml(g.description || 'Опис гри скоро з\'явиться.');
   const cover = escapeHtml(g.cover_url || '/images/placeholder-game.svg');
-  const statusRaw = (g.status || 'published');
-  const statusLabel = statusRaw === 'draft' ? 'Чернетка' : statusRaw === 'archived' ? 'Архів' : statusRaw === 'preorder' ? 'Передзамовлення' : statusRaw === 'onsale' ? 'У продажі' : 'Анонс';
+  const status = escapeHtml(g.status || 'published');
   const players = escapeHtml(g.players || '');
   const age = escapeHtml(g.age || '');
   const duration = escapeHtml(g.duration || '');
   const buy = escapeHtml(g.buy_url || '');
-  const chips = [players && `<span class="bf-chip">👥 ${players}</span>`, age && `<span class="bf-chip">🎂 ${age}</span>`, duration && `<span class="bf-chip">⏱ ${duration}</span>`].filter(Boolean).join('');
+  const chips = [players, age, duration].filter(Boolean).map(x => `<span class="bf-chip">${x}</span>`).join('');
   return `<!doctype html>
 <html lang="uk">
 <head>
@@ -272,91 +271,48 @@ function generatedGameHtml(g) {
 <title>${title} | Blue Ferret</title>
 <meta name="description" content="${desc.slice(0, 155)}">
 <link rel="canonical" href="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
-<meta property="og:title" content="${title} | Blue Ferret">
-<meta property="og:description" content="${desc.slice(0, 155)}">
-<meta property="og:url" content="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
-<meta property="og:type" content="website">
-<meta property="og:image" content="${cover.startsWith('http') ? cover : 'https://blueferret.com.ua' + cover}">
-<link rel="shortcut icon" href="/favicon.ico">
 <link rel="stylesheet" href="/_next/static/css/a80874b32dc71380.css">
 <link rel="stylesheet" href="/bf.css?v=5">
 <style>
 body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-serif}
-.bfg-wrap{min-height:100vh;background:radial-gradient(ellipse 100% 70% at 50% -10%,rgba(0,159,227,.18),transparent 60%),linear-gradient(135deg,#f6fbff,#fff,#eefaf3)}
-.bfg-header{background:#0a0f1a/98;backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.05);position:sticky;top:0;z-index:50}
-.bfg-nav{max-width:1120px;margin:0 auto;padding:0 18px;display:flex;justify-content:space-between;align-items:center;height:64px}
-.bfg-logo{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff}
-.bfg-logo img{width:40px;height:40px;object-fit:contain}
-.bfg-logo-text{display:flex;flex-direction:column}
-.bfg-logo-name{font-weight:800;font-size:15px;color:#fff;letter-spacing:-.01em}
-.bfg-logo-sub{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:#94a3b8}
-.bfg-nav-links{display:flex;align-items:center;gap:4px}
-.bfg-nav-links a{color:#94a3b8;text-decoration:none;font-weight:500;font-size:14px;padding:8px 14px;border-radius:10px;transition:all .2s}
-.bfg-nav-links a:hover{color:#fff;background:rgba(255,255,255,.1)}
-.bfg-nav-links a.active{color:#fff;background:rgba(255,255,255,.12)}
-.bfg-shell{max-width:1120px;margin:0 auto;padding:56px 18px 100px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:48px;align-items:center}
-.bfg-copy{padding:24px 0}
-.bfg-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(0,159,227,.25);background:rgba(0,159,227,.08);border-radius:999px;padding:8px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#0369a1;margin-bottom:20px}
-.bfg-title{font-size:clamp(40px,7vw,88px);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;font-weight:900;color:#0f172a}
-.bfg-sub{font-size:clamp(17px,2.2vw,24px);line-height:1.35;color:#334155;margin:0 0 18px;max-width:620px}
-.bfg-desc{font-size:16px;line-height:1.8;color:#475569;max-width:660px}
-.bfg-chips{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}
-.bfg-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #dbeafe;background:#fff;border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600;color:#1e3a8a;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.bfg-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
-.bfg-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:14px;text-decoration:none;font-weight:700;font-size:15px;transition:all .2s}
-.bfg-btn.primary{background:#009fe3;color:#fff;box-shadow:0 12px 30px -12px rgba(0,159,227,.7)}
-.bfg-btn.primary:hover{background:#0088c4;transform:translateY(-1px)}
-.bfg-btn.secondary{background:#fff;color:#0f172a;border:1px solid #cbd5e1}
-.bfg-btn.secondary:hover{border-color:#009fe3;color:#009fe3}
-.bfg-cover{background:#0f172a;border-radius:24px;box-shadow:0 30px 70px -30px rgba(15,23,42,.6);overflow:hidden;aspect-ratio:4/3;position:relative}
-.bfg-cover img{width:100%;height:100%;object-fit:cover;display:block}
-.bfg-footer{background:linear-gradient(to bottom,#0f172a,#0a0f1a);padding:60px 18px 40px;text-align:center;margin-top:80px}
-.bfg-footer-inner{max-width:600px;margin:0 auto}
-.bfg-footer p{color:#64748b;font-size:14px;margin:0}
-.bfg-footer a{color:#009fe3;text-decoration:none}
-@media(max-width:800px){.bfg-shell{grid-template-columns:1fr;padding-top:28px;gap:32px}.bfg-cover{order:-1;border-radius:18px}.bfg-title{font-size:clamp(36px,10vw,60px)}.bfg-nav-links{display:none}}
+.bf-game-page{min-height:100vh;background:radial-gradient(ellipse 100% 70% at 50% -10%,rgba(0,159,227,.18),transparent 60%),linear-gradient(135deg,#f6fbff,#fff,#eefaf3)}
+.bf-game-nav{max-width:1120px;margin:0 auto;padding:22px 18px;display:flex;justify-content:space-between;gap:16px;align-items:center}
+.bf-game-nav a{color:#0f172a;text-decoration:none;font-weight:800}
+.bf-game-shell{max-width:1120px;margin:0 auto;padding:42px 18px 88px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr);gap:34px;align-items:center}
+.bf-game-copy{padding:20px 0}
+.bf-game-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(0,159,227,.22);background:#fff;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#0369a1}
+.bf-game-title{font-size:clamp(42px,8vw,92px);line-height:.92;letter-spacing:-.055em;margin:24px 0 18px;font-weight:900}
+.bf-game-sub{font-size:clamp(18px,2.4vw,26px);line-height:1.32;color:#334155;margin:0 0 20px;max-width:660px}
+.bf-game-desc{font-size:17px;line-height:1.75;color:#475569;max-width:680px}
+.bf-chiprow{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0}
+.bf-chip{display:inline-flex;border:1px solid #dbeafe;background:#fff;border-radius:12px;padding:9px 12px;font-weight:750;color:#1e3a8a}
+.bf-game-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.bf-btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 18px;border-radius:14px;text-decoration:none;font-weight:850}
+.bf-btn.primary{background:#009fe3;color:#fff;box-shadow:0 14px 28px -18px rgba(0,159,227,.75)}
+.bf-btn.secondary{background:#fff;color:#0f172a;border:1px solid #cbd5e1}
+.bf-cover{background:#0f172a;border-radius:28px;box-shadow:0 28px 70px -38px rgba(15,23,42,.7);overflow:hidden;aspect-ratio:4/3}
+.bf-cover img{width:100%;height:100%;object-fit:cover;display:block}
+@media(max-width:820px){.bf-game-shell{grid-template-columns:1fr;padding-top:18px}.bf-cover{order:-1;border-radius:20px}.bf-game-title{font-size:48px}.bf-game-nav{padding-top:16px}}
 </style>
 </head>
 <body>
-<div class="bfg-wrap" data-bf-generated-game="true">
-  <header class="bfg-header">
-    <nav class="bfg-nav">
-      <a class="bfg-logo" href="/">
-        <img src="/logo-blue-ferret.png" alt="Blue Ferret">
-        <div class="bfg-logo-text">
-          <span class="bfg-logo-name">BLUE FERRET</span>
-          <span class="bfg-logo-sub">видавництво</span>
-        </div>
-      </a>
-      <div class="bfg-nav-links">
-        <a href="/">Головна</a>
-        <a href="/igry/" class="active">Наші ігри</a>
-        <a href="/kontakty/">Контакти</a>
-      </div>
-    </nav>
-  </header>
-  <section class="bfg-shell">
-    <div class="bfg-copy">
-      <span class="bfg-kicker">${statusLabel}</span>
-      <h1 class="bfg-title">${title}</h1>
-      <p class="bfg-sub">${subtitle}</p>
-      <p class="bfg-desc">${desc}</p>
-      <div class="bfg-chips">${chips}</div>
-      <div class="bfg-actions">
-        ${buy ? `<a class="bfg-btn primary" href="${buy}">Придбати →</a>` : ''}
-        <a class="bfg-btn secondary" href="/igry/">← Назад до каталогу</a>
+<main class="bf-game-page" data-bf-generated-game="true">
+  <nav class="bf-game-nav"><a href="/">Blue Ferret</a><a href="/igry/">Наші ігри</a></nav>
+  <section class="bf-game-shell">
+    <div class="bf-game-copy">
+      <span class="bf-game-kicker">${status}</span>
+      <h1 class="bf-game-title">${title}</h1>
+      <p class="bf-game-sub">${subtitle}</p>
+      <p class="bf-game-desc">${desc}</p>
+      <div class="bf-chiprow">${chips}</div>
+      <div class="bf-game-actions">
+        ${buy ? `<a class="bf-btn primary" href="${buy}">Придбати</a>` : ''}
+        <a class="bf-btn secondary" href="/igry/">Назад до каталогу</a>
       </div>
     </div>
-    <figure class="bfg-cover">
-      <img src="${cover}" alt="${title}" loading="eager">
-    </figure>
+    <figure class="bf-cover"><img src="${cover}" alt="${title}" loading="eager"></figure>
   </section>
-  <footer class="bfg-footer">
-    <div class="bfg-footer-inner">
-      <p>© 2025 <a href="/">Blue Ferret</a> — Незалежне видавництво настільних ігор</p>
-    </div>
-  </footer>
-</div>
+</main>
 <script src="/api/public/runtime.js" defer></script>
 </body>
 </html>`;
@@ -917,16 +873,16 @@ const RUNTIME_JS = `(function(){
   function gameHref(g){return g.buy_url||('/igry/'+encodeURIComponent(g.slug||'')+'/');}
   function gameStatus(g){var s=g.status||'published';return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс';}
 	  function gameCard(g){var title=esc(g.title||g.slug||'Гра');var img=esc(g.cover_url||'/images/placeholder-game.svg');var desc=esc(g.description||g.subtitle||'Опис гри скоро з\\'явиться.');var href=esc(gameHref(g));return '<a href="'+href+'" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]"><div class="aspect-[4/3] relative overflow-hidden bg-slate-800"><img src="'+img+'" alt="'+title+'" class="absolute inset-0 h-full w-full object-cover" loading="lazy"><div class="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent"></div><div class="absolute bottom-3 sm:bottom-5 left-3 sm:left-5 right-3 sm:right-5 flex justify-between items-end gap-2"><span class="board-game-badge inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/95 text-slate-700 text-xs sm:text-sm shadow-md backdrop-blur-sm border border-[var(--bf-accent)]/30">'+esc(gameStatus(g))+'</span><span class="p-2.5 sm:p-3 rounded-xl bg-white/95 backdrop-blur-sm border border-white/60 shadow-sm text-bf">→</span></div></div><div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full"><h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800">'+title+'</h2><p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6">'+desc+'</p><span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span></div></a>';}
-	  function applyGames(list){try{if(!Array.isArray(list)||!list.length)return;var root=document.querySelector('[data-bf-static-igry]');if(!root)return;var grid=root.querySelector('[data-bf-games-grid]');if(!grid){var first=root.querySelector('a[href^="/igry/"]');grid=first&&first.parentElement;}if(!grid)return;grid.innerHTML=list.map(gameCard).join('');var count=root.querySelector('[data-bf-games-count]');if(!count){var spans=root.querySelectorAll('span');for(var i=0;i<spans.length;i++){if((spans[i].textContent||'').indexOf('ігри в каталозі')>-1){count=spans[i];break;}}}if(count)count.textContent=list.length+' '+(list.length===1?'гра':'ігри')+' в каталозі';}catch(e){}}
-	  function applyGameDetail(list){try{
-	    // Skip hydration for pre-generated static game pages — they already have correct HTML
-	    if(document.querySelector('[data-bf-generated-game]'))return;
-	    var m=location.pathname.match(/^\\/igry\\/([^\\/]+)\\/?$/);if(!m||!Array.isArray(list))return;var slug=decodeURIComponent(m[1]);var g=list.find(function(x){return x&&x.slug===slug;});if(!g)return;var title=g.title||g.slug||'';var desc=g.description||g.subtitle||'';var cover=g.cover_url||'';document.title=title?title+' | Blue Ferret':document.title;var h1=document.querySelector('main h1');if(h1&&title)h1.textContent=title;var meta=document.querySelector('meta[name="description"]');if(meta&&desc)meta.setAttribute('content',desc.slice(0,155));var og=document.querySelector('meta[property="og:title"]');if(og&&title)og.setAttribute('content',title+' | Blue Ferret');var img=document.querySelector('main img[src]');if(img&&cover&&!img.src.includes(cover)){img.src=cover;img.alt=title||img.alt;}var paragraphs=Array.prototype.slice.call(document.querySelectorAll('main p'));var longP=paragraphs.find(function(p){return (p.textContent||'').trim().length>20;});if(longP&&desc)longP.textContent=desc;
-	  }catch(e){}}
+	  function applyGames(list){try{if(!Array.isArray(list)||!list.length)return;var root=document.querySelector('[data-bf-static-igry]')||document.querySelector('main');if(!root)return;var grid=root.querySelector('[data-bf-games-grid]');if(!grid){var first=root.querySelector('a[href^="/igry/"]');grid=first&&(first.closest('.grid')||first.parentElement);}if(!grid)return;grid.innerHTML=list.map(gameCard).join('');var count=(document.querySelector('[data-bf-games-count]')||null);if(!count){var spans=document.querySelectorAll('main span');for(var i=0;i<spans.length;i++){if((spans[i].textContent||'').indexOf('ігри в каталозі')>-1){count=spans[i];break;}}}if(count)count.textContent=list.length+' '+(list.length===1?'гра':'ігри')+' в каталозі';}catch(e){}}
+	  function applyGameDetail(list){try{var m=location.pathname.match(/^\\/igry\\/([^\\/]+)\\/?$/);if(!m||!Array.isArray(list))return;var slug=decodeURIComponent(m[1]);var g=list.find(function(x){return x&&x.slug===slug;});if(!g)return;var title=g.title||g.slug||'';var desc=g.description||g.subtitle||'';var cover=g.cover_url||'';document.title=title?title+' | Blue Ferret':document.title;var h1=document.querySelector('main h1');if(h1&&title)h1.textContent=title;var meta=document.querySelector('meta[name="description"]');if(meta&&desc)meta.setAttribute('content',desc.slice(0,155));var og=document.querySelector('meta[property="og:title"]');if(og&&title)og.setAttribute('content',title+' | Blue Ferret');var img=document.querySelector('main img[src]');if(img&&cover&&!img.src.includes(cover)){img.src=cover;img.alt=title||img.alt;}var paragraphs=Array.prototype.slice.call(document.querySelectorAll('main p'));var longP=paragraphs.find(function(p){return (p.textContent||'').trim().length>20;});if(longP&&desc)longP.textContent=desc;}catch(e){}}
 	  function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
-	  function loadGames(){if(!/^\\/igry(?:\\/[^\\/]+)?\\/?$/.test(location.pathname))return;getJson('/api/public/games',8000).then(function(x){if(Array.isArray(x)){applyGames(x);applyGameDetail(x);}}).catch(function(){});}
+		  var lastGames=null, gamesLoading=false;
+		  function renderGames(){if(Array.isArray(lastGames)){applyGames(lastGames);applyGameDetail(lastGames);}}
+		  function loadGames(){if(!/^\\/igry(?:\\/[^\\/]+)?\\/?$/.test(location.pathname))return;if(gamesLoading)return;gamesLoading=true;getJson('/api/public/games',8000).then(function(x){if(Array.isArray(x)){lastGames=x;renderGames();}}).catch(function(){}).finally(function(){gamesLoading=false;});}
+		  function keepGamesFresh(){if(!/^\\/igry(?:\\/[^\\/]+)?\\/?$/.test(location.pathname))return;[0,400,1000,2200,4200].forEach(function(ms){setTimeout(function(){loadGames();renderGames();},ms);});var root=document.querySelector('[data-bf-static-igry]');if(root&&window.MutationObserver){var mo=new MutationObserver(function(){renderGames();});mo.observe(root,{childList:true,subtree:true});setTimeout(function(){try{mo.disconnect();}catch(e){}},9000);}}
+
   function load(){getJson('/api/public/site.json',8000).then(apply).catch(function(){});}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();loadGames();});else{load();loadGames();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();keepGamesFresh();});else{load();keepGamesFresh();}
 })();`;
 
 app.get('/api/public/runtime.js', (_req, res) => {
