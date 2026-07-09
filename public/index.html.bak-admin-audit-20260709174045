@@ -640,19 +640,13 @@ const STABS=new Set(['general','banner','maintenance','contacts','seo','integrat
 
 // ── UTILS ──
 const esc=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const jsq=x=>String(x??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/</g,'\\x3c');
 const fmtD=ts=>ts?new Date(ts).toLocaleString('uk-UA'):'—';
 const fmtM=n=>Number(n||0).toLocaleString('uk-UA');
 const fmtSz=b=>b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB';
 const relT=ts=>{const d=(Date.now()-ts)/1000;return d<60?'щойно':d<3600?Math.floor(d/60)+' хв тому':d<86400?Math.floor(d/3600)+' год тому':d<604800?Math.floor(d/86400)+' дн тому':fmtD(ts);};
 
 const TOAST_ICO={ok:'✓',er:'✕',i:'ℹ'};
-function toast(msg,type='i'){
-  const t=$('#toast');t.textContent='';
-  const ico=document.createElement('span');ico.style.opacity='.7';ico.textContent=TOAST_ICO[type]||'';
-  t.appendChild(ico);t.appendChild(document.createTextNode(String(msg??'')));
-  t.className='s '+type;clearTimeout(t._tid);t._tid=setTimeout(()=>t.className='',3000);
-}
+function toast(msg,type='i'){const t=$('#toast');t.innerHTML=`<span style="opacity:.7">${TOAST_ICO[type]||''}</span>${esc(msg)}`;t.className='s '+type;clearTimeout(t._tid);t._tid=setTimeout(()=>t.className='',3000);}
 window.addEventListener('offline',()=>toast('Немає інтернету. Зміни краще не зберігати до відновлення звʼязку.','er'));
 window.addEventListener('online',()=>toast('Звʼязок відновлено ✓','ok'));
 async function api(method,url,body){
@@ -671,7 +665,7 @@ async function api(method,url,body){
   if(r.status===401){showLogin();throw new Error('unauth');}
   if(!r.ok){
     const j=await r.json().catch(()=>({}));
-    const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.'};
+    const map={slug_exists:'Такий slug вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.'};
     throw new Error(map[j.error]||j.error||('HTTP '+r.status));
   }
   if(r.status===204)return null;
@@ -834,15 +828,8 @@ window.quickToggleStatus=quickToggleStatus;
 // ── GAME EDITOR (full-page with preview) ──
 function openGameEditor(id){
   editingGame=id?games.find(x=>x.id===id)||null:null;
-  gameGallery=editingGame?parseGalleryValue(editingGame.gallery):[];
+  gameGallery=editingGame?JSON.parse(editingGame.gallery||'[]'):[];
   activeTab='game-editor'; render();
-}
-function parseGalleryValue(value){
-  if(Array.isArray(value))return value.filter(Boolean);
-  if(typeof value==='string'){
-    try{const parsed=JSON.parse(value||'[]');return Array.isArray(parsed)?parsed.filter(Boolean):[];}catch{return [];}
-  }
-  return [];
 }
 
 function renderGameEditor(){
@@ -1917,17 +1904,14 @@ async function savePatchedPage(){
   const updates=pageBlocks.map(b=>({
     orig:b.orig, origVal:b.origVal,
     newVal: pageEdited[b.id]!==undefined ? pageEdited[b.id] : b.value
-  })).filter(u=>u.newVal!==undefined&&u.newVal!==u.origVal);
-  if(!updates.length){toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;}
+  })).filter(u=>u.newVal!==undefined);
   try{
     const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`,{blocks:updates});
     toast(`Збережено (${res.changed} змін) ✓`,'ok');
-    // Re-read blocks from the saved file so the next edit uses fresh orig/origVal contexts.
-    const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
-    if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;
+    // update blocks with new values and refresh preview
+    for(const b of pageBlocks){if(pageEdited[b.id]!==undefined)b.value=pageEdited[b.id];b.origVal=b.value;}
     pageEdited={};
     refreshPreview();
-    renderPages();
   }catch(e){toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
 }
@@ -2198,15 +2182,15 @@ function showMediaInfo(f){
   const shortName=f.filename.replace(/-\d{13}(\.[^.]+)$/,'$1');
   const ext=f.filename.split('.').pop().toUpperCase();
   panel.innerHTML=`
-    <img src="${esc(f.url)}" onerror="this.style.display='none'" onclick="openLightbox('${jsq(f.url)}')" style="cursor:zoom-in">
+    <img src="${esc(f.url)}" onerror="this.style.display='none'" onclick="openLightbox('${esc(f.url)}')" style="cursor:zoom-in">
     <div class="info-row"><span class="lbl">Назва</span><span class="val" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(shortName)}</span></div>
     <div class="info-row"><span class="lbl">Розмір</span><span class="val">${fmtSz(f.size)}</span></div>
     <div class="info-row"><span class="lbl">Тип</span><span class="val">${ext}</span></div>
     <div class="info-row"><span class="lbl">Дата</span><span class="val">${new Date(f.mtime).toLocaleDateString('uk-UA')}</span></div>
     <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">
-      <button class="btn btn-p btn-sm" style="width:100%" onclick="copyUrl('${jsq(f.url)}')">📋 Копіювати URL</button>
-      <button class="btn btn-g btn-sm" style="width:100%" onclick="openLightbox('${jsq(f.url)}')">🔍 Повний перегляд</button>
-      <button class="btn btn-sm" style="width:100%;background:#fef2f2;color:var(--red);border:1px solid #fecaca" onclick="delMedia('${jsq(f.filename)}')">🗑 Видалити</button>
+      <button class="btn btn-p btn-sm" style="width:100%" onclick="copyUrl('${esc(f.url)}')">📋 Копіювати URL</button>
+      <button class="btn btn-g btn-sm" style="width:100%" onclick="openLightbox('${esc(f.url)}')">🔍 Повний перегляд</button>
+      <button class="btn btn-sm" style="width:100%;background:#fef2f2;color:var(--red);border:1px solid #fecaca" onclick="delMedia('${esc(f.filename)}')">🗑 Видалити</button>
     </div>`;
 }
 
@@ -2232,7 +2216,6 @@ async function upFiles(files){
     const bar=$('#upBar');if(bar)bar.style.width=Math.round((i+1)/files.length*100)+'%';
   }
   if(ok)toast(`Завантажено ${ok} з ${files.length} файлів ✓`,'ok');
-  if(prog)setTimeout(()=>{prog.style.display='none';prog.textContent='';},900);
   await renderMedia();
 }
 async function delMedia(fn){
@@ -2243,29 +2226,20 @@ async function delMedia(fn){
     toast('Видалено','ok');await renderMedia();
   }catch(e){toast(e.message,'er');}
 }
-function copyUrl(url){
-  const full=location.origin+url;
-  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(full).then(()=>toast('URL скопійовано ✓')).catch(()=>fallbackCopy(full));
-  else fallbackCopy(full);
-}
-function fallbackCopy(text){
-  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.select();
-  try{document.execCommand('copy');toast('URL скопійовано ✓');}catch{toast(text,'i');}
-  ta.remove();
-}
+function copyUrl(url){navigator.clipboard.writeText(location.origin+url).then(()=>toast('URL скопійовано ✓'));}
 function filterMedia(q){
   mediaFilter=q.toLowerCase();
   const grid=$('#mediaGrid'),cnt=$('#mediaCount');
   if(!grid)return;
   const filtered=mediaList.filter(f=>f.filename.toLowerCase().includes(mediaFilter));
   if(cnt)cnt.textContent=`${filtered.length} / ${mediaList.length} файлів`;
-  grid.innerHTML=filtered.length?filtered.map(f=>`<div class="m-i${selectedMedia===f.filename?' sel':''}" data-fn="${esc(f.filename)}" data-url="${esc(f.url)}" onclick="selectMedia('${jsq(f.filename)}','${jsq(f.url)}',${f.size})">
+  grid.innerHTML=filtered.length?filtered.map(f=>`<div class="m-i${selectedMedia===f.filename?' sel':''}" data-fn="${esc(f.filename)}" data-url="${esc(f.url)}" onclick="selectMedia('${esc(f.filename)}','${esc(f.url)}',${f.size})">
     <div class="m-i-img">
       <img src="${esc(f.url)}" loading="lazy" onerror="this.style.opacity='.3'">
       <div class="m-ov">
-        <button onclick="event.stopPropagation();openLightbox('${jsq(f.url)}')">🔍 Переглянути</button>
-        <button onclick="event.stopPropagation();copyUrl('${jsq(f.url)}')">📋 Копіювати URL</button>
-        <button class="del" onclick="event.stopPropagation();delMedia('${jsq(f.filename)}')">🗑 Видалити</button>
+        <button onclick="event.stopPropagation();openLightbox('${esc(f.url)}')">🔍 Переглянути</button>
+        <button onclick="event.stopPropagation();copyUrl('${esc(f.url)}')">📋 Копіювати URL</button>
+        <button class="del" onclick="event.stopPropagation();delMedia('${esc(f.filename)}')">🗑 Видалити</button>
       </div>
     </div>
     <div class="m-lbl">
@@ -2283,7 +2257,7 @@ function openPickerFor(targetId, cb){
   api('GET','/api/admin/media').then(list=>{
     mediaList=list;
     $('#pickerBody').innerHTML=list.length
-      ?`<div class="m-grid">${list.map(f=>`<div class="m-i" onclick="pickMedia('${jsq(f.url)}')" style="cursor:pointer">
+      ?`<div class="m-grid">${list.map(f=>`<div class="m-i" onclick="pickMedia('${esc(f.url)}')" style="cursor:pointer">
           <img src="${esc(f.url)}" loading="lazy">
           <div class="m-ov"><button>Вибрати</button></div>
           <div class="m-lbl">${fmtSz(f.size)}</div>
@@ -2418,12 +2392,6 @@ document.addEventListener('keydown',e=>{
     else if(activeTab==='game-editor'){backToGames?.();}
     else if(activeTab==='kik-editor'){backToKik?.();}
   }
-});
-
-window.addEventListener('beforeunload',e=>{
-  const hasPageEdits=pageEdited&&Object.keys(pageEdited).length;
-  const hasSiteEdits=siteEdited&&Object.keys(siteEdited).length;
-  if(hasPageEdits||hasSiteEdits){e.preventDefault();e.returnValue='';}
 });
 
 // ── MEDIA SEARCH ──

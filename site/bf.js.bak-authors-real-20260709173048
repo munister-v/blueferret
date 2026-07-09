@@ -320,17 +320,13 @@
 	  function normalizeAuthorsCard() {
 	    if (!/^\/(?:index\.html)?$/.test(window.location.pathname)) return;
 
-	    const cardTitles = ['Створюйте', 'Створюйте світи', 'Дізнавайтеся', 'Відкривайте ігри', "Об'єднуйте гравців"];
 	    const cards = Array.from(document.querySelectorAll('main a')).filter((link) => {
 	      const heading = link.querySelector('h3');
-	      return heading && cardTitles.includes(heading.textContent.trim());
+	      return heading && ['Створюйте', 'Дізнавайтеся', "Об'єднуйте гравців"].includes(heading.textContent.trim());
 	    });
 	    if (cards.length < 3) return;
 
-	    const authorsCard = cards.find((link) => {
-	      const title = link.querySelector('h3')?.textContent.trim();
-	      return title === 'Створюйте' || title === 'Створюйте світи';
-	    });
+	    const authorsCard = cards.find((link) => link.querySelector('h3')?.textContent.trim() === 'Створюйте');
 	    if (!authorsCard) return;
 	    authorsCard.setAttribute('href', '/avtoram/');
 	    authorsCard.dataset.bfAuthorsCard = '1';

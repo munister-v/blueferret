@@ -84,11 +84,6 @@ function writeAtomic(file, content) {
   fs.writeFileSync(tmp, content, 'utf8');
   fs.renameSync(tmp, file);
 }
-function writeBackup(file) {
-  if (!fs.existsSync(file)) return;
-  const ts = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
-  fs.copyFileSync(file, `${file}.bak-${ts}`);
-}
 function bumpPublishedAt() {
   const g = Object.assign({}, DEFAULTS.general, getSetting('general', {}));
   g.publishedAt = Date.now();
@@ -369,9 +364,8 @@ app.post('/api/admin/games', requireAuth, (req, res) => {
   if (gSlug.get(data.slug)) return res.status(409).json({error:'slug_exists'});
   const info = gIns.run(data);
   writeGeneratedGamePage(gOne.get(info.lastInsertRowid));
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'game_create',{id:info.lastInsertRowid,slug:data.slug,publishedAt});
-  res.status(201).json({...gameRow(gOne.get(info.lastInsertRowid)), publishedAt});
+  audit(req.ip,'game_create',{id:info.lastInsertRowid,slug:data.slug});
+  res.status(201).json(gameRow(gOne.get(info.lastInsertRowid)));
 });
 app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   const id=+req.params.id, ex=gOne.get(id);
@@ -382,19 +376,15 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   gUpd.run({...data,id});
   if (ex.slug !== data.slug) removeGeneratedGamePage(ex.slug);
   writeGeneratedGamePage(gOne.get(id));
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'game_update',{id,publishedAt});
-  res.json({...gameRow(gOne.get(id)), publishedAt});
+  audit(req.ip,'game_update',{id});
+  res.json(gameRow(gOne.get(id)));
 });
 app.delete('/api/admin/games/:id', requireAuth, (req, res) => {
   const id=+req.params.id;
   const ex = gOne.get(id);
   if (!ex) return res.status(404).json({error:'not_found'});
   removeGeneratedGamePage(ex.slug);
-  gDel.run(id);
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'game_delete',{id,publishedAt});
-  res.json({ok:true,publishedAt});
+  gDel.run(id); audit(req.ip,'game_delete',{id}); res.json({ok:true});
 });
 
 // ---------- KIK CRUD ----------
@@ -421,21 +411,19 @@ app.get('/api/admin/kik/:id', requireAuth, (req, res) => {
 app.post('/api/admin/kik', requireAuth, (req, res) => {
   const b=req.body||{}; if(!b.title) return res.status(400).json({error:'title required'});
   const data=kikBody(b); const info=kIns.run(data);
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'kik_create',{id:info.lastInsertRowid,title:data.title,publishedAt});
-  res.status(201).json({...kOne.get(info.lastInsertRowid), publishedAt});
+  audit(req.ip,'kik_create',{id:info.lastInsertRowid,title:data.title});
+  res.status(201).json(kOne.get(info.lastInsertRowid));
 });
 app.put('/api/admin/kik/:id', requireAuth, (req, res) => {
   const id=+req.params.id, ex=kOne.get(id);
   if(!ex) return res.status(404).json({error:'not_found'});
   const data=kikBody(req.body||{},ex); kUpd.run({...data,id});
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'kik_update',{id,publishedAt}); res.json({...kOne.get(id), publishedAt});
+  audit(req.ip,'kik_update',{id}); res.json(kOne.get(id));
 });
 app.delete('/api/admin/kik/:id', requireAuth, (req, res) => {
   const id=+req.params.id;
   if(!kOne.get(id)) return res.status(404).json({error:'not_found'});
-  kDel.run(id); const publishedAt = bumpPublishedAt(); audit(req.ip,'kik_delete',{id,publishedAt}); res.json({ok:true,publishedAt});
+  kDel.run(id); audit(req.ip,'kik_delete',{id}); res.json({ok:true});
 });
 
 // ---------- media upload ----------
@@ -443,29 +431,17 @@ const storage = multer.diskStorage({
   destination: (_req, _f, cb) => cb(null, UPLOADS),
   filename: (_req, file, cb) => {
     const ext  = path.extname(file.originalname).toLowerCase();
-    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9а-яіїєґ]/gi,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'media';
+    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9а-яіїєґ]/gi,'-').slice(0,40);
     cb(null, `${base}-${Date.now()}${ext}`);
   },
 });
 const upload = multer({
   storage,
   limits: { fileSize: 10*1024*1024 },
-  fileFilter: (_r, f, cb) => {
-    if (!/\.(jpe?g|png|webp|gif|svg|avif)$/i.test(f.originalname)) {
-      const err = new Error('unsupported_file_type');
-      err.statusCode = 415;
-      return cb(err);
-    }
-    cb(null, true);
-  },
+  fileFilter: (_r, f, cb) => cb(null, /\.(jpe?g|png|webp|gif|svg|avif)$/i.test(f.originalname)),
 });
 
-app.post('/api/admin/upload', requireAuth, (req, res, next) => {
-  upload.single('file')(req, res, err => {
-    if (err) return next(err);
-    next();
-  });
-}, (req, res) => {
+app.post('/api/admin/upload', requireAuth, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({error:'no file'});
   const url = `/uploads/${req.file.filename}`;
   audit(req.ip,'upload',{url});
@@ -627,10 +603,9 @@ app.post('/api/admin/pages/create', requireAuth, (req,res)=>{
   }
   if(!html) html = makePageHtml(slug, title||slug);
   const outFile = path.join(dir,'index.html');
-  writeAtomic(outFile, html);
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'page_create',{slug,title,publishedAt});
-  res.status(201).json({ok:true, slug, file:`${slug}/index.html`, path:`/${slug}/`, publishedAt});
+  fs.writeFileSync(outFile, html, 'utf8');
+  audit(req.ip,'page_create',{slug,title});
+  res.status(201).json({ok:true, slug, file:`${slug}/index.html`, path:`/${slug}/`});
 });
 
 // ── delete page ──
@@ -646,9 +621,8 @@ app.delete('/api/admin/pages/delete', requireAuth, (req,res)=>{
   if(!safe) return res.status(400).json({error:'directory has unexpected files, delete manually'});
   contents.forEach(f=>fs.unlinkSync(path.join(dir,f)));
   fs.rmdirSync(dir);
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'page_delete',{path:rel,publishedAt});
-  res.json({ok:true,publishedAt});
+  audit(req.ip,'page_delete',{path:rel});
+  res.json({ok:true});
 });
 
 // ════════════════════════════════════════════════════════
@@ -734,7 +708,7 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
   const newName=`${prefix}-${hash}.js`;
   const newPath=path.join(sc.bundle.dir,newName);
   try{
-    writeAtomic(newPath,newContent);
+    fs.writeFileSync(newPath,newContent,'utf8');
     if(newName!==oldName) fs.unlinkSync(sc.bundle.file);
     // update references across all HTML
     let htmlChanged=0;
@@ -745,7 +719,7 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
         if(st.isDirectory()) walk(full);
         else if(f==='index.html'){
           let h=fs.readFileSync(full,'utf8');
-          if(h.includes(oldName)){ h=h.split(oldName).join(newName); writeAtomic(full,h); htmlChanged++; }
+          if(h.includes(oldName)){ h=h.split(oldName).join(newName); fs.writeFileSync(full,h,'utf8'); htmlChanged++; }
         }
       }
     })(SITE_ROOT);
@@ -769,10 +743,9 @@ app.post('/api/admin/pages/duplicate', requireAuth, (req,res)=>{
   const dir=path.join(PAGES_ROOT,slug);
   if(fs.existsSync(dir)) return res.status(409).json({error:'page_exists'});
   fs.mkdirSync(dir,{recursive:true});
-  writeAtomic(path.join(dir,'index.html'), fs.readFileSync(srcFull, 'utf8'));
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'page_duplicate',{from,slug,publishedAt});
-  res.status(201).json({ok:true,slug,file:`${slug}/index.html`,path:`/${slug}/`,publishedAt});
+  fs.copyFileSync(srcFull,path.join(dir,'index.html'));
+  audit(req.ip,'page_duplicate',{from,slug});
+  res.status(201).json({ok:true,slug,file:`${slug}/index.html`,path:`/${slug}/`});
 });
 // extract editable blocks from a page
 app.get('/api/admin/page-extract', requireAuth, (req, res) => {
@@ -796,7 +769,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   if (!Array.isArray(blocks)) return res.status(400).json({error:'blocks required'});
   let html = fs.readFileSync(full, 'utf8');
   // backup
-  writeBackup(full);
+  fs.writeFileSync(full + '.bak', html);
   let changed = 0;
   for (const b of blocks) {
     if (!b.orig || b.origVal === b.newVal || b.newVal == null) continue;
@@ -827,7 +800,7 @@ app.put('/api/admin/pages/*', requireAuth, (req, res) => {
   const { content } = req.body || {};
   if (typeof content !== 'string') return res.status(400).json({error:'no content'});
   // backup
-  writeBackup(full);
+  fs.writeFileSync(full+'.bak', fs.existsSync(full)?fs.readFileSync(full):'');
   writeAtomic(full, content);
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'page_edit',{path:rel,publishedAt});
@@ -844,15 +817,11 @@ app.get('/api/public/site.json', (_req, res) => {
   res.json(pub);
 });
 app.get('/api/public/games', (_req, res) => {
-  res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma','no-cache');
-  res.setHeader('Expires','0');
+  res.setHeader('Cache-Control','public, max-age=30');
   res.json(gAll.all().filter(g=>g.status==='published').map(gameRow));
 });
 app.get('/api/public/kik', (_req, res) => {
-  res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma','no-cache');
-  res.setHeader('Expires','0');
+  res.setHeader('Cache-Control','public, max-age=30');
   res.json(kAll.all());
 });
 
@@ -872,11 +841,10 @@ const RUNTIME_JS = `(function(){
   function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function gameHref(g){return g.buy_url||('/igry/'+encodeURIComponent(g.slug||'')+'/');}
   function gameStatus(g){var s=g.status||'published';return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс';}
-	  function gameCard(g){var title=esc(g.title||g.slug||'Гра');var img=esc(g.cover_url||'/images/placeholder-game.svg');var desc=esc(g.description||g.subtitle||'Опис гри скоро з\\'явиться.');var href=esc(gameHref(g));return '<a href="'+href+'" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]"><div class="aspect-[4/3] relative overflow-hidden bg-slate-800"><img src="'+img+'" alt="'+title+'" class="absolute inset-0 h-full w-full object-cover" loading="lazy"><div class="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent"></div><div class="absolute bottom-3 sm:bottom-5 left-3 sm:left-5 right-3 sm:right-5 flex justify-between items-end gap-2"><span class="board-game-badge inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/95 text-slate-700 text-xs sm:text-sm shadow-md backdrop-blur-sm border border-[var(--bf-accent)]/30">'+esc(gameStatus(g))+'</span><span class="p-2.5 sm:p-3 rounded-xl bg-white/95 backdrop-blur-sm border border-white/60 shadow-sm text-bf">→</span></div></div><div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full"><h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800">'+title+'</h2><p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6">'+desc+'</p><span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span></div></a>';}
-	  function applyGames(list){try{if(!Array.isArray(list)||!list.length)return;var root=document.querySelector('[data-bf-static-igry]');if(!root)return;var grid=root.querySelector('[data-bf-games-grid]');if(!grid){var first=root.querySelector('a[href^="/igry/"]');grid=first&&first.parentElement;}if(!grid)return;grid.innerHTML=list.map(gameCard).join('');var count=root.querySelector('[data-bf-games-count]');if(!count){var spans=root.querySelectorAll('span');for(var i=0;i<spans.length;i++){if((spans[i].textContent||'').indexOf('ігри в каталозі')>-1){count=spans[i];break;}}}if(count)count.textContent=list.length+' '+(list.length===1?'гра':'ігри')+' в каталозі';}catch(e){}}
-	  function applyGameDetail(list){try{var m=location.pathname.match(/^\\/igry\\/([^\\/]+)\\/?$/);if(!m||!Array.isArray(list))return;var slug=decodeURIComponent(m[1]);var g=list.find(function(x){return x&&x.slug===slug;});if(!g)return;var title=g.title||g.slug||'';var desc=g.description||g.subtitle||'';var cover=g.cover_url||'';document.title=title?title+' | Blue Ferret':document.title;var h1=document.querySelector('main h1');if(h1&&title)h1.textContent=title;var meta=document.querySelector('meta[name="description"]');if(meta&&desc)meta.setAttribute('content',desc.slice(0,155));var og=document.querySelector('meta[property="og:title"]');if(og&&title)og.setAttribute('content',title+' | Blue Ferret');var img=document.querySelector('main img[src]');if(img&&cover&&!img.src.includes(cover)){img.src=cover;img.alt=title||img.alt;}var paragraphs=Array.prototype.slice.call(document.querySelectorAll('main p'));var longP=paragraphs.find(function(p){return (p.textContent||'').trim().length>20;});if(longP&&desc)longP.textContent=desc;}catch(e){}}
-	  function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
-	  function loadGames(){if(!/^\\/igry(?:\\/[^\\/]+)?\\/?$/.test(location.pathname))return;getJson('/api/public/games',8000).then(function(x){if(Array.isArray(x)){applyGames(x);applyGameDetail(x);}}).catch(function(){});}
+  function gameCard(g){var title=esc(g.title||g.slug||'Гра');var img=esc(g.cover_url||'/images/placeholder-game.svg');var desc=esc(g.description||g.subtitle||'Опис гри скоро з\\'явиться.');var href=esc(gameHref(g));return '<a href="'+href+'" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]"><div class="aspect-[4/3] relative overflow-hidden bg-slate-800"><img src="'+img+'" alt="'+title+'" class="absolute inset-0 h-full w-full object-cover" loading="lazy"><div class="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent"></div><div class="absolute bottom-3 sm:bottom-5 left-3 sm:left-5 right-3 sm:right-5 flex justify-between items-end gap-2"><span class="board-game-badge inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/95 text-slate-700 text-xs sm:text-sm shadow-md backdrop-blur-sm border border-[var(--bf-accent)]/30">'+esc(gameStatus(g))+'</span><span class="p-2.5 sm:p-3 rounded-xl bg-white/95 backdrop-blur-sm border border-white/60 shadow-sm text-bf">→</span></div></div><div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full"><h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800">'+title+'</h2><p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6">'+desc+'</p><span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span></div></a>';}
+  function applyGames(list){try{if(!Array.isArray(list)||!list.length)return;var root=document.querySelector('[data-bf-static-igry]');if(!root)return;var grid=root.querySelector('[data-bf-games-grid]');if(!grid){var first=root.querySelector('a[href^="/igry/"]');grid=first&&first.parentElement;}if(!grid)return;grid.innerHTML=list.map(gameCard).join('');var count=root.querySelector('[data-bf-games-count]');if(!count){var spans=root.querySelectorAll('span');for(var i=0;i<spans.length;i++){if((spans[i].textContent||'').indexOf('ігри в каталозі')>-1){count=spans[i];break;}}}if(count)count.textContent=list.length+' '+(list.length===1?'гра':'ігри')+' в каталозі';}catch(e){}}
+  function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
+  function loadGames(){if(!/^\\/igry\\/?$/.test(location.pathname))return;getJson('/api/public/games',8000).then(function(x){if(Array.isArray(x))applyGames(x);}).catch(function(){});}
   function load(){getJson('/api/public/site.json',8000).then(apply).catch(function(){});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();loadGames();});else{load();loadGames();}
 })();`;
@@ -884,13 +852,6 @@ const RUNTIME_JS = `(function(){
 app.get('/api/public/runtime.js', (_req, res) => {
   res.type('application/javascript').setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
   res.send(RUNTIME_JS);
-});
-
-app.use((err, _req, res, next) => {
-  if (!err) return next();
-  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({error:'file_too_large'});
-  if (err.statusCode) return res.status(err.statusCode).json({error:err.message || 'upload_error'});
-  res.status(500).json({error:'server_error'});
 });
 
 // ---------- SPA ----------

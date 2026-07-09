@@ -640,7 +640,6 @@ const STABS=new Set(['general','banner','maintenance','contacts','seo','integrat
 
 // ── UTILS ──
 const esc=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const jsq=x=>String(x??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/</g,'\\x3c');
 const fmtD=ts=>ts?new Date(ts).toLocaleString('uk-UA'):'—';
 const fmtM=n=>Number(n||0).toLocaleString('uk-UA');
 const fmtSz=b=>b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB';
@@ -2198,15 +2197,15 @@ function showMediaInfo(f){
   const shortName=f.filename.replace(/-\d{13}(\.[^.]+)$/,'$1');
   const ext=f.filename.split('.').pop().toUpperCase();
   panel.innerHTML=`
-    <img src="${esc(f.url)}" onerror="this.style.display='none'" onclick="openLightbox('${jsq(f.url)}')" style="cursor:zoom-in">
+    <img src="${esc(f.url)}" onerror="this.style.display='none'" onclick="openLightbox('${esc(f.url)}')" style="cursor:zoom-in">
     <div class="info-row"><span class="lbl">Назва</span><span class="val" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(shortName)}</span></div>
     <div class="info-row"><span class="lbl">Розмір</span><span class="val">${fmtSz(f.size)}</span></div>
     <div class="info-row"><span class="lbl">Тип</span><span class="val">${ext}</span></div>
     <div class="info-row"><span class="lbl">Дата</span><span class="val">${new Date(f.mtime).toLocaleDateString('uk-UA')}</span></div>
     <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">
-      <button class="btn btn-p btn-sm" style="width:100%" onclick="copyUrl('${jsq(f.url)}')">📋 Копіювати URL</button>
-      <button class="btn btn-g btn-sm" style="width:100%" onclick="openLightbox('${jsq(f.url)}')">🔍 Повний перегляд</button>
-      <button class="btn btn-sm" style="width:100%;background:#fef2f2;color:var(--red);border:1px solid #fecaca" onclick="delMedia('${jsq(f.filename)}')">🗑 Видалити</button>
+      <button class="btn btn-p btn-sm" style="width:100%" onclick="copyUrl('${esc(f.url)}')">📋 Копіювати URL</button>
+      <button class="btn btn-g btn-sm" style="width:100%" onclick="openLightbox('${esc(f.url)}')">🔍 Повний перегляд</button>
+      <button class="btn btn-sm" style="width:100%;background:#fef2f2;color:var(--red);border:1px solid #fecaca" onclick="delMedia('${esc(f.filename)}')">🗑 Видалити</button>
     </div>`;
 }
 
@@ -2259,13 +2258,13 @@ function filterMedia(q){
   if(!grid)return;
   const filtered=mediaList.filter(f=>f.filename.toLowerCase().includes(mediaFilter));
   if(cnt)cnt.textContent=`${filtered.length} / ${mediaList.length} файлів`;
-  grid.innerHTML=filtered.length?filtered.map(f=>`<div class="m-i${selectedMedia===f.filename?' sel':''}" data-fn="${esc(f.filename)}" data-url="${esc(f.url)}" onclick="selectMedia('${jsq(f.filename)}','${jsq(f.url)}',${f.size})">
+  grid.innerHTML=filtered.length?filtered.map(f=>`<div class="m-i${selectedMedia===f.filename?' sel':''}" data-fn="${esc(f.filename)}" data-url="${esc(f.url)}" onclick="selectMedia('${esc(f.filename)}','${esc(f.url)}',${f.size})">
     <div class="m-i-img">
       <img src="${esc(f.url)}" loading="lazy" onerror="this.style.opacity='.3'">
       <div class="m-ov">
-        <button onclick="event.stopPropagation();openLightbox('${jsq(f.url)}')">🔍 Переглянути</button>
-        <button onclick="event.stopPropagation();copyUrl('${jsq(f.url)}')">📋 Копіювати URL</button>
-        <button class="del" onclick="event.stopPropagation();delMedia('${jsq(f.filename)}')">🗑 Видалити</button>
+        <button onclick="event.stopPropagation();openLightbox('${esc(f.url)}')">🔍 Переглянути</button>
+        <button onclick="event.stopPropagation();copyUrl('${esc(f.url)}')">📋 Копіювати URL</button>
+        <button class="del" onclick="event.stopPropagation();delMedia('${esc(f.filename)}')">🗑 Видалити</button>
       </div>
     </div>
     <div class="m-lbl">
@@ -2283,7 +2282,7 @@ function openPickerFor(targetId, cb){
   api('GET','/api/admin/media').then(list=>{
     mediaList=list;
     $('#pickerBody').innerHTML=list.length
-      ?`<div class="m-grid">${list.map(f=>`<div class="m-i" onclick="pickMedia('${jsq(f.url)}')" style="cursor:pointer">
+      ?`<div class="m-grid">${list.map(f=>`<div class="m-i" onclick="pickMedia('${esc(f.url)}')" style="cursor:pointer">
           <img src="${esc(f.url)}" loading="lazy">
           <div class="m-ov"><button>Вибрати</button></div>
           <div class="m-lbl">${fmtSz(f.size)}</div>
