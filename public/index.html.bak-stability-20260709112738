@@ -647,10 +647,7 @@ const relT=ts=>{const d=(Date.now()-ts)/1000;return d<60?'щойно':d<3600?Mat
 
 const TOAST_ICO={ok:'✓',er:'✕',i:'ℹ'};
 function toast(msg,type='i'){const t=$('#toast');t.innerHTML=`<span style="opacity:.7">${TOAST_ICO[type]||''}</span>${esc(msg)}`;t.className='s '+type;clearTimeout(t._tid);t._tid=setTimeout(()=>t.className='',3000);}
-window.addEventListener('offline',()=>toast('Немає інтернету. Зміни краще не зберігати до відновлення звʼязку.','er'));
-window.addEventListener('online',()=>toast('Звʼязок відновлено ✓','ok'));
 async function api(method,url,body){
-  if(navigator.onLine===false)throw new Error('Немає інтернету.');
   const ctl=new AbortController();
   const tid=setTimeout(()=>ctl.abort(),20000);
   let r;
@@ -2340,19 +2337,14 @@ window.togglePw=togglePw;
 
 $('#loginForm').addEventListener('submit',async e=>{
   e.preventDefault();$('#loginBtn').disabled=true;$('#loginErr').classList.add('hidden');
-  const ctl=new AbortController();
-  const tid=setTimeout(()=>ctl.abort(),15000);
   try{
-    const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',signal:ctl.signal,
+    const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({password:$('#pw').value,remember:$('#rememberMe')?.checked||false})});
     if(r.ok){
       if($('#rememberMe')?.checked)localStorage.setItem('bf_remember','1');
       await boot();
     }else{const j=await r.json().catch(()=>({}));$('#loginErr').textContent=j.error==='too_many_attempts'?'Забагато спроб — зачекайте 10 хв':'Невірний пароль';$('#loginErr').classList.remove('hidden');}
-  }catch(err){
-    $('#loginErr').textContent=err.name==='AbortError'?'Сервер відповідає занадто довго':'Сервер тимчасово недоступний';
-    $('#loginErr').classList.remove('hidden');
-  }finally{clearTimeout(tid);$('#loginBtn').disabled=false;}
+  }finally{$('#loginBtn').disabled=false;}
 });
 // restore remember state
 if(localStorage.getItem('bf_remember')==='1'&&$('#rememberMe'))$('#rememberMe').checked=true;
@@ -2409,9 +2401,7 @@ resizeObs.observe(document.getElementById('mainContent'),{childList:true,subtree
 
 async function boot(){
   try{
-    const ctl=new AbortController();
-    const tid=setTimeout(()=>ctl.abort(),12000);
-    const me=await fetch('/api/admin/me',{credentials:'same-origin',signal:ctl.signal}).then(r=>r.json()).catch(()=>({authenticated:false})).finally(()=>clearTimeout(tid));
+    const me=await fetch('/api/admin/me',{credentials:'same-origin'}).then(r=>r.json()).catch(()=>({authenticated:false}));
     if(!me.authenticated){showLogin();return;}
     [S,games,kik]=await Promise.all([api('GET','/api/admin/settings'),api('GET','/api/admin/games'),api('GET','/api/admin/kik')]);
     activeTab=loadTab();
