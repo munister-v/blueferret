@@ -84,12 +84,6 @@ function writeAtomic(file, content) {
   fs.writeFileSync(tmp, content, 'utf8');
   fs.renameSync(tmp, file);
 }
-function bumpPublishedAt() {
-  const g = Object.assign({}, DEFAULTS.general, getSetting('general', {}));
-  g.publishedAt = Date.now();
-  setSetting('general', g);
-  return g.publishedAt;
-}
 
 // session secret
 let SECRET = getSetting('__secret', null);
@@ -218,7 +212,9 @@ app.put('/api/admin/settings', requireAuth, (req, res) => {
       changed.push(k);
     }
   }
-  bumpPublishedAt();
+  const g = Object.assign({}, DEFAULTS.general, getSetting('general', {}));
+  g.publishedAt = Date.now();
+  setSetting('general', g);
   audit(req.ip, 'settings_save', { changed });
   res.json({ ok: true, changed, settings: fullSettings() });
 });
@@ -725,9 +721,8 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
     })(SITE_ROOT);
     // best-effort SELinux restore
     try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
-    const publishedAt = bumpPublishedAt();
-    audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged,publishedAt});
-    res.json({ok:true, applied, bundle:newName, htmlChanged, publishedAt});
+    audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged});
+    res.json({ok:true, applied, bundle:newName, htmlChanged});
   }catch(e){
     res.status(500).json({error:e.message});
   }
@@ -778,10 +773,9 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     const newOrig = b.orig.replace(b.origVal, encoded);
     if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
   }
-  writeAtomic(full, html);
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'page_patch', {path: rel, changed, publishedAt});
-  res.json({ok: true, changed, publishedAt});
+  fs.writeFileSync(full, html, 'utf8');
+  audit(req.ip, 'page_patch', {path: rel, changed});
+  res.json({ok: true, changed});
 });
 
 app.get('/api/admin/pages/*', requireAuth, (req, res) => {
@@ -801,19 +795,16 @@ app.put('/api/admin/pages/*', requireAuth, (req, res) => {
   if (typeof content !== 'string') return res.status(400).json({error:'no content'});
   // backup
   fs.writeFileSync(full+'.bak', fs.existsSync(full)?fs.readFileSync(full):'');
-  writeAtomic(full, content);
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'page_edit',{path:rel,publishedAt});
-  res.json({ok:true,publishedAt});
+  fs.writeFileSync(full, content, 'utf8');
+  audit(req.ip,'page_edit',{path:rel});
+  res.json({ok:true});
 });
 
 // ---------- public ----------
 app.get('/api/public/site.json', (_req, res) => {
   const s=fullSettings(), pub={};
   for(const k of PUBLIC_KEYS) pub[k]=s[k];
-  res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma','no-cache');
-  res.setHeader('Expires','0');
+  res.setHeader('Cache-Control','public, max-age=30');
   res.json(pub);
 });
 app.get('/api/public/games', (_req, res) => {
@@ -850,7 +841,7 @@ const RUNTIME_JS = `(function(){
 })();`;
 
 app.get('/api/public/runtime.js', (_req, res) => {
-  res.type('application/javascript').setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.type('application/javascript').setHeader('Cache-Control','public, max-age=60');
   res.send(RUNTIME_JS);
 });
 

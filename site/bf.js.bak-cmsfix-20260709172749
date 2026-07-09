@@ -220,13 +220,12 @@
           <strong>Blue Ferret</strong>
           <button type="button" aria-label="Закрити меню" data-bf-close-menu>×</button>
         </div>
-	        <nav class="bf-mm-links" aria-label="Мобільна навігація">
-	          <a href="/">Головна</a>
-	          <a href="/igry/">Наші ігри</a>
-	          <a href="/avtoram/">Для авторів</a>
-	          <a href="/kik/">KIK вдома</a>
-	          <a href="/kontakty/">Контакти</a>
-	        </nav>
+        <nav class="bf-mm-links" aria-label="Мобільна навігація">
+          <a href="/">Головна</a>
+          <a href="/igry/">Наші ігри</a>
+          <a href="/kik/">KIK вдома</a>
+          <a href="/kontakty/">Контакти</a>
+        </nav>
         <a class="bf-mm-kik" href="/kik/">
           <span>KIK вдома</span>
           <small>Підтримка авторських настільних ігор</small>
@@ -301,8 +300,8 @@
     });
   }
 
-	  function polishGamesCatalog() {
-	    if (!/^\/igry\/?$/.test(window.location.pathname)) return;
+  function polishGamesCatalog() {
+    if (!/^\/igry\/?$/.test(window.location.pathname)) return;
 
     document.querySelectorAll('a[href="/igry/trymaysia/"], a[href$="/igry/trymaysia/"]').forEach(card => {
       const img = card.querySelector('img');
@@ -314,35 +313,8 @@
       img.style.objectPosition = 'center';
       img.style.padding = '10px 12px 0';
       img.style.background = '#263d57';
-	    });
-	  }
-
-	  function normalizeAuthorsCard() {
-	    if (!/^\/(?:index\.html)?$/.test(window.location.pathname)) return;
-
-	    const cards = Array.from(document.querySelectorAll('main a')).filter((link) => {
-	      const heading = link.querySelector('h3');
-	      return heading && ['Створюйте', 'Дізнавайтеся', "Об'єднуйте гравців"].includes(heading.textContent.trim());
-	    });
-	    if (cards.length < 3) return;
-
-	    const authorsCard = cards.find((link) => link.querySelector('h3')?.textContent.trim() === 'Створюйте');
-	    if (!authorsCard) return;
-	    authorsCard.setAttribute('href', '/avtoram/');
-	    authorsCard.dataset.bfAuthorsCard = '1';
-
-	    const text = authorsCard.querySelector('p');
-	    if (text) {
-	      text.textContent = 'Маєте ідею настільної гри? Надішліть прототип, короткий опис і контакти - ми подивимось та відповімо.';
-	    }
-
-	    const grid = authorsCard.parentElement;
-	    if (!grid) return;
-	    const currentCards = Array.from(grid.children).filter((node) => node.tagName === 'A');
-	    if (currentCards.length >= 3 && currentCards[2] !== authorsCard) {
-	      grid.insertBefore(authorsCard, currentCards[3] || null);
-	    }
-	  }
+    });
+  }
 
   // ── Button ripple on all CTA buttons ──
   function initRipples() {
@@ -354,23 +326,20 @@
   // ── Run after DOM ready ──
   function init() {
     initAnimations();
-	    initImages();
-	    polishGamesCatalog();
-	    normalizeAuthorsCard();
-	    initRipples();
-	    fixGamesNavButton();
-	    initMobileMenuFallback();
+    initImages();
+    polishGamesCatalog();
+    initRipples();
+    fixGamesNavButton();
+    initMobileMenuFallback();
     // Re-run after a short delay to catch dynamically rendered content
     setTimeout(() => {
-	      initAnimations();
-	      polishGamesCatalog();
-	      normalizeAuthorsCard();
-	      initRipples();
-	      fixGamesNavButton();
-	      initMobileMenuFallback();
-	    }, 800);
-	    setTimeout(normalizeAuthorsCard, 1800);
-	  }
+      initAnimations();
+      polishGamesCatalog();
+      initRipples();
+      fixGamesNavButton();
+      initMobileMenuFallback();
+    }, 800);
+  }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
