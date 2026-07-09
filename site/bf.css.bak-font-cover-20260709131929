@@ -1,54 +1,5 @@
 /* ===== Blue Ferret Site Enhancements ===== */
 
-/* ── Games catalog readability overrides ── */
-[data-bf-static-igry],
-[data-bf-static-igry] h1,
-[data-bf-static-igry] h2,
-[data-bf-static-igry] h3,
-[data-bf-static-igry] p,
-[data-bf-static-igry] a,
-[data-bf-static-igry] span,
-[data-bf-static-igry] button {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-}
-
-[data-bf-static-igry] .heading-2 {
-  font-weight: 850 !important;
-  letter-spacing: -0.035em !important;
-  color: #102033 !important;
-}
-
-main .heading-2,
-main h1[class*="heading"],
-main h1[class*="tracking-tight"] {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-}
-
-[data-bf-static-igry] a[href="/igry/trymaysia/"] > div:first-child img,
-[data-bf-static-igry] a[href$="/igry/trymaysia/"] > div:first-child img,
-main a[href="/igry/trymaysia/"] > div:first-child img,
-main a[href$="/igry/trymaysia/"] > div:first-child img {
-  object-fit: contain !important;
-  object-position: center !important;
-  padding: 10px 12px 0 !important;
-  background: #263d57 !important;
-}
-
-[data-bf-static-igry] a[href="/igry/trymaysia/"] > div:first-child,
-[data-bf-static-igry] a[href$="/igry/trymaysia/"] > div:first-child,
-main a[href="/igry/trymaysia/"] > div:first-child,
-main a[href$="/igry/trymaysia/"] > div:first-child {
-  background:
-    radial-gradient(circle at 50% 18%, rgba(255,255,255,.16), transparent 34%),
-    #263d57 !important;
-}
-
-main a[href^="/igry/"] h2,
-main a[href^="/igry/"] p,
-main a[href^="/igry/"] span {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-}
-
 /* ── Smooth scroll ── */
 html { scroll-behavior: smooth; }
 * { -webkit-tap-highlight-color: transparent; }

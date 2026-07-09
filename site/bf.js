@@ -300,6 +300,22 @@
     });
   }
 
+  function polishGamesCatalog() {
+    if (!/^\/igry\/?$/.test(window.location.pathname)) return;
+
+    document.querySelectorAll('a[href="/igry/trymaysia/"], a[href$="/igry/trymaysia/"]').forEach(card => {
+      const img = card.querySelector('img');
+      if (!img) return;
+      if ((img.getAttribute('src') || '').includes('box-front-v6.png')) {
+        img.setAttribute('src', '/images/trymaysia/box-front-center-v11.jpg');
+      }
+      img.style.objectFit = 'contain';
+      img.style.objectPosition = 'center';
+      img.style.padding = '10px 12px 0';
+      img.style.background = '#263d57';
+    });
+  }
+
   // ── Button ripple on all CTA buttons ──
   function initRipples() {
     document.querySelectorAll('button, a[class*="btn"], a[class*="rounded-xl"][class*="bg-"]').forEach(el => {
@@ -311,12 +327,14 @@
   function init() {
     initAnimations();
     initImages();
+    polishGamesCatalog();
     initRipples();
     fixGamesNavButton();
     initMobileMenuFallback();
     // Re-run after a short delay to catch dynamically rendered content
     setTimeout(() => {
       initAnimations();
+      polishGamesCatalog();
       initRipples();
       fixGamesNavButton();
       initMobileMenuFallback();
