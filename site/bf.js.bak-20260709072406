@@ -201,94 +201,6 @@
     });
   }
 
-  // ── Mobile hamburger fallback ──
-  // Some pages are served from a captured Next.js build. If hydration stalls,
-  // the SSR hamburger button remains visible but has no React click handler.
-  // This fallback owns the mobile menu interaction in plain DOM, so the menu
-  // works even when the original client bundle does not finish mounting.
-  function ensureFallbackMobileMenu() {
-    let menu = document.getElementById('bf-mobile-menu-fallback');
-    if (menu) return menu;
-
-    menu = document.createElement('div');
-    menu.id = 'bf-mobile-menu-fallback';
-    menu.hidden = true;
-    menu.innerHTML = `
-      <button class="bf-mm-backdrop" type="button" aria-label="Закрити меню" data-bf-close-menu></button>
-      <aside class="bf-mm-panel" role="dialog" aria-modal="true" aria-label="Мобільне меню Blue Ferret">
-        <div class="bf-mm-head">
-          <strong>Blue Ferret</strong>
-          <button type="button" aria-label="Закрити меню" data-bf-close-menu>×</button>
-        </div>
-        <nav class="bf-mm-links" aria-label="Мобільна навігація">
-          <a href="/">Головна</a>
-          <a href="/igry/">Наші ігри</a>
-          <a href="/kik/">KIK вдома</a>
-          <a href="/kontakty/">Контакти</a>
-        </nav>
-        <a class="bf-mm-kik" href="/kik/">
-          <span>KIK вдома</span>
-          <small>Підтримка авторських настільних ігор</small>
-        </a>
-      </aside>
-    `;
-    document.body.appendChild(menu);
-
-    menu.querySelectorAll('[data-bf-close-menu]').forEach((el) => {
-      el.addEventListener('click', closeFallbackMobileMenu);
-    });
-    menu.querySelectorAll('a').forEach((link) => {
-      link.addEventListener('click', closeFallbackMobileMenu);
-    });
-
-    return menu;
-  }
-
-  function setHamburgerExpanded(expanded) {
-    document.querySelectorAll('button[aria-controls="mobile-site-nav"], button[aria-label="Відкрити меню"]').forEach((btn) => {
-      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    });
-  }
-
-  function openFallbackMobileMenu() {
-    const menu = ensureFallbackMobileMenu();
-    menu.hidden = false;
-    requestAnimationFrame(() => {
-      menu.classList.add('is-open');
-      document.documentElement.classList.add('bf-mobile-menu-open');
-      setHamburgerExpanded(true);
-      menu.querySelector('a')?.focus({ preventScroll: true });
-    });
-  }
-
-  function closeFallbackMobileMenu() {
-    const menu = document.getElementById('bf-mobile-menu-fallback');
-    if (!menu) return;
-    menu.classList.remove('is-open');
-    document.documentElement.classList.remove('bf-mobile-menu-open');
-    setHamburgerExpanded(false);
-    window.setTimeout(() => {
-      if (!menu.classList.contains('is-open')) menu.hidden = true;
-    }, 220);
-  }
-
-  function initMobileMenuFallback() {
-    document.querySelectorAll('button[aria-controls="mobile-site-nav"], button[aria-label="Відкрити меню"]').forEach((btn) => {
-      if (btn.dataset.bfMobileFallback) return;
-      btn.dataset.bfMobileFallback = '1';
-      btn.setAttribute('aria-controls', 'bf-mobile-menu-fallback');
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openFallbackMobileMenu();
-      }, true);
-    });
-  }
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeFallbackMobileMenu();
-  });
-
   // ── Image load fade ──
   function initImages() {
     document.querySelectorAll('img[loading="lazy"]').forEach(img => {
@@ -313,13 +225,11 @@
     initImages();
     initRipples();
     fixGamesNavButton();
-    initMobileMenuFallback();
     // Re-run after a short delay to catch dynamically rendered content
     setTimeout(() => {
       initAnimations();
       initRipples();
       fixGamesNavButton();
-      initMobileMenuFallback();
     }, 800);
   }
 
