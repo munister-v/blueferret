@@ -648,24 +648,9 @@ const relT=ts=>{const d=(Date.now()-ts)/1000;return d<60?'щойно':d<3600?Mat
 const TOAST_ICO={ok:'✓',er:'✕',i:'ℹ'};
 function toast(msg,type='i'){const t=$('#toast');t.innerHTML=`<span style="opacity:.7">${TOAST_ICO[type]||''}</span>${esc(msg)}`;t.className='s '+type;clearTimeout(t._tid);t._tid=setTimeout(()=>t.className='',3000);}
 async function api(method,url,body){
-  const ctl=new AbortController();
-  const tid=setTimeout(()=>ctl.abort(),20000);
-  let r;
-  try{
-    r=await fetch(url,{method,credentials:'same-origin',signal:ctl.signal,
-      headers:body instanceof FormData?{}:body?{'Content-Type':'application/json'}:{},
-      body:body instanceof FormData?body:body?JSON.stringify(body):undefined});
-  }catch(e){
-    if(e.name==='AbortError')throw new Error('Запит занадто довгий. Спробуйте ще раз.');
-    throw new Error('Немає звʼязку з сервером CMS.');
-  }finally{clearTimeout(tid);}
+  const r=await fetch(url,{method,headers:body instanceof FormData?{}:body?{'Content-Type':'application/json'}:{},body:body instanceof FormData?body:body?JSON.stringify(body):undefined});
   if(r.status===401){showLogin();throw new Error('unauth');}
-  if(!r.ok){
-    const j=await r.json().catch(()=>({}));
-    const map={slug_exists:'Такий slug вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.'};
-    throw new Error(map[j.error]||j.error||('HTTP '+r.status));
-  }
-  if(r.status===204)return null;
+  if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||r.status);}
   return r.json();
 }
 
@@ -1100,7 +1085,7 @@ async function saveGame(){
     if(editingGame)await api('PUT',`/api/admin/games/${editingGame.id}`,body);
     else await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
-    toast((editingGame?'Гру оновлено ✓':'Гру створено ✓')+' · сайт підхопить автоматично','ok');
+    toast(editingGame?'Гру оновлено ✓':'Гру створено ✓','ok');
     backToGames();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
@@ -1298,7 +1283,7 @@ async function saveKik(){
     if(editingKik)await api('PUT',`/api/admin/kik/${editingKik.id}`,body);
     else await api('POST','/api/admin/kik',body);
     kik=await api('GET','/api/admin/kik');
-    toast((editingKik?'Проект оновлено ✓':'Проект створено ✓')+' · дані вже в API','ok');backToKik();
+    toast(editingKik?'Проект оновлено ✓':'Проект створено ✓','ok');backToKik();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
 }
@@ -2400,16 +2385,11 @@ const resizeObs=new MutationObserver(()=>autoResizeAll());
 resizeObs.observe(document.getElementById('mainContent'),{childList:true,subtree:true});
 
 async function boot(){
-  try{
-    const me=await fetch('/api/admin/me',{credentials:'same-origin'}).then(r=>r.json()).catch(()=>({authenticated:false}));
-    if(!me.authenticated){showLogin();return;}
-    [S,games,kik]=await Promise.all([api('GET','/api/admin/settings'),api('GET','/api/admin/games'),api('GET','/api/admin/kik')]);
-    activeTab=loadTab();
-    showApp();render();
-  }catch(e){
-    showLogin();
-    const err=$('#loginErr');if(err)err.textContent=e.message||'CMS тимчасово недоступна';
-  }
+  const me=await fetch('/api/admin/me').then(r=>r.json()).catch(()=>({authenticated:false}));
+  if(!me.authenticated){showLogin();return;}
+  [S,games,kik]=await Promise.all([api('GET','/api/admin/settings'),api('GET','/api/admin/games'),api('GET','/api/admin/kik')]);
+  activeTab=loadTab();
+  showApp();render();
 }
 boot();
 </script>
