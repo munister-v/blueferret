@@ -671,7 +671,7 @@ async function api(method,url,body){
   if(r.status===401){showLogin();throw new Error('unauth');}
   if(!r.ok){
     const j=await r.json().catch(()=>({}));
-    const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',source_not_found:'Сторінку-джерело не знайдено',title_required:'Назва обовʼязкова',slug_or_title_required:'Вкажіть URL або назву сторінки',from_and_slug_required:'Вкажіть сторінку-джерело і новий URL',invalid_slug:'URL не може бути порожнім',no_content:'Немає вмісту для збереження',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.',server_error:'Помилка сервера. Спробуйте ще раз.'};
+    const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.'};
     throw new Error(map[j.error]||j.error||('HTTP '+r.status));
   }
   if(r.status===204)return null;

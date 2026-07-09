@@ -285,7 +285,7 @@ function regenGamesCatalog() {
   const template = aMatch[0];
   
   function getStatusName(s) { return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс'; }
-  const games = gAll.all().filter(g => g.status === 'published').map(gameRow);
+  const games = gAll.all().filter(g => g.status !== 'archived').map(gameRow);
   
   const newCards = games.map(g => {
     let card = template;
@@ -304,8 +304,7 @@ function regenGamesCatalog() {
   let newHtml = html.slice(0, divStart) + newGridHTML + html.slice(gridEnd);
   
   const countRegex = /(<span[^>]*>)\s*\d+\s*(ігри|гра|ігор)\s+в\s+каталозі\s*(<\/span>)/i;
-  const word = games.length === 1 ? 'гра' : (games.length >= 2 && games.length <= 4 ? 'гри' : 'ігор');
-  newHtml = newHtml.replace(countRegex, `$1${games.length} ${word} в каталозі$3`);
+  newHtml = newHtml.replace(countRegex, `$1${games.length} ${games.length===1?'гра':'ігри'} в каталозі$3`);
   
   newHtml = newHtml.replace(/<script>window\.__BF_IGRY_HTML=[\s\S]*?<\/script>/i, '');
   
@@ -428,10 +427,6 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
 function writeGeneratedGamePage(row) {
   const g = gameRow(row);
   if (!g || !g.slug) return;
-  if (g.status !== 'published') {
-    removeGeneratedGamePage(g.slug);
-    return;
-  }
   const file = path.join(SITE_ROOT, 'igry', g.slug, 'index.html');
   if (fs.existsSync(file)) {
     const existing = fs.readFileSync(file, 'utf8');
@@ -476,7 +471,7 @@ app.get('/api/admin/games/:id', requireAuth, (req, res) => {
 });
 app.post('/api/admin/games', requireAuth, (req, res) => {
   const b = req.body||{};
-  if (!b.title) return res.status(400).json({error:'title_required'});
+  if (!b.title) return res.status(400).json({error:'title required'});
   const data = gameBody(b);
   if (gSlug.get(data.slug)) return res.status(409).json({error:'slug_exists'});
   const info = gIns.run(data);
@@ -534,7 +529,7 @@ app.get('/api/admin/kik/:id', requireAuth, (req, res) => {
   const r=kOne.get(+req.params.id); if(!r) return res.status(404).json({error:'not_found'}); res.json(r);
 });
 app.post('/api/admin/kik', requireAuth, (req, res) => {
-  const b=req.body||{}; if(!b.title) return res.status(400).json({error:'title_required'});
+  const b=req.body||{}; if(!b.title) return res.status(400).json({error:'title required'});
   const data=kikBody(b); const info=kIns.run(data);
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'kik_create',{id:info.lastInsertRowid,title:data.title,publishedAt});
@@ -610,13 +605,6 @@ app.delete('/api/admin/media/:filename', requireAuth, (req, res) => {
 
 // ---------- pages editor ----------
 const PAGES_ROOT = SITE_ROOT;
-const PAGES_ROOT_RESOLVED = path.resolve(PAGES_ROOT);
-function safePagePath(rel) {
-  if (!rel || typeof rel !== 'string' || rel.includes('\0')) return null;
-  const clean = rel.replace(/^\/+/, '');
-  const full = path.resolve(PAGES_ROOT_RESOLVED, clean);
-  return full === PAGES_ROOT_RESOLVED || full.startsWith(PAGES_ROOT_RESOLVED + path.sep) ? full : null;
-}
 function listPages() {
   const pages = [];
   function walk(dir, rel='') {
@@ -789,16 +777,16 @@ function makePageHtml(slug, title){
 
 app.post('/api/admin/pages/create', requireAuth, (req,res)=>{
   const {slug:rawSlug, title, copyFrom} = req.body||{};
-  if(!rawSlug&&!title) return res.status(400).json({error:'slug_or_title_required'});
+  if(!rawSlug&&!title) return res.status(400).json({error:'slug or title required'});
   const slug = slugify(rawSlug||title);
-  if(!slug) return res.status(400).json({error:'invalid_slug'});
+  if(!slug) return res.status(400).json({error:'invalid slug'});
   const dir = path.join(PAGES_ROOT, slug);
   if(fs.existsSync(dir)) return res.status(409).json({error:'page_exists', slug});
   fs.mkdirSync(dir,{recursive:true});
   let html;
   if(copyFrom){
-    const srcFull = safePagePath(copyFrom);
-    if(srcFull && fs.existsSync(srcFull)){
+    const srcFull = path.join(PAGES_ROOT, copyFrom.replace(/\.\./g,''));
+    if(fs.existsSync(srcFull)){
       html = fs.readFileSync(srcFull,'utf8');
       if(title) html = html.replace(/<title>[^<]*<\/title>/,`<title>${encodeHtmlEnts(title)} | Blue Ferret</title>`);
     }
@@ -815,10 +803,8 @@ app.post('/api/admin/pages/create', requireAuth, (req,res)=>{
 app.delete('/api/admin/pages/delete', requireAuth, (req,res)=>{
   const rel = req.query.path;
   if(!rel||rel.includes('..')||rel==='index.html') return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if(!full) return res.status(403).json({error:'forbidden'});
-  const dir = path.dirname(full);
-  if(dir===PAGES_ROOT_RESOLVED) return res.status(403).json({error:'forbidden'});
+  const dir = path.join(PAGES_ROOT, path.dirname(rel));
+  if(!dir.startsWith(PAGES_ROOT)||dir===PAGES_ROOT) return res.status(403).json({error:'forbidden'});
   if(!fs.existsSync(dir)) return res.status(404).json({error:'not_found'});
   // safety: only delete if it contains only index.html (+ .bak)
   const contents = fs.readdirSync(dir).filter(f=>!f.startsWith('.'));
@@ -942,10 +928,10 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
 // ── duplicate page ──
 app.post('/api/admin/pages/duplicate', requireAuth, (req,res)=>{
   const {from, slug:rawSlug} = req.body||{};
-  if(!from||!rawSlug) return res.status(400).json({error:'from_and_slug_required'});
+  if(!from||!rawSlug) return res.status(400).json({error:'from and slug required'});
   const slug=slugify(rawSlug);
-  const srcFull=safePagePath(from);
-  if(!srcFull||!fs.existsSync(srcFull)) return res.status(404).json({error:'source_not_found'});
+  const srcFull=path.join(PAGES_ROOT,from.replace(/\.\./g,''));
+  if(!srcFull.startsWith(PAGES_ROOT)||!fs.existsSync(srcFull)) return res.status(404).json({error:'source not found'});
   const dir=path.join(PAGES_ROOT,slug);
   if(fs.existsSync(dir)) return res.status(409).json({error:'page_exists'});
   fs.mkdirSync(dir,{recursive:true});
@@ -958,8 +944,8 @@ app.post('/api/admin/pages/duplicate', requireAuth, (req,res)=>{
 app.get('/api/admin/page-extract', requireAuth, (req, res) => {
   const rel = req.query.path;
   if (!rel || rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if (!full || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
+  const full = path.join(PAGES_ROOT, rel);
+  if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   try {
     const html = fs.readFileSync(full, 'utf8');
     res.json({ blocks: extractBlocks(html) });
@@ -970,8 +956,8 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
 app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   const rel = req.query.path;
   if (!rel || rel.includes('..') || !rel.endsWith('.html')) return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if (!full || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
+  const full = path.join(PAGES_ROOT, rel);
+  if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   const {blocks} = req.body || {};
   if (!Array.isArray(blocks)) return res.status(400).json({error:'blocks required'});
   let html = fs.readFileSync(full, 'utf8');
@@ -999,18 +985,18 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
 app.get('/api/admin/pages/*', requireAuth, (req, res) => {
   const rel = req.params[0];
   if (!rel || rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if (!full) return res.status(403).json({error:'forbidden'});
+  const full = path.join(PAGES_ROOT, rel);
+  if (!full.startsWith(PAGES_ROOT)) return res.status(403).json({error:'forbidden'});
   if (!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   res.json({ content: fs.readFileSync(full,'utf8') });
 });
 app.put('/api/admin/pages/*', requireAuth, (req, res) => {
   const rel = req.params[0];
   if (!rel || rel.includes('..') || !rel.endsWith('.html')) return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if (!full) return res.status(403).json({error:'forbidden'});
+  const full = path.join(PAGES_ROOT, rel);
+  if (!full.startsWith(PAGES_ROOT)) return res.status(403).json({error:'forbidden'});
   const { content } = req.body || {};
-  if (typeof content !== 'string') return res.status(400).json({error:'no_content'});
+  if (typeof content !== 'string') return res.status(400).json({error:'no content'});
   // backup
   writeBackup(full);
   writeAtomic(full, content);
@@ -1065,14 +1051,12 @@ const RUNTIME_JS = `(function(){
   function applyGames(list){try{if(!Array.isArray(list)||!list.length)return;var grid=findCatalogGrid();if(!grid)return;grid.innerHTML=list.map(gameCard).join('');var count=document.querySelector('[data-bf-games-count]')||null;if(!count){var spans=document.querySelectorAll('main span');for(var i=0;i<spans.length;i++){if((spans[i].textContent||'').indexOf('каталозі')>-1){count=spans[i];break;}}}if(count)count.textContent=list.length+' '+gamesWord(list.length)+' в каталозі';}catch(e){}}
   function pathParts(){return location.pathname.split('/').filter(Boolean);}
   function gameSlugFromPath(){var p=pathParts();return p[0]==='igry'&&p[1]?decodeURIComponent(p[1]):'';}
-  function applyGameDetail(list){try{var slug=gameSlugFromPath();if(!slug||!Array.isArray(list))return;var g=list.find(function(x){return x&&x.slug===slug;});if(!g){location.replace('/igry/');return;}var title=g.title||g.slug||'',desc=g.description||g.subtitle||'',cover=g.cover_url||'';document.title=title?title+' | Blue Ferret':document.title;var h1=document.querySelector('main h1');if(h1&&title)h1.textContent=title;var meta=document.querySelector('meta[name="description"]');if(meta&&desc)meta.setAttribute('content',desc.slice(0,155));var og=document.querySelector('meta[property="og:title"]');if(og&&title)og.setAttribute('content',title+' | Blue Ferret');var img=document.querySelector('main img[src]');if(img&&cover&&!img.src.includes(cover)){img.src=cover;img.alt=title||img.alt;}var paragraphs=Array.prototype.slice.call(document.querySelectorAll('main p'));var longP=paragraphs.find(function(p){return (p.textContent||'').trim().length>20;});if(longP&&desc)longP.textContent=desc;}catch(e){}}
-  function isGamesCatalogPath(){var p=pathParts();return p[0]==='igry'&&p.length===1;}
-  function isGameDetailPath(){var p=pathParts();return p[0]==='igry'&&p.length===2;}
-  function isGamesRoute(){return isGamesCatalogPath()||isGameDetailPath();}
-  function renderGames(){if(Array.isArray(lastGames)){if(isGamesCatalogPath())applyGames(lastGames);if(isGameDetailPath())applyGameDetail(lastGames);}}
-  function loadGames(force){if(!isGamesRoute())return;if(gamesLoading&&!force)return;gamesLoading=true;getJson('/api/public/games',8000).then(function(x){if(Array.isArray(x)){var h=JSON.stringify(x.map(function(g){return [g.id,g.slug,g.title,g.status,g.updated_at,g.cover_url];}));lastGames=x;gamesHash=h;renderGames();}}).catch(function(){}).finally(function(){gamesLoading=false;});}
-  function keepGamesFresh(){if(!isGamesRoute())return;[0,300,900,1800,3500,6500].forEach(function(ms){setTimeout(function(){loadGames(true);renderGames();},ms);});if(window.MutationObserver){var target=document.querySelector('main')||document.body;var mo=new MutationObserver(function(){renderGames();});mo.observe(target,{childList:true,subtree:true});setTimeout(function(){try{mo.disconnect();}catch(e){}},12000);}setInterval(function(){loadGames(true);},5000);}
-  function startLiveRefresh(s){try{lastPub=(s&&s.general&&s.general.publishedAt)||0;}catch(e){}if(refreshStarted)return;refreshStarted=true;setInterval(function(){getJson('/api/public/site.json',4000).then(function(ns){var newPub=(ns&&ns.general&&ns.general.publishedAt)||0;if(newPub&&lastPub&&newPub!==lastPub){lastPub=newPub;if(isGamesRoute())loadGames(true);else{var u=new URL(location.href);u.searchParams.set('v',newPub);location.href=u.toString();}}}).catch(function(){});},5000);}
+  function applyGameDetail(list){try{var slug=gameSlugFromPath();if(!slug||!Array.isArray(list))return;var g=list.find(function(x){return x&&x.slug===slug;});if(!g)return;var title=g.title||g.slug||'',desc=g.description||g.subtitle||'',cover=g.cover_url||'';document.title=title?title+' | Blue Ferret':document.title;var h1=document.querySelector('main h1');if(h1&&title)h1.textContent=title;var meta=document.querySelector('meta[name="description"]');if(meta&&desc)meta.setAttribute('content',desc.slice(0,155));var og=document.querySelector('meta[property="og:title"]');if(og&&title)og.setAttribute('content',title+' | Blue Ferret');var img=document.querySelector('main img[src]');if(img&&cover&&!img.src.includes(cover)){img.src=cover;img.alt=title||img.alt;}var paragraphs=Array.prototype.slice.call(document.querySelectorAll('main p'));var longP=paragraphs.find(function(p){return (p.textContent||'').trim().length>20;});if(longP&&desc)longP.textContent=desc;}catch(e){}}
+  function isGamesPath(){var p=pathParts();return p[0]==='igry'&&p.length<=2;}
+  function renderGames(){if(Array.isArray(lastGames)){applyGames(lastGames);applyGameDetail(lastGames);}}
+  function loadGames(force){if(!isGamesPath())return;if(gamesLoading&&!force)return;gamesLoading=true;getJson('/api/public/games',8000).then(function(x){if(Array.isArray(x)){var h=JSON.stringify(x.map(function(g){return [g.id,g.slug,g.title,g.status,g.updated_at,g.cover_url];}));lastGames=x;gamesHash=h;renderGames();}}).catch(function(){}).finally(function(){gamesLoading=false;});}
+  function keepGamesFresh(){if(!isGamesPath())return;[0,300,900,1800,3500,6500].forEach(function(ms){setTimeout(function(){loadGames(true);renderGames();},ms);});if(window.MutationObserver){var target=document.querySelector('main')||document.body;var mo=new MutationObserver(function(){renderGames();});mo.observe(target,{childList:true,subtree:true});setTimeout(function(){try{mo.disconnect();}catch(e){}},12000);}setInterval(function(){loadGames(true);},5000);}
+  function startLiveRefresh(s){try{lastPub=(s&&s.general&&s.general.publishedAt)||0;}catch(e){}if(refreshStarted)return;refreshStarted=true;setInterval(function(){getJson('/api/public/site.json',4000).then(function(ns){var newPub=(ns&&ns.general&&ns.general.publishedAt)||0;if(newPub&&lastPub&&newPub!==lastPub){lastPub=newPub;if(isGamesPath())loadGames(true);else{var u=new URL(location.href);u.searchParams.set('v',newPub);location.href=u.toString();}}}).catch(function(){});},5000);}
   function load(){getJson('/api/public/site.json',8000).then(function(s){apply(s);startLiveRefresh(s);}).catch(function(){});keepGamesFresh();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
   try{var su=new URL(location.href);if(su.searchParams.has('v')){su.searchParams.delete('v');history.replaceState(null,'',su.toString());}}catch(e){}
