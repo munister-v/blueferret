@@ -661,7 +661,7 @@ async function api(method,url,body){
   const tid=setTimeout(()=>ctl.abort(),20000);
   let r;
   try{
-    r=await fetch(url,{method,credentials:'same-origin',signal:ctl.signal,
+    r=await fetch(url,{method,credentials:'same-origin',signal:ctl.signal,cache:'no-store',
       headers:body instanceof FormData?{}:body?{'Content-Type':'application/json'}:{},
       body:body instanceof FormData?body:body?JSON.stringify(body):undefined});
   }catch(e){
@@ -785,6 +785,7 @@ async function renderDash(){
       <button class="btn btn-g" onclick="activeTab='media';saveTab('media');render()">🖼 Завантажити фото</button>
       <button class="btn btn-g" onclick="activeTab='pages';saveTab('pages');render()">📄 Редагувати сторінки</button>
       <button class="btn btn-g" onclick="activeTab='general';saveTab('general');render()">⚙️ Налаштування</button>
+      <button class="btn btn-p" onclick="syncPublicSite()">🔄 Синхронізувати сайт</button>
     </div>
   </div>`;
 }
@@ -1113,10 +1114,10 @@ async function saveGame(){
       cover_url:$('#g_cover')?.value,gallery:gameGallery,
       players:$('#g_players')?.value,age:$('#g_age')?.value,duration:$('#g_duration')?.value,
       buy_url:$('#g_buy')?.value,sort_order:+$('#g_sort')?.value||0};
-    if(editingGame)await api('PUT',`/api/admin/games/${editingGame.id}`,body);
-    else await api('POST','/api/admin/games',body);
+    const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
-    toast((editingGame?'Гру оновлено ✓':'Гру створено ✓')+' · сайт підхопить автоматично','ok');
+    const publicUrl=saved?.slug?`/igry/${saved.slug}/`:'/igry/';
+    toast((editingGame?'Гру оновлено ✓':'Гру створено ✓')+' · опубліковано: '+publicUrl,'ok');
     backToGames();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
@@ -1132,6 +1133,15 @@ function backToGames(){
   activeTab='games';render();
 }
 window.openGameEditor=openGameEditor;window.saveGame=saveGame;window.deleteGame=deleteGame;window.backToGames=backToGames;
+
+async function syncPublicSite(){
+  try{
+    const res=await api('POST','/api/admin/sync-public',{});
+    toast(`Публічний сайт синхронізовано ✓ · ${res.games||0} ігор`,'ok');
+    stats=await api('GET','/api/admin/stats').catch(()=>stats);
+  }catch(e){if(e.message!=='unauth')toast('Помилка синхронізації: '+e.message,'er');}
+}
+window.syncPublicSite=syncPublicSite;
 
 // ── KIK LIST ──
 function renderKikList(){

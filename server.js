@@ -253,6 +253,39 @@ app.get('/api/admin/stats', requireAuth, (_req, res) => {
 // ---------- games CRUD ----------
 function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
 function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery) } : null; }
+function isPublicGameStatus(status) {
+  return !['draft', 'archived'].includes(String(status || 'published'));
+}
+function publicGames() {
+  return gAll.all().filter(g => isPublicGameStatus(g.status)).map(gameRow);
+}
+function statusLabel(s) {
+  return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс';
+}
+function gamePublicUrl(g) {
+  return g.buy_url || `/igry/${g.slug}/`;
+}
+function generatedGameCard(g) {
+  const title = escapeHtml(g.title || g.slug);
+  const desc = escapeHtml(g.description || g.subtitle || '');
+  const href = escapeHtml(gamePublicUrl(g));
+  const cover = escapeHtml(g.cover_url || '/images/placeholder-game.svg');
+  return `<a href="${href}" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]">
+<div class="aspect-[4/3] relative overflow-hidden bg-slate-800">
+<img src="${cover}" alt="${title}" class="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent"></div>
+<div class="absolute bottom-3 sm:bottom-5 left-3 sm:left-5 right-3 sm:right-5 flex justify-between items-end gap-2">
+<span class="board-game-badge inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/95 text-slate-700 text-xs sm:text-sm shadow-md backdrop-blur-sm border border-[var(--bf-accent)]/30">${statusLabel(g.status)}</span>
+<span class="p-2.5 sm:p-3 rounded-xl bg-white/95 backdrop-blur-sm border border-white/60 shadow-sm text-bf" aria-hidden="true">→</span>
+</div>
+</div>
+<div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full">
+<h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800">${title}</h2>
+<p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6">${desc}</p>
+<span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span>
+</div>
+</a>`;
+}
 
 function regenGamesCatalog() {
   const p = path.join(PAGES_ROOT, 'igry/index.html');
@@ -280,48 +313,8 @@ function regenGamesCatalog() {
   if (gridEnd === -1) return;
   
   const gridOuterHTML = html.slice(divStart, gridEnd);
-  const aMatch = gridOuterHTML.match(/<a [^>]*href="\/igry\/[^"]+"[^>]*>[\s\S]*?<\/a>/i);
-  if (!aMatch) return;
-  const template = aMatch[0];
-  
-  function getStatusName(s) { return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс'; }
-  const games = gAll.all().filter(g => g.status !== 'archived').map(gameRow);
-
-  // Extract the first card's title and description text for replacement
-  // In minified HTML, text may sit directly in divs without h2/p wrappers
-  const firstGame = games[0] || {};
-  const firstTitle = escapeHtml(firstGame.title || 'Тримайся');
-  const firstDesc = escapeHtml(firstGame.description || firstGame.subtitle || '');
-  
-  const newCards = games.map(g => {
-    let card = template;
-    // Replace href
-    card = card.replace(/href="\/igry\/[^"]+"\/?/, `href="${g.buy_url || '/igry/'+g.slug+'/'}"`);
-    // Replace image src
-    card = card.replace(/src="[^"]+"/, `src="${g.cover_url || '/images/placeholder-game.svg'}"`);
-    // Replace alt
-    card = card.replace(/alt="[^"]*"/, `alt="${escapeHtml(g.title||'')}"`);
-    // Replace title: try h2 first, then find raw text in the card body
-    const h2re = /(<h2[^>]*>)[\s\S]*?(<\/h2>)/i;
-    if (h2re.test(card)) {
-      card = card.replace(h2re, `$1${escapeHtml(g.title||'')}$2`);
-    } else if (firstTitle && card.includes(firstTitle)) {
-      card = card.replace(firstTitle, escapeHtml(g.title||''));
-    }
-    // Replace description: try p first, then find raw text
-    const pre = /(<p[^>]*>)[\s\S]*?(<\/p>)/i;
-    if (pre.test(card)) {
-      card = card.replace(pre, `$1${escapeHtml(g.description||g.subtitle||'')}$2`);
-    } else if (firstDesc && firstDesc.length > 20 && card.includes(firstDesc)) {
-      card = card.replace(firstDesc, escapeHtml(g.description||g.subtitle||''));
-    }
-    // Replace status badge
-    const badgeRe = /(<span[^>]*board-game-badge[^>]*>)[\s\S]*?(<\/span>)/i;
-    if (badgeRe.test(card)) {
-      card = card.replace(badgeRe, `$1${getStatusName(g.status)}$2`);
-    }
-    return card;
-  });
+  const games = publicGames();
+  const newCards = games.map(generatedGameCard);
   
   const firstCloseBracket = gridOuterHTML.indexOf('>');
   const newGridHTML = gridOuterHTML.slice(0, firstCloseBracket + 1) + newCards.join('') + '</div>';
@@ -329,11 +322,12 @@ function regenGamesCatalog() {
   let newHtml = html.slice(0, divStart) + newGridHTML + html.slice(gridEnd);
   
   const countRegex = /(<span[^>]*>)\s*\d+\s*(ігри|гра|ігор)\s+в\s+каталозі\s*(<\/span>)/i;
-  newHtml = newHtml.replace(countRegex, `$1${games.length} ${games.length===1?'гра':'ігри'} в каталозі$3`);
+  const word = games.length === 1 ? 'гра' : (games.length >= 2 && games.length <= 4 ? 'ігри' : 'ігор');
+  newHtml = newHtml.replace(countRegex, `$1${games.length} ${word} в каталозі$3`);
   
   newHtml = newHtml.replace(/<script>window\.__BF_IGRY_HTML=[\s\S]*?<\/script>/i, '');
   
-  writeAtomic(p, newHtml);
+  if (newHtml !== html) writeAtomic(p, newHtml);
 }
 
 function cleanText(v) { return String(v ?? '').trim(); }
@@ -454,12 +448,18 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
 function writeGeneratedGamePage(row) {
   const g = gameRow(row);
   if (!g || !g.slug) return;
+  if (!isPublicGameStatus(g.status)) {
+    removeGeneratedGamePage(g.slug);
+    return;
+  }
   const file = path.join(SITE_ROOT, 'igry', g.slug, 'index.html');
+  const nextHtml = generatedGameHtml(g);
   if (fs.existsSync(file)) {
     const existing = fs.readFileSync(file, 'utf8');
-    if (!existing.includes('data-bf-generated-game="true"')) return;
+    if (existing === nextHtml) return;
+    writeBackup(file);
   }
-  writeAtomic(file, generatedGameHtml(g));
+  writeAtomic(file, nextHtml);
 }
 function removeGeneratedGamePage(slug) {
   if (!slug) return;
@@ -480,6 +480,13 @@ const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,stat
   VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
 const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
+
+function syncPublicGames() {
+  const rows = gAll.all();
+  for (const row of rows) writeGeneratedGamePage(row);
+  regenGamesCatalog();
+  try { execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); } catch {}
+}
 
 function gameBody(b, ex={}) {
   const rawSlug = (b.slug||ex.slug||b.title||'').toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
@@ -502,8 +509,7 @@ app.post('/api/admin/games', requireAuth, (req, res) => {
   const data = gameBody(b);
   if (gSlug.get(data.slug)) return res.status(409).json({error:'slug_exists'});
   const info = gIns.run(data);
-  writeGeneratedGamePage(gOne.get(info.lastInsertRowid));
-  regenGamesCatalog();
+  syncPublicGames();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_create',{id:info.lastInsertRowid,slug:data.slug,publishedAt});
   res.status(201).json({...gameRow(gOne.get(info.lastInsertRowid)), publishedAt});
@@ -516,8 +522,7 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   if (c && c.id!==id) return res.status(409).json({error:'slug_exists'});
   gUpd.run({...data,id});
   if (ex.slug !== data.slug) removeGeneratedGamePage(ex.slug);
-  writeGeneratedGamePage(gOne.get(id));
-  regenGamesCatalog();
+  syncPublicGames();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_update',{id,publishedAt});
   res.json({...gameRow(gOne.get(id)), publishedAt});
@@ -528,10 +533,18 @@ app.delete('/api/admin/games/:id', requireAuth, (req, res) => {
   if (!ex) return res.status(404).json({error:'not_found'});
   removeGeneratedGamePage(ex.slug);
   gDel.run(id);
-  regenGamesCatalog();
+  syncPublicGames();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_delete',{id,publishedAt});
   res.json({ok:true,publishedAt});
+});
+
+app.post('/api/admin/sync-public', requireAuth, (req, res) => {
+  syncPublicGames();
+  regenKikCatalog();
+  const publishedAt = bumpPublishedAt();
+  audit(req.ip, 'sync_public', { publishedAt });
+  res.json({ ok: true, publishedAt, games: publicGames().length });
 });
 
 // ---------- KIK CRUD ----------
@@ -1152,7 +1165,7 @@ app.get('/api/public/games', (_req, res) => {
   res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma','no-cache');
   res.setHeader('Expires','0');
-  res.json(gAll.all().filter(g=>g.status==='published').map(gameRow));
+  res.json(publicGames());
 });
 app.get('/api/public/kik', (_req, res) => {
   res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -1177,7 +1190,17 @@ const RUNTIME_JS = `(function(){
   function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
   function load(){getJson('/api/public/site.json',8000).then(function(s){apply(s);startLiveRefresh(s);}).catch(function(){});}
-  // ── Live auto-refresh: poll publishedAt every 5s, reload if changed ──
+  function showUpdateNotice(ts){
+    if(document.getElementById('bf-update-notice'))return;
+    var el=document.createElement('button');
+    el.id='bf-update-notice';
+    el.type='button';
+    el.textContent='Сайт оновлено · Оновити';
+    el.style.cssText='position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9997;border:0;border-radius:999px;padding:11px 16px;background:#0a0f1a;color:#fff;font:700 13px/1.2 Comfortaa,system-ui,sans-serif;box-shadow:0 14px 36px rgba(2,6,23,.24);cursor:pointer;';
+    el.onclick=function(){var u=new URL(location.href);u.searchParams.set('v',ts||Date.now());location.href=u.toString();};
+    document.body.appendChild(el);
+  }
+  // ── Live freshness check: never interrupt a visible visitor with forced reload. ──
   var lastPub=0;
   function startLiveRefresh(s){
     try{lastPub=(s&&s.general&&s.general.publishedAt)||0;}catch(e){}
@@ -1187,12 +1210,17 @@ const RUNTIME_JS = `(function(){
         var newPub=(ns&&ns.general&&ns.general.publishedAt)||0;
         if(newPub&&lastPub&&newPub!==lastPub){
           lastPub=newPub;
-          var u=new URL(location.href);
-          u.searchParams.set('v',newPub);
-          location.href=u.toString();
+          try{window.dispatchEvent(new CustomEvent('blueferret:published',{detail:{publishedAt:newPub}}));}catch(e){}
+          if(document.visibilityState==='hidden'){
+            var u=new URL(location.href);
+            u.searchParams.set('v',newPub);
+            location.href=u.toString();
+          }else{
+            showUpdateNotice(newPub);
+          }
         }
       }).catch(function(){});
-    },5000);
+    },30000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();});else{load();}
   try {
@@ -1237,6 +1265,15 @@ app.use((err, req, res, _next) => {
   console.error('[blueferret-admin]', req.method, req.url, err);
   if (res.headersSent) return;
   res.status(err.status || 500).json({ error: err.message || 'server_error' });
+});
+
+setImmediate(() => {
+  try {
+    syncPublicGames();
+    console.log('[blueferret-admin] public games synced on boot');
+  } catch (err) {
+    console.error('[blueferret-admin] boot sync failed', err);
+  }
 });
 
 const server = app.listen(PORT, HOST, () =>
