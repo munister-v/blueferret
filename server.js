@@ -285,16 +285,41 @@ function regenGamesCatalog() {
   const template = aMatch[0];
   
   function getStatusName(s) { return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс'; }
-  const games = gAll.all().filter(g => g.status === 'published').map(gameRow);
+  const games = gAll.all().filter(g => g.status !== 'archived').map(gameRow);
+
+  // Extract the first card's title and description text for replacement
+  // In minified HTML, text may sit directly in divs without h2/p wrappers
+  const firstGame = games[0] || {};
+  const firstTitle = escapeHtml(firstGame.title || 'Тримайся');
+  const firstDesc = escapeHtml(firstGame.description || firstGame.subtitle || '');
   
   const newCards = games.map(g => {
     let card = template;
+    // Replace href
     card = card.replace(/href="\/igry\/[^"]+"\/?/, `href="${g.buy_url || '/igry/'+g.slug+'/'}"`);
+    // Replace image src
     card = card.replace(/src="[^"]+"/, `src="${g.cover_url || '/images/placeholder-game.svg'}"`);
+    // Replace alt
     card = card.replace(/alt="[^"]*"/, `alt="${escapeHtml(g.title||'')}"`);
-    card = card.replace(/(<h2[^>]*>)([\s\S]*?)(<\/h2>)/i, `$1${escapeHtml(g.title||'')}$3`);
-    card = card.replace(/(<p[^>]*>)([\s\S]*?)(<\/p>)/i, `$1${escapeHtml(g.description||g.subtitle||'')}$3`);
-    card = card.replace(/(<span[^>]*board-game-badge[^>]*>)([\s\S]*?)(<\/span>)/i, `$1${getStatusName(g.status)}$3`);
+    // Replace title: try h2 first, then find raw text in the card body
+    const h2re = /(<h2[^>]*>)[\s\S]*?(<\/h2>)/i;
+    if (h2re.test(card)) {
+      card = card.replace(h2re, `$1${escapeHtml(g.title||'')}$2`);
+    } else if (firstTitle && card.includes(firstTitle)) {
+      card = card.replace(firstTitle, escapeHtml(g.title||''));
+    }
+    // Replace description: try p first, then find raw text
+    const pre = /(<p[^>]*>)[\s\S]*?(<\/p>)/i;
+    if (pre.test(card)) {
+      card = card.replace(pre, `$1${escapeHtml(g.description||g.subtitle||'')}$2`);
+    } else if (firstDesc && firstDesc.length > 20 && card.includes(firstDesc)) {
+      card = card.replace(firstDesc, escapeHtml(g.description||g.subtitle||''));
+    }
+    // Replace status badge
+    const badgeRe = /(<span[^>]*board-game-badge[^>]*>)[\s\S]*?(<\/span>)/i;
+    if (badgeRe.test(card)) {
+      card = card.replace(badgeRe, `$1${getStatusName(g.status)}$2`);
+    }
     return card;
   });
   
@@ -304,8 +329,7 @@ function regenGamesCatalog() {
   let newHtml = html.slice(0, divStart) + newGridHTML + html.slice(gridEnd);
   
   const countRegex = /(<span[^>]*>)\s*\d+\s*(ігри|гра|ігор)\s+в\s+каталозі\s*(<\/span>)/i;
-  const word = games.length === 1 ? 'гра' : (games.length >= 2 && games.length <= 4 ? 'гри' : 'ігор');
-  newHtml = newHtml.replace(countRegex, `$1${games.length} ${word} в каталозі$3`);
+  newHtml = newHtml.replace(countRegex, `$1${games.length} ${games.length===1?'гра':'ігри'} в каталозі$3`);
   
   newHtml = newHtml.replace(/<script>window\.__BF_IGRY_HTML=[\s\S]*?<\/script>/i, '');
   
@@ -332,7 +356,7 @@ function generatedGameHtml(g) {
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${title} | Blue Ferret</title>
 <meta name="description" content="${desc.slice(0, 155)}">
 <link rel="canonical" href="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
@@ -341,9 +365,11 @@ function generatedGameHtml(g) {
 <meta property="og:url" content="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
 <meta property="og:type" content="website">
 <meta property="og:image" content="${cover.startsWith('http') ? cover : 'https://blueferret.com.ua' + cover}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${title} | Blue Ferret">
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="stylesheet" href="/_next/static/css/a80874b32dc71380.css">
-<link rel="stylesheet" href="/bf.css?v=5">
+<link rel="stylesheet" href="/bf.css?v=8">
 <style>
 body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-serif}
 .bfg-wrap{min-height:100vh;background:radial-gradient(ellipse 100% 70% at 50% -10%,rgba(0,159,227,.18),transparent 60%),linear-gradient(135deg,#f6fbff,#fff,#eefaf3)}
@@ -417,7 +443,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
   </section>
   <footer class="bfg-footer">
     <div class="bfg-footer-inner">
-      <p>© 2025 <a href="/">Blue Ferret</a> — Незалежне видавництво настільних ігор</p>
+      <p>© 2026 <a href="/">Blue Ferret</a> — Незалежне видавництво настільних ігор</p>
     </div>
   </footer>
 </div>
@@ -428,10 +454,6 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
 function writeGeneratedGamePage(row) {
   const g = gameRow(row);
   if (!g || !g.slug) return;
-  if (g.status !== 'published') {
-    removeGeneratedGamePage(g.slug);
-    return;
-  }
   const file = path.join(SITE_ROOT, 'igry', g.slug, 'index.html');
   if (fs.existsSync(file)) {
     const existing = fs.readFileSync(file, 'utf8');
@@ -476,7 +498,7 @@ app.get('/api/admin/games/:id', requireAuth, (req, res) => {
 });
 app.post('/api/admin/games', requireAuth, (req, res) => {
   const b = req.body||{};
-  if (!b.title) return res.status(400).json({error:'title_required'});
+  if (!b.title) return res.status(400).json({error:'title required'});
   const data = gameBody(b);
   if (gSlug.get(data.slug)) return res.status(409).json({error:'slug_exists'});
   const info = gIns.run(data);
@@ -529,13 +551,117 @@ function kikBody(b, ex={}) {
     sort_order:+(b.sort_order??ex.sort_order??0), t:Date.now() };
 }
 
+function regenKikCatalog() {
+  const kikIndexFile = path.join(SITE_DIR, 'kik', 'proekty', 'index.html');
+  if (!fs.existsSync(kikIndexFile)) return;
+
+  const projects = kAll.all();
+  const activeCount = projects.filter(p => p.status === 'active').length;
+  
+  function formatCurrency(n) {
+    return new Intl.NumberFormat('uk-UA', { style: 'decimal', maximumFractionDigits: 0 }).format(n) + ' ₴';
+  }
+  function getStatusLabel(status) {
+    const map = {
+      'active': 'Збір коштів',
+      'preparing': 'Підготовка',
+      'finished': 'Успішно завершено',
+      'draft': 'Чернетка'
+    };
+    return map[status] || status;
+  }
+
+  let html = `
+  <section class="relative py-16 sm:py-24 lg:py-28 px-4 sm:px-6 overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-emerald-50/85 via-white to-blue-50/45"></div>
+    <div class="absolute inset-0 bg-dots-kik opacity-30"></div>
+    <div class="absolute inset-0 bg-grain opacity-50"></div>
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_50%_-20%,#4BB2721c_0%,transparent_60%)]"></div>
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_40%_at_10%_80%,#009FE310_0%,transparent_55%)]"></div>
+    <div class="relative max-w-6xl mx-auto">
+      <div class="text-center bf-reveal">
+        <div class="h-1 w-20 rounded-full bg-gradient-to-r from-[var(--bf-accent)] to-[var(--kik-accent)] mb-6 mx-auto"></div>
+        <p class="mb-3 text-3xl sm:text-4xl text-gradient-warm">KIK вдома</p>
+        <h2 class="heading-2 text-3xl sm:text-4xl md:text-5xl mb-4 tracking-tight">Наші проєкти</h2>
+        <p class="text-lead max-w-2xl text-slate-600" style="margin:0 auto">Підтримайте створення нових українських ігор. Долучайтеся до спільноти та отримуйте унікальні нагороди.</p>
+      </div>
+      <div class="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mt-8 bf-reveal">
+        <span class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 bg-white/90 border border-slate-200/80 shadow-sm">
+          <svg class="w-4 h-4 text-[var(--kik-accent)]" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path><path d="M8 10v4"></path><path d="M12 10v2"></path><path d="M16 10v6"></path></svg>
+          ${projects.length} проєктів
+        </span>
+        <span class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 bg-white/90 border border-slate-200/80 shadow-sm">
+          <svg class="w-4 h-4 text-[var(--kik-accent)]" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          ${activeCount} активних
+        </span>
+      </div>
+    </div>
+  </section>
+  <section class="py-10 sm:py-16 lg:py-24 px-4 sm:px-6 -mt-2">
+    <div class="max-w-6xl mx-auto">
+      <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-7 lg:gap-8" data-bf-kik-grid="true">`;
+
+  for (const e of projects) {
+    if (e.status === 'draft') continue;
+    let t = e.goal > 0 ? Math.min(100, (e.raised / e.goal) * 100) : 0;
+    html += `
+        <a href="${e.campaign_url || '#'}" target="${e.campaign_url ? '_blank' : '_self'}" class="group flex h-full flex-col bg-white/98 rounded-2xl overflow-hidden board-game-border-kik transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_26px_46px_-30px_rgba(15,23,42,0.45)] bf-reveal">
+          <div class="aspect-[16/10] min-h-[190px] relative overflow-hidden bg-gradient-to-br from-emerald-800/95 via-teal-900/90 to-slate-900">
+            ${e.cover_url ? `<img src="${e.cover_url}" alt="${e.title.replace(/"/g,'&quot;')}" class="absolute inset-0 w-full h-full object-cover">` : ''}
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/45 via-slate-900/10 to-transparent"></div>
+            <div class="absolute inset-0 bg-dots-kik opacity-22"></div>
+            <div class="absolute top-3 left-3 sm:top-5 sm:left-5">
+              <span class="board-game-badge inline-block px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-white/95 text-xs sm:text-sm text-slate-700 shadow-md backdrop-blur-sm border border-[var(--kik-accent)]/30">${getStatusLabel(e.status)}</span>
+            </div>
+            ${(e.goal > 0 && e.raised > 0) ? `
+            <div class="absolute bottom-3 right-3 sm:bottom-5 sm:right-5 flex items-center gap-2 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-white/95 backdrop-blur-sm border border-white/50 shadow-sm">
+              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--kik-accent)]" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6"></path><path d="m22 7-8.5 8.5-5-5L2 17"></path></svg>
+              <span class="text-xs sm:text-sm font-bold text-[var(--kik-accent)]">${Math.round(t)}%</span>
+            </div>` : ''}
+          </div>
+          <div class="p-4 sm:p-6 lg:p-7 flex flex-col flex-1">
+            <h2 class="text-lg sm:text-xl lg:text-2xl font-bold group-hover:text-[var(--kik-accent)] transition-colors mb-2 sm:mb-3 text-slate-800 line-clamp-2 min-h-[3.2rem] sm:min-h-[3.6rem]">${e.title}</h2>
+            ${e.goal > 0 ? `
+            <div class="mb-4 sm:mb-5">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 text-xs sm:text-sm mb-1.5 sm:mb-2">
+                <span class="text-slate-500">Зібрано</span>
+                <span class="font-bold text-[var(--kik-accent)] leading-tight">${formatCurrency(e.raised)} / ${formatCurrency(e.goal)}</span>
+              </div>
+              <div class="h-2 sm:h-2.5 rounded-full bg-slate-200/80 overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-[var(--kik-accent)] to-emerald-400 rounded-full" style="width: ${t}%"></div>
+              </div>
+            </div>` : ''}
+            <p class="text-body text-sm lg:text-base mb-4 line-clamp-3">${e.description || e.subtitle || ''}</p>
+            <span class="inline-flex items-center gap-2 text-[var(--kik-accent)] font-semibold text-sm group-hover:gap-3 transition-all mt-auto">
+              Детальніше 
+              <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+            </span>
+          </div>
+        </a>`;
+  }
+  
+  html += `
+      </div>
+    </div>
+  </section>`;
+
+  try {
+    let doc = fs.readFileSync(kikIndexFile, 'utf8');
+    doc = doc.replace(/(<header[^>]*>.*?<\/header>)\s*<main>[\s\S]*?(?=<\/main>\s*<\/div>\s*<\/main>)/, '$1<main>' + html);
+    writeAtomic(kikIndexFile, doc);
+  } catch (err) {
+    console.error('Failed to regenerate KIK catalog', err);
+  }
+}
+
 app.get('/api/admin/kik', requireAuth, (_r, res) => res.json(kAll.all()));
 app.get('/api/admin/kik/:id', requireAuth, (req, res) => {
   const r=kOne.get(+req.params.id); if(!r) return res.status(404).json({error:'not_found'}); res.json(r);
 });
 app.post('/api/admin/kik', requireAuth, (req, res) => {
-  const b=req.body||{}; if(!b.title) return res.status(400).json({error:'title_required'});
+  const b=req.body||{}; if(!b.title) return res.status(400).json({error:'title required'});
   const data=kikBody(b); const info=kIns.run(data);
+  regenKikCatalog();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'kik_create',{id:info.lastInsertRowid,title:data.title,publishedAt});
   res.status(201).json({...kOne.get(info.lastInsertRowid), publishedAt});
@@ -544,13 +670,16 @@ app.put('/api/admin/kik/:id', requireAuth, (req, res) => {
   const id=+req.params.id, ex=kOne.get(id);
   if(!ex) return res.status(404).json({error:'not_found'});
   const data=kikBody(req.body||{},ex); kUpd.run({...data,id});
+  regenKikCatalog();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'kik_update',{id,publishedAt}); res.json({...kOne.get(id), publishedAt});
 });
 app.delete('/api/admin/kik/:id', requireAuth, (req, res) => {
   const id=+req.params.id;
   if(!kOne.get(id)) return res.status(404).json({error:'not_found'});
-  kDel.run(id); const publishedAt = bumpPublishedAt(); audit(req.ip,'kik_delete',{id,publishedAt}); res.json({ok:true,publishedAt});
+  kDel.run(id); 
+  regenKikCatalog();
+  const publishedAt = bumpPublishedAt(); audit(req.ip,'kik_delete',{id,publishedAt}); res.json({ok:true,publishedAt});
 });
 
 // ---------- media upload ----------
@@ -610,13 +739,6 @@ app.delete('/api/admin/media/:filename', requireAuth, (req, res) => {
 
 // ---------- pages editor ----------
 const PAGES_ROOT = SITE_ROOT;
-const PAGES_ROOT_RESOLVED = path.resolve(PAGES_ROOT);
-function safePagePath(rel) {
-  if (!rel || typeof rel !== 'string' || rel.includes('\0')) return null;
-  const clean = rel.replace(/^\/+/, '');
-  const full = path.resolve(PAGES_ROOT_RESOLVED, clean);
-  return full === PAGES_ROOT_RESOLVED || full.startsWith(PAGES_ROOT_RESOLVED + path.sep) ? full : null;
-}
 function listPages() {
   const pages = [];
   function walk(dir, rel='') {
@@ -789,16 +911,16 @@ function makePageHtml(slug, title){
 
 app.post('/api/admin/pages/create', requireAuth, (req,res)=>{
   const {slug:rawSlug, title, copyFrom} = req.body||{};
-  if(!rawSlug&&!title) return res.status(400).json({error:'slug_or_title_required'});
+  if(!rawSlug&&!title) return res.status(400).json({error:'slug or title required'});
   const slug = slugify(rawSlug||title);
-  if(!slug) return res.status(400).json({error:'invalid_slug'});
+  if(!slug) return res.status(400).json({error:'invalid slug'});
   const dir = path.join(PAGES_ROOT, slug);
   if(fs.existsSync(dir)) return res.status(409).json({error:'page_exists', slug});
   fs.mkdirSync(dir,{recursive:true});
   let html;
   if(copyFrom){
-    const srcFull = safePagePath(copyFrom);
-    if(srcFull && fs.existsSync(srcFull)){
+    const srcFull = path.join(PAGES_ROOT, copyFrom.replace(/\.\./g,''));
+    if(fs.existsSync(srcFull)){
       html = fs.readFileSync(srcFull,'utf8');
       if(title) html = html.replace(/<title>[^<]*<\/title>/,`<title>${encodeHtmlEnts(title)} | Blue Ferret</title>`);
     }
@@ -815,10 +937,8 @@ app.post('/api/admin/pages/create', requireAuth, (req,res)=>{
 app.delete('/api/admin/pages/delete', requireAuth, (req,res)=>{
   const rel = req.query.path;
   if(!rel||rel.includes('..')||rel==='index.html') return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if(!full) return res.status(403).json({error:'forbidden'});
-  const dir = path.dirname(full);
-  if(dir===PAGES_ROOT_RESOLVED) return res.status(403).json({error:'forbidden'});
+  const dir = path.join(PAGES_ROOT, path.dirname(rel));
+  if(!dir.startsWith(PAGES_ROOT)||dir===PAGES_ROOT) return res.status(403).json({error:'forbidden'});
   if(!fs.existsSync(dir)) return res.status(404).json({error:'not_found'});
   // safety: only delete if it contains only index.html (+ .bak)
   const contents = fs.readdirSync(dir).filter(f=>!f.startsWith('.'));
@@ -942,10 +1062,10 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
 // ── duplicate page ──
 app.post('/api/admin/pages/duplicate', requireAuth, (req,res)=>{
   const {from, slug:rawSlug} = req.body||{};
-  if(!from||!rawSlug) return res.status(400).json({error:'from_and_slug_required'});
+  if(!from||!rawSlug) return res.status(400).json({error:'from and slug required'});
   const slug=slugify(rawSlug);
-  const srcFull=safePagePath(from);
-  if(!srcFull||!fs.existsSync(srcFull)) return res.status(404).json({error:'source_not_found'});
+  const srcFull=path.join(PAGES_ROOT,from.replace(/\.\./g,''));
+  if(!srcFull.startsWith(PAGES_ROOT)||!fs.existsSync(srcFull)) return res.status(404).json({error:'source not found'});
   const dir=path.join(PAGES_ROOT,slug);
   if(fs.existsSync(dir)) return res.status(409).json({error:'page_exists'});
   fs.mkdirSync(dir,{recursive:true});
@@ -958,8 +1078,8 @@ app.post('/api/admin/pages/duplicate', requireAuth, (req,res)=>{
 app.get('/api/admin/page-extract', requireAuth, (req, res) => {
   const rel = req.query.path;
   if (!rel || rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if (!full || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
+  const full = path.join(PAGES_ROOT, rel);
+  if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   try {
     const html = fs.readFileSync(full, 'utf8');
     res.json({ blocks: extractBlocks(html) });
@@ -970,8 +1090,8 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
 app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   const rel = req.query.path;
   if (!rel || rel.includes('..') || !rel.endsWith('.html')) return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if (!full || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
+  const full = path.join(PAGES_ROOT, rel);
+  if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   const {blocks} = req.body || {};
   if (!Array.isArray(blocks)) return res.status(400).json({error:'blocks required'});
   let html = fs.readFileSync(full, 'utf8');
@@ -999,18 +1119,18 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
 app.get('/api/admin/pages/*', requireAuth, (req, res) => {
   const rel = req.params[0];
   if (!rel || rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if (!full) return res.status(403).json({error:'forbidden'});
+  const full = path.join(PAGES_ROOT, rel);
+  if (!full.startsWith(PAGES_ROOT)) return res.status(403).json({error:'forbidden'});
   if (!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   res.json({ content: fs.readFileSync(full,'utf8') });
 });
 app.put('/api/admin/pages/*', requireAuth, (req, res) => {
   const rel = req.params[0];
   if (!rel || rel.includes('..') || !rel.endsWith('.html')) return res.status(400).json({error:'invalid'});
-  const full = safePagePath(rel);
-  if (!full) return res.status(403).json({error:'forbidden'});
+  const full = path.join(PAGES_ROOT, rel);
+  if (!full.startsWith(PAGES_ROOT)) return res.status(403).json({error:'forbidden'});
   const { content } = req.body || {};
-  if (typeof content !== 'string') return res.status(400).json({error:'no_content'});
+  if (typeof content !== 'string') return res.status(400).json({error:'no content'});
   // backup
   writeBackup(full);
   writeAtomic(full, content);
@@ -1042,9 +1162,6 @@ app.get('/api/public/kik', (_req, res) => {
 });
 
 const RUNTIME_JS = `(function(){
-  var lastPub=0,lastGames=null,gamesHash='',gamesLoading=false,refreshStarted=false;
-  function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-  function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
   function apply(s){try{
     if(!s)return;
     var a=s.appearance||{},b=s.banner||{},m=s.maintenance||{},ig=s.integrations||{},g=s.general||{};
@@ -1053,29 +1170,38 @@ const RUNTIME_JS = `(function(){
     if(ig.headScripts&&!window.__bfH){window.__bfH=1;var d=document.createElement('div');d.innerHTML=ig.headScripts;d.childNodes.forEach(function(n){if(n.tagName==='SCRIPT'){var sc=document.createElement('script');for(var i=0;i<n.attributes.length;i++)sc.setAttribute(n.attributes[i].name,n.attributes[i].value);sc.text=n.textContent;document.head.appendChild(sc);}else document.head.appendChild(n.cloneNode(true));});}
     if(ig.bodyScripts&&!window.__bfB){window.__bfB=1;var bd=document.createElement('div');bd.innerHTML=ig.bodyScripts;bd.childNodes.forEach(function(n){if(n.tagName==='SCRIPT'){var sc=document.createElement('script');for(var i=0;i<n.attributes.length;i++)sc.setAttribute(n.attributes[i].name,n.attributes[i].value);sc.text=n.textContent;document.body.appendChild(sc);}else document.body.appendChild(n.cloneNode(true));});}
     var ex=document.getElementById('bf-banner');
-    if(b.enabled&&b.text){var el=ex||document.createElement('div');el.id='bf-banner';el.style.cssText='position:relative;z-index:9998;width:100%;padding:10px 16px;text-align:center;font:600 14px/1.4 Comfortaa,system-ui,sans-serif;background:'+(b.bg||'#2E9BE6')+';color:'+(b.fg||'#fff')+';';el.innerHTML=b.link?'<a href="'+esc(b.link)+'" style="color:inherit;text-decoration:underline">'+esc(b.text)+'</a>':esc(b.text);if(!ex)document.body.insertBefore(el,document.body.firstChild);}else if(ex)ex.remove();
+    if(b.enabled&&b.text){var el=ex||document.createElement('div');el.id='bf-banner';el.style.cssText='position:relative;z-index:9998;width:100%;padding:10px 16px;text-align:center;font:600 14px/1.4 Comfortaa,system-ui,sans-serif;background:'+(b.bg||'#2E9BE6')+';color:'+(b.fg||'#fff')+';';el.innerHTML=b.link?'<a href="'+b.link+'" style="color:inherit;text-decoration:underline">'+esc(b.text)+'</a>':esc(b.text);if(!ex)document.body.insertBefore(el,document.body.firstChild);}else if(ex)ex.remove();
     var mo=document.getElementById('bf-maintenance');
-    if(m.enabled){if(!mo){mo=document.createElement('div');mo.id='bf-maintenance';mo.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0b1f33;color:#fff;font:500 20px/1.6 Comfortaa,system-ui,sans-serif;';mo.innerHTML='<div style="max-width:560px"><div style="font-size:40px;margin-bottom:16px">BF</div><div>'+esc(m.message||'')+'</div></div>';document.body.appendChild(mo);document.documentElement.style.overflow='hidden';}}else if(mo){mo.remove();document.documentElement.style.overflow='';}
+    if(m.enabled){if(!mo){mo=document.createElement('div');mo.id='bf-maintenance';mo.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0b1f33;color:#fff;font:500 20px/1.6 Comfortaa,system-ui,sans-serif;';mo.innerHTML='<div style="max-width:560px"><div style="font-size:40px;margin-bottom:16px">🦦</div><div>'+esc(m.message||'')+'</div></div>';document.body.appendChild(mo);document.documentElement.style.overflow='hidden';}}else if(mo){mo.remove();document.documentElement.style.overflow='';}
   }catch(e){}}
-  function gameHref(g){return g.buy_url||('/igry/'+encodeURIComponent(g.slug||'')+'/');}
-  function gameStatus(g){var s=g.status||'published';return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс';}
-  function gamesWord(n){return n===1?'гра':(n>=2&&n<=4?'гри':'ігор');}
-  function gameCard(g){var title=esc(g.title||g.slug||'Гра');var img=esc(g.cover_url||'/images/placeholder-game.svg');var desc=esc(g.description||g.subtitle||'Опис гри скоро з\\'явиться.');var href=esc(gameHref(g));return '<a href="'+href+'" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]"><div class="aspect-[4/3] relative overflow-hidden bg-slate-800"><img src="'+img+'" alt="'+title+'" class="absolute inset-0 h-full w-full object-cover" loading="lazy"><div class="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent"></div><div class="absolute bottom-3 sm:bottom-5 left-3 sm:left-5 right-3 sm:right-5 flex justify-between items-end gap-2"><span class="board-game-badge inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/95 text-slate-700 text-xs sm:text-sm shadow-md backdrop-blur-sm border border-[var(--bf-accent)]/30">'+esc(gameStatus(g))+'</span><span class="p-2.5 sm:p-3 rounded-xl bg-white/95 backdrop-blur-sm border border-white/60 shadow-sm text-bf">→</span></div></div><div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full"><h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800">'+title+'</h2><p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6">'+desc+'</p><span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span></div></a>';}
-  function findCatalogGrid(){var root=document.querySelector('[data-bf-static-igry]')||document.querySelector('main');if(!root)return null;var grid=root.querySelector('[data-bf-games-grid]');if(grid)return grid;var first=root.querySelector('a[href^="/igry/"]');if(first)return first.closest('.grid')||first.parentElement;var grids=root.querySelectorAll('.grid');for(var i=0;i<grids.length;i++){if((grids[i].textContent||'').indexOf('Тримайся')>-1||(grids[i].textContent||'').indexOf('Анонс')>-1)return grids[i];}return null;}
-  function applyGames(list){try{if(!Array.isArray(list)||!list.length)return;var grid=findCatalogGrid();if(!grid)return;grid.innerHTML=list.map(gameCard).join('');var count=document.querySelector('[data-bf-games-count]')||null;if(!count){var spans=document.querySelectorAll('main span');for(var i=0;i<spans.length;i++){if((spans[i].textContent||'').indexOf('каталозі')>-1){count=spans[i];break;}}}if(count)count.textContent=list.length+' '+gamesWord(list.length)+' в каталозі';}catch(e){}}
-  function pathParts(){return location.pathname.split('/').filter(Boolean);}
-  function gameSlugFromPath(){var p=pathParts();return p[0]==='igry'&&p[1]?decodeURIComponent(p[1]):'';}
-  function applyGameDetail(list){try{var slug=gameSlugFromPath();if(!slug||!Array.isArray(list))return;var g=list.find(function(x){return x&&x.slug===slug;});if(!g){location.replace('/igry/');return;}var title=g.title||g.slug||'',desc=g.description||g.subtitle||'',cover=g.cover_url||'';document.title=title?title+' | Blue Ferret':document.title;var h1=document.querySelector('main h1');if(h1&&title)h1.textContent=title;var meta=document.querySelector('meta[name="description"]');if(meta&&desc)meta.setAttribute('content',desc.slice(0,155));var og=document.querySelector('meta[property="og:title"]');if(og&&title)og.setAttribute('content',title+' | Blue Ferret');var img=document.querySelector('main img[src]');if(img&&cover&&!img.src.includes(cover)){img.src=cover;img.alt=title||img.alt;}var paragraphs=Array.prototype.slice.call(document.querySelectorAll('main p'));var longP=paragraphs.find(function(p){return (p.textContent||'').trim().length>20;});if(longP&&desc)longP.textContent=desc;}catch(e){}}
-  function isGamesCatalogPath(){var p=pathParts();return p[0]==='igry'&&p.length===1;}
-  function isGameDetailPath(){var p=pathParts();return p[0]==='igry'&&p.length===2;}
-  function isGamesRoute(){return isGamesCatalogPath()||isGameDetailPath();}
-  function renderGames(){if(Array.isArray(lastGames)){if(isGamesCatalogPath())applyGames(lastGames);if(isGameDetailPath())applyGameDetail(lastGames);}}
-  function loadGames(force){if(!isGamesRoute())return;if(gamesLoading&&!force)return;gamesLoading=true;getJson('/api/public/games',8000).then(function(x){if(Array.isArray(x)){var h=JSON.stringify(x.map(function(g){return [g.id,g.slug,g.title,g.status,g.updated_at,g.cover_url];}));lastGames=x;gamesHash=h;renderGames();}}).catch(function(){}).finally(function(){gamesLoading=false;});}
-  function keepGamesFresh(){if(!isGamesRoute())return;[0,300,900,1800,3500,6500].forEach(function(ms){setTimeout(function(){loadGames(true);renderGames();},ms);});if(window.MutationObserver){var target=document.querySelector('main')||document.body;var mo=new MutationObserver(function(){renderGames();});mo.observe(target,{childList:true,subtree:true});setTimeout(function(){try{mo.disconnect();}catch(e){}},12000);}setInterval(function(){loadGames(true);},5000);}
-  function startLiveRefresh(s){try{lastPub=(s&&s.general&&s.general.publishedAt)||0;}catch(e){}if(refreshStarted)return;refreshStarted=true;setInterval(function(){getJson('/api/public/site.json',4000).then(function(ns){var newPub=(ns&&ns.general&&ns.general.publishedAt)||0;if(newPub&&lastPub&&newPub!==lastPub){lastPub=newPub;if(isGamesRoute())loadGames(true);else{var u=new URL(location.href);u.searchParams.set('v',newPub);location.href=u.toString();}}}).catch(function(){});},5000);}
-  function load(){getJson('/api/public/site.json',8000).then(function(s){apply(s);startLiveRefresh(s);}).catch(function(){});keepGamesFresh();}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
-  try{var su=new URL(location.href);if(su.searchParams.has('v')){su.searchParams.delete('v');history.replaceState(null,'',su.toString());}}catch(e){}
+  function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
+  function load(){getJson('/api/public/site.json',8000).then(function(s){apply(s);startLiveRefresh(s);}).catch(function(){});}
+  // ── Live auto-refresh: poll publishedAt every 5s, reload if changed ──
+  var lastPub=0;
+  function startLiveRefresh(s){
+    try{lastPub=(s&&s.general&&s.general.publishedAt)||0;}catch(e){}
+    if(!lastPub)return;
+    setInterval(function(){
+      getJson('/api/public/site.json',4000).then(function(ns){
+        var newPub=(ns&&ns.general&&ns.general.publishedAt)||0;
+        if(newPub&&lastPub&&newPub!==lastPub){
+          lastPub=newPub;
+          var u=new URL(location.href);
+          u.searchParams.set('v',newPub);
+          location.href=u.toString();
+        }
+      }).catch(function(){});
+    },5000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();});else{load();}
+  try {
+    var su=new URL(location.href);
+    if(su.searchParams.has('v')) {
+      su.searchParams.delete('v');
+      history.replaceState(null, '', su.toString());
+    }
+  }catch(e){}
 })();`;
 
 app.get('/api/public/runtime.js', (_req, res) => {

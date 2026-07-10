@@ -403,3 +403,94 @@ a:focus-visible, button:focus-visible {
 
 /* ── Selection color ── */
 ::selection { background: rgba(0,159,227,.2); color: inherit; }
+
+/* ══════════════════════════════════════════
+   Audit fixes — 2026-07-10
+   ══════════════════════════════════════════ */
+
+/* ── #5: Sticky header on ALL viewports ── */
+header {
+  position: sticky !important;
+  top: 0 !important;
+}
+
+/* ── #8: Hero 100dvh instead of 100vh ── */
+section[class*="min-h-[100vh]"] {
+  min-height: 100dvh !important;
+  min-height: 100svh !important;
+}
+
+/* ── #7: Don't force min-height on inline links/buttons globally ── */
+@media (max-width: 768px) {
+  /* Only apply min-height to interactive nav/CTA elements, not all links */
+  a, button { min-height: auto; }
+  nav a, nav button,
+  [class*="bf-mm"] a,
+  [class*="bf-mm"] button,
+  a[class*="rounded-full"],
+  a[class*="rounded-2xl"],
+  button[aria-label] { min-height: 44px; display: inline-flex; align-items: center; }
+
+  /* #10: Bigger tags on small screens */
+  span[class*="rounded-xl"][class*="font-semibold"] {
+    font-size: 13px !important;
+    padding: 8px 14px !important;
+  }
+
+  /* #13: Hide scroll progress bar on mobile (no sticky header context) */
+  #bf-scroll-progress {
+    height: 2px;
+  }
+}
+
+/* ── #26: Respect prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .bf-reveal, .bf-reveal-left, .bf-reveal-scale {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .bf-ripple::after { display: none; }
+  #bf-scroll-progress { display: none; }
+}
+
+/* ── #27: Back-to-top focus ring ── */
+#bf-back-top:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* ── #30: Skip-to-content link ── */
+.bf-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 10000;
+  padding: 12px 24px;
+  background: var(--bf-accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: 0 0 12px 0;
+  white-space: nowrap;
+}
+.bf-skip-link:focus {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: auto;
+  height: auto;
+}

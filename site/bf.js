@@ -357,16 +357,32 @@
 
   // ── Run after DOM ready ──
   function init() {
-    initAnimations();
+    // #30: Inject skip-to-content link
+    injectSkipLink();
+    // #26: Skip animations if user prefers reduced motion
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!prefersReduced) {
+      initAnimations();
+    } else {
+      // Force all hidden elements visible
+      document.querySelectorAll('[style*="opacity:0"],[style*="opacity: 0"]').forEach(el => {
+        el.style.opacity = '1';
+        el.style.transform = 'none';
+      });
+    }
 	    initImages();
 	    polishGamesCatalog();
 	    normalizeAuthorsCard();
 	    initRipples();
 	    fixGamesNavButton();
 	    initMobileMenuFallback();
+    // #14: Fix truncated OG title
+    fixOgTitle();
+    // #29: Fix inconsistent KIK naming
+    fixKikNaming();
     // Re-run after a short delay to catch dynamically rendered content
     setTimeout(() => {
-	      initAnimations();
+	      if (!prefersReduced) initAnimations();
 	      polishGamesCatalog();
 	      normalizeAuthorsCard();
 	      initRipples();
@@ -375,6 +391,39 @@
 	    }, 800);
 	    setTimeout(normalizeAuthorsCard, 1800);
 	  }
+
+  // #30: Skip-to-content link
+  function injectSkipLink() {
+    if (document.querySelector('.bf-skip-link')) return;
+    const mainEl = document.querySelector('main');
+    if (mainEl && !mainEl.id) mainEl.id = 'main-content';
+    const link = document.createElement('a');
+    link.href = '#' + (mainEl ? mainEl.id : 'main-content');
+    link.className = 'bf-skip-link';
+    link.textContent = 'Перейти до вмісту';
+    document.body.insertBefore(link, document.body.firstChild);
+  }
+
+  // #14: Fix truncated OG title "Настільні ігр" → "Настільні ігри"
+  function fixOgTitle() {
+    document.querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]').forEach(m => {
+      const v = m.getAttribute('content') || '';
+      if (v.includes('Настільні ігр') && !v.includes('Настільні ігри')) {
+        m.setAttribute('content', v.replace('Настільні ігр', 'Настільні ігри'));
+      }
+    });
+  }
+
+  // #29: Consistent KIK naming — use "KIK вдома" everywhere
+  function fixKikNaming() {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (/Кік-вдома/i.test(node.textContent)) {
+        node.textContent = node.textContent.replace(/Кік-вдома/gi, 'KIK вдома');
+      }
+    }
+  }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
