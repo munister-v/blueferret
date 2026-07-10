@@ -539,6 +539,27 @@ app.delete('/api/admin/games/:id', requireAuth, (req, res) => {
   res.json({ok:true,publishedAt});
 });
 
+app.post('/api/admin/games/:id/duplicate', requireAuth, (req, res) => {
+  const id=+req.params.id, ex=gOne.get(id);
+  if (!ex) return res.status(404).json({error:'not_found'});
+  const base = slugify(`${ex.slug || ex.title}-copy`) || `game-${Date.now()}`;
+  let slug = base, i = 2;
+  while (gSlug.get(slug)) slug = `${base}-${i++}`;
+  const data = gameBody({
+    ...ex,
+    slug,
+    title: `${ex.title || 'Гра'} копія`,
+    status: 'draft',
+    gallery: parseGallery(ex.gallery),
+    sort_order: Number(ex.sort_order || 0) + 1,
+  });
+  const info = gIns.run(data);
+  syncPublicGames();
+  const publishedAt = bumpPublishedAt();
+  audit(req.ip,'game_duplicate',{from:id,id:info.lastInsertRowid,slug,publishedAt});
+  res.status(201).json({...gameRow(gOne.get(info.lastInsertRowid)), publishedAt});
+});
+
 app.post('/api/admin/sync-public', requireAuth, (req, res) => {
   syncPublicGames();
   regenKikCatalog();

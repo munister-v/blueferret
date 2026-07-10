@@ -165,6 +165,21 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .btn-d{background:var(--red);color:#fff}
 .btn-sm{padding:6px 12px;font-size:12px;border-radius:7px}
 .btn:disabled{opacity:.4;cursor:default}
+.btn.is-loading{position:relative;color:transparent!important;pointer-events:none}
+.btn.is-loading::after{content:'';position:absolute;width:15px;height:15px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .75s linear infinite}
+.tool-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.searchbox{position:relative;min-width:240px;flex:1;max-width:420px}
+.searchbox input{padding-left:36px;background:rgba(255,255,255,.045)}
+.searchbox::before{content:'⌕';position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--txt-s);font-size:18px;line-height:1;pointer-events:none}
+.row-actions{white-space:nowrap;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.url-pill{display:inline-flex;align-items:center;gap:6px;margin-top:3px;color:var(--txt-m);font-size:11.5px}
+.url-pill code{font:600 11.5px ui-monospace,monospace;color:rgba(255,255,255,.62)}
+.edit-status{display:flex;align-items:center;gap:8px;margin-left:auto;color:var(--txt-s);font-size:12px}
+.edit-status .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(34,197,94,.08)}
+.edit-status.dirty{color:#fbbf24}.edit-status.dirty .dot{background:#f59e0b;box-shadow:0 0 0 4px rgba(245,158,11,.12)}
+.field-help{margin-top:6px;color:var(--txt-s);font-size:11.5px;line-height:1.45}
+.field-error{margin-top:6px;color:#fca5a5;font-size:12px;line-height:1.4;display:none}
+.field-error.show{display:block}
 
 /* ── TABLE ── */
 .tbl{width:100%;border-collapse:collapse}
@@ -173,6 +188,7 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .tbl tr:last-child td{border:none}
 .tbl tr:hover td{background:rgba(255,255,255,0.03)}
 .thumb{width:46px;height:46px;object-fit:cover;border-radius:8px;background:var(--bg)}
+.thumb-empty{width:46px;height:46px;border-radius:8px;background:rgba(255,255,255,.05);border:1px dashed var(--glass-border);display:flex;align-items:center;justify-content:center;color:var(--txt-s);font-size:18px}
 .badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700}
 .b-g{background:rgba(75,178,114,.15);color:#4ade80;border:1px solid rgba(75,178,114,.25)}
 .b-r{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25)}
@@ -191,6 +207,7 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .ged-section{background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:12px;padding:18px;margin-bottom:14px;backdrop-filter:blur(10px)}
 .ged-section h4{font-size:11px;font-weight:700;color:var(--txt-m);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--glass-border)}
 .ged-actions{display:flex;gap:10px;padding:16px 22px;background:rgba(15,15,19,0.85);backdrop-filter:blur(10px);border-top:1px solid var(--glass-border);position:sticky;bottom:0;z-index:10}
+.ged-actions .btn{min-height:38px}
 /* Preview panel */
 .pv{padding:32px 24px;min-height:100%;display:flex;flex-direction:column;gap:24px}
 .pv-label{font-size:10.5px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.12em;text-align:center;margin-bottom:8px}
@@ -611,6 +628,7 @@ let pickerCallback=null;
 // editor state
 let editingGame=null, editingKik=null;
 let gameGallery=[];
+let editorDirty=false, gameSearch='';
 
 // ── NAV ──
 const NAV=[
@@ -645,6 +663,43 @@ const fmtD=ts=>ts?new Date(ts).toLocaleString('uk-UA'):'—';
 const fmtM=n=>Number(n||0).toLocaleString('uk-UA');
 const fmtSz=b=>b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB';
 const relT=ts=>{const d=(Date.now()-ts)/1000;return d<60?'щойно':d<3600?Math.floor(d/60)+' хв тому':d<86400?Math.floor(d/3600)+' год тому':d<604800?Math.floor(d/86400)+' дн тому':fmtD(ts);};
+const publicGameUrl=g=>g?.slug?`/igry/${g.slug}/`:'/igry/';
+const absUrl=p=>new URL(p, location.origin).href;
+const slugifyClient=s=>String(s||'').toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
+
+function setEditorDirty(v){
+  editorDirty=!!v;
+  const st=$('#editStatus');
+  if(st){
+    st.classList.toggle('dirty',editorDirty);
+    st.innerHTML=`<span class="dot"></span>${editorDirty?'Є незбережені зміни':'Збережено'}`;
+  }
+}
+function canLeaveEditor(){
+  return !editorDirty || confirm('Є незбережені зміни. Вийти без збереження?');
+}
+function setButtonLoading(btn, loading, text){
+  if(!btn)return;
+  if(loading){
+    btn.dataset.label=btn.textContent;
+    if(text)btn.textContent=text;
+    btn.classList.add('is-loading');
+    btn.disabled=true;
+  }else{
+    btn.classList.remove('is-loading');
+    btn.disabled=false;
+    if(btn.dataset.label){btn.textContent=btn.dataset.label;delete btn.dataset.label;}
+  }
+}
+function copyText(text,label='Скопійовано ✓'){
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(()=>toast(label,'ok')).catch(()=>fallbackCopy(text));
+  else fallbackCopy(text);
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toast('Скопійовано ✓','ok');}catch{toast(text,'i');}
+  ta.remove();
+}
 
 const TOAST_ICO={ok:'✓',er:'✕',i:'ℹ'};
 function toast(msg,type='i'){
@@ -687,6 +742,7 @@ function buildNav(){
 }
 $('#sidebar').addEventListener('click',e=>{
   const b=e.target.closest('[data-tab]');if(!b)return;
+  if((activeTab==='game-editor'||activeTab==='kik-editor')&&!canLeaveEditor())return;
   activeTab=b.dataset.tab;render();
 });
 
@@ -792,25 +848,36 @@ async function renderDash(){
 
 // ── GAMES LIST ──
 function renderGamesList(){
-  const filtered=gameFilter==='all'?games:games.filter(g=>g.status===gameFilter);
+  const q=gameSearch.trim().toLowerCase();
+  const base=gameFilter==='all'?games:games.filter(g=>g.status===gameFilter);
+  const filtered=q?base.filter(g=>[g.title,g.slug,g.subtitle,g.description,g.players,g.age,g.duration].filter(Boolean).join(' ').toLowerCase().includes(q)):base;
   const pub=games.filter(g=>g.status==='published').length;
   const dft=games.filter(g=>g.status==='draft').length;
   const arc=games.filter(g=>g.status==='archived').length;
   const rows=filtered.length?filtered.map(g=>`<tr>
-    <td style="width:54px">${g.cover_url?`<img class="thumb" src="${esc(g.cover_url)}" onerror="this.style.display='none'">`:''}</td>
-    <td><div style="font-weight:700">${esc(g.title)}</div><div style="color:var(--txt-m);font-size:11.5px">/igry/${esc(g.slug)}</div></td>
+    <td style="width:54px">${g.cover_url?`<img class="thumb" src="${esc(g.cover_url)}" onerror="this.outerHTML='<span class=&quot;thumb-empty&quot;>?</span>'">`:`<span class="thumb-empty">🎲</span>`}</td>
+    <td><div style="font-weight:700">${esc(g.title)}</div><span class="url-pill"><code>${esc(publicGameUrl(g))}</code></span></td>
     <td>
       <span class="badge ${g.status==='published'?'b-g':g.status==='draft'?'b-r':'b-s'}" style="cursor:pointer" onclick="quickToggleStatus('game',${g.id},'${g.status}')" title="Клікніть щоб змінити статус">${g.status}</span>
     </td>
     <td style="color:var(--txt-m);font-size:12px">${[g.players,g.age,g.duration].filter(Boolean).join(' · ')||'—'}</td>
-    <td style="white-space:nowrap;display:flex;gap:6px">
+    <td class="row-actions">
+      <button class="btn btn-g btn-sm" onclick="openPublicGame(${g.id})">↗ Відкрити</button>
+      <button class="btn btn-g btn-sm" onclick="copyGameUrl(${g.id})">⧉ URL</button>
+      <button class="btn btn-g btn-sm" onclick="duplicateGame(${g.id})">⎘ Дубль</button>
       <button class="btn btn-g btn-sm" onclick="openGameEditor(${g.id})">✏️ Редагувати</button>
     </td>
   </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;padding:36px;color:var(--txt-m)">${gameFilter==='all'?'Ігор ще немає — додайте першу!':'Немає ігор з таким статусом'}</td></tr>`;
   return `<div class="card">
     <div class="ch">
-      <div><div class="ct">🎲 Ігри</div><div class="cs">${games.length} всього</div></div>
-      <button class="btn btn-p btn-sm" onclick="openGameEditor(null)">+ Нова гра</button>
+      <div><div class="ct">🎲 Ігри</div><div class="cs">${games.length} всього · ${filtered.length} показано</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-g btn-sm" onclick="syncPublicSite()">🔄 Sync</button>
+        <button class="btn btn-p btn-sm" onclick="openGameEditor(null)">+ Нова гра</button>
+      </div>
+    </div>
+    <div class="tool-row">
+      <div class="searchbox"><input type="text" value="${esc(gameSearch)}" placeholder="Пошук за назвою, slug, описом…" oninput="gameSearch=this.value;render()"></div>
     </div>
     <div class="ftabs">
       <button class="ftab${gameFilter==='all'?' on':''}" onclick="gameFilter='all';render()">Всі<span class="cnt">${games.length}</span></button>
@@ -832,10 +899,32 @@ async function quickToggleStatus(type,id,current){
 }
 window.quickToggleStatus=quickToggleStatus;
 
+function findGame(id){return games.find(g=>Number(g.id)===Number(id));}
+function openPublicGame(id){
+  const g=findGame(id); if(!g)return toast('Гру не знайдено','er');
+  window.open(absUrl(publicGameUrl(g)),'_blank','noopener');
+}
+function copyGameUrl(id){
+  const g=findGame(id); if(!g)return toast('Гру не знайдено','er');
+  copyText(absUrl(publicGameUrl(g)),'URL гри скопійовано ✓');
+}
+async function duplicateGame(id){
+  const g=findGame(id); if(!g)return toast('Гру не знайдено','er');
+  if(!confirm(`Створити чернетку-копію "${g.title}"?`))return;
+  try{
+    const copy=await api('POST',`/api/admin/games/${id}/duplicate`,{});
+    games=await api('GET','/api/admin/games');
+    toast('Копію створено як чернетку ✓','ok');
+    openGameEditor(copy.id);
+  }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
+}
+window.openPublicGame=openPublicGame;window.copyGameUrl=copyGameUrl;window.duplicateGame=duplicateGame;
+
 // ── GAME EDITOR (full-page with preview) ──
 function openGameEditor(id){
   editingGame=id?games.find(x=>x.id===id)||null:null;
   gameGallery=editingGame?parseGalleryValue(editingGame.gallery):[];
+  editorDirty=false;
   activeTab='game-editor'; render();
 }
 function parseGalleryValue(value){
@@ -855,20 +944,26 @@ function renderGameEditor(){
       <div class="ged-title">
         <button class="btn btn-g btn-sm" onclick="backToGames()">← Ігри</button>
         ${editingGame?`Редагувати: <strong>${esc(g.title)}</strong>`:'Нова гра'}
+        <span id="editStatus" class="edit-status"><span class="dot"></span>Збережено</span>
       </div>
 
       <div class="ged-section">
         <h4>Основне</h4>
         <div class="field"><label class="flbl">Назва *</label>
-          <input type="text" id="g_title" value="${esc(g.title)}" placeholder="Назва гри" oninput="updatePreview()"></div>
+          <input type="text" id="g_title" value="${esc(g.title)}" placeholder="Назва гри" oninput="updatePreview()">
+          <div class="field-help">Назва піде в картку каталогу, сторінку гри та SEO-заголовок.</div></div>
         <div class="row2">
           <div class="field"><label class="flbl">Slug (URL)</label>
-            <input type="text" id="g_slug" value="${esc(g.slug)}" placeholder="nazva-gry"></div>
+            <input type="text" id="g_slug" value="${esc(g.slug)}" placeholder="nazva-gry">
+            <div class="field-help">Публічна адреса: <span id="g_public_url">${esc(publicGameUrl(g))}</span></div>
+            <div id="g_slug_err" class="field-error">Slug може містити тільки літери, цифри та дефіси.</div></div>
           <div class="field"><label class="flbl">Статус</label>
             <select id="g_status" onchange="updatePreview()">
               <option value="published" ${(g.status||'published')==='published'?'selected':''}>✅ published</option>
               <option value="draft" ${g.status==='draft'?'selected':''}>📝 draft</option>
               <option value="archived" ${g.status==='archived'?'selected':''}>📦 archived</option>
+              <option value="preorder" ${g.status==='preorder'?'selected':''}>⏳ preorder</option>
+              <option value="onsale" ${g.status==='onsale'?'selected':''}>🛒 onsale</option>
             </select></div>
         </div>
         <div class="field"><label class="flbl">Підзаголовок</label>
@@ -912,6 +1007,7 @@ function renderGameEditor(){
 
       <div class="ged-actions">
         ${editingGame?`<button class="btn btn-d btn-sm" onclick="deleteGame(${editingGame.id})">🗑 Видалити</button>`:''}
+        ${editingGame?`<button class="btn btn-g btn-sm" onclick="copyGameUrl(${editingGame.id})">⧉ URL</button><button class="btn btn-g btn-sm" onclick="openPublicGame(${editingGame.id})">↗ Сайт</button>`:''}
         <button class="btn btn-g btn-sm" onclick="backToGames()">Скасувати</button>
         <button class="btn btn-p" onclick="saveGame()">💾 Зберегти гру</button>
       </div>
@@ -993,6 +1089,8 @@ function renderGameEditor(){
   el.style.padding='0';
   renderGallery();
   updatePreview();
+  bindGameEditorQuality();
+  setEditorDirty(false);
 }
 
 let galDragIdx = null;
@@ -1014,6 +1112,7 @@ window.galDrop = function(e){
     const item = gameGallery.splice(galDragIdx, 1)[0];
     gameGallery.splice(dropIdx, 0, item);
     renderGallery();
+    setEditorDirty(true);
   }
   galDragIdx = null;
 };
@@ -1025,8 +1124,8 @@ function renderGallery(){
     <button class="rm" onclick="removeGalleryItem(${i})">✕</button>
   </div>`).join('')+`<div class="gal-add" onclick="openPickerFor(null,addToGallery)">+</div>`;
 }
-window.removeGalleryItem=function(i){gameGallery.splice(i,1);renderGallery();}
-function addToGallery(url){gameGallery.push(url);renderGallery();}
+window.removeGalleryItem=function(i){gameGallery.splice(i,1);renderGallery();setEditorDirty(true);}
+function addToGallery(url){gameGallery.push(url);renderGallery();setEditorDirty(true);}
 
 function onCoverInput(){
   const url=$('#g_cover')?.value||'';
@@ -1059,8 +1158,9 @@ function updatePreview(){
   const age=$('#g_age')?.value||'';
   const dur=$('#g_duration')?.value||'';
   const buy=$('#g_buy')?.value||'';
-  const slug=$('#g_slug')?.value||'slug';
+  const slug=$('#g_slug')?.value||slugifyClient(title)||'slug';
   const status=$('#g_status')?.value||'published';
+  const urlEl=$('#g_public_url'); if(urlEl)urlEl.textContent=`/igry/${slug}/`;
   const tags=[players&&`👥 ${players}`,age&&`🎂 ${age}`,dur&&`⏱ ${dur}`].filter(Boolean);
   const tagHtml=tags.map(t=>`<span class="gc-tag">${esc(t)}</span>`).join('');
   const mobTagHtml=tags.map(t=>`<span style="background:rgba(0,159,227,.12);border:1px solid rgba(0,159,227,.2);color:rgba(0,159,227,.9);padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600">${esc(t)}</span>`).join('');
@@ -1104,10 +1204,31 @@ function updatePreview(){
 }
 window.updatePreview=updatePreview;
 
+function bindGameEditorQuality(){
+  const form=$('#gedForm'); if(!form)return;
+  form.addEventListener('input',()=>setEditorDirty(true));
+  form.addEventListener('change',()=>setEditorDirty(true));
+  const title=$('#g_title'), slug=$('#g_slug'), slugErr=$('#g_slug_err');
+  let slugTouched=!!(slug&&slug.value);
+  slug?.addEventListener('input',()=>{
+    slugTouched=true;
+    const next=slugifyClient(slug.value);
+    if(slug.value!==next)slug.value=next;
+    slugErr?.classList.toggle('show',!!slug.value&&slug.value!==next);
+    updatePreview();
+  });
+  title?.addEventListener('input',()=>{
+    if(!editingGame&&!slugTouched&&slug)slug.value=slugifyClient(title.value);
+    updatePreview();
+  });
+}
+
 async function saveGame(){
   const title=$('#g_title')?.value;
   if(!title){toast('Назва обов\'язкова','er');return;}
-  const btn=document.querySelector('.ged-actions .btn-p');if(btn)btn.disabled=true;
+  const slug=$('#g_slug')?.value;
+  if(slug&&slug!==slugifyClient(slug)){toast('Перевірте slug','er');return;}
+  const btn=document.querySelector('.ged-actions .btn-p');setButtonLoading(btn,true,'Збереження…');
   try{
     const body={title,slug:$('#g_slug')?.value,subtitle:$('#g_subtitle')?.value,
       description:$('#g_desc')?.value,status:$('#g_status')?.value,
@@ -1117,10 +1238,11 @@ async function saveGame(){
     const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
     const publicUrl=saved?.slug?`/igry/${saved.slug}/`:'/igry/';
+    setEditorDirty(false);
     toast((editingGame?'Гру оновлено ✓':'Гру створено ✓')+' · опубліковано: '+publicUrl,'ok');
     backToGames();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
-  finally{if(btn)btn.disabled=false;}
+  finally{setButtonLoading(btn,false);}
 }
 async function deleteGame(id){
   if(!confirm('Видалити гру?'))return;
@@ -1128,7 +1250,9 @@ async function deleteGame(id){
   catch(e){if(e.message!=='unauth')toast(e.message,'er');}
 }
 function backToGames(){
+  if(!canLeaveEditor())return;
   editingGame=null;gameGallery=[];
+  editorDirty=false;
   const el=$('#mainContent');if(el)el.style.padding='22px';
   activeTab='games';render();
 }
@@ -1168,7 +1292,7 @@ function renderKikList(){
 }
 
 // ── KIK EDITOR ──
-function openKikEditor(id){editingKik=id?kik.find(x=>x.id===id)||null:null;activeTab='kik-editor';render();}
+function openKikEditor(id){editingKik=id?kik.find(x=>x.id===id)||null:null;editorDirty=false;activeTab='kik-editor';render();}
 
 function renderKikEditor(){
   const k=editingKik||{};
@@ -1179,6 +1303,7 @@ function renderKikEditor(){
       <div class="ged-title">
         <button class="btn btn-g btn-sm" onclick="backToKik()">← КІК</button>
         ${editingKik?`Редагувати: <strong>${esc(k.title)}</strong>`:'Новий проект'}
+        <span id="editStatus" class="edit-status"><span class="dot"></span>Збережено</span>
       </div>
 
       <div class="ged-section">
@@ -1266,6 +1391,14 @@ function renderKikEditor(){
     </div>
   </div>`;
   updateKikPreview();
+  bindGenericEditorDirty();
+  setEditorDirty(false);
+}
+
+function bindGenericEditorDirty(){
+  const form=$('.ged-form'); if(!form)return;
+  form.addEventListener('input',()=>setEditorDirty(true));
+  form.addEventListener('change',()=>setEditorDirty(true));
 }
 
 function onKikCoverInput(){
@@ -1313,7 +1446,7 @@ window.updateKikPreview=updateKikPreview;
 
 async function saveKik(){
   const title=$('#k_title')?.value;if(!title){toast('Назва обов\'язкова','er');return;}
-  const btn=document.querySelector('.ged-actions .btn-k');if(btn)btn.disabled=true;
+  const btn=document.querySelector('.ged-actions .btn-k');setButtonLoading(btn,true,'Збереження…');
   try{
     const ev=$('#k_ends')?.value;
     const body={title,subtitle:$('#k_subtitle')?.value,description:$('#k_desc')?.value,
@@ -1324,16 +1457,17 @@ async function saveKik(){
     if(editingKik)await api('PUT',`/api/admin/kik/${editingKik.id}`,body);
     else await api('POST','/api/admin/kik',body);
     kik=await api('GET','/api/admin/kik');
+    setEditorDirty(false);
     toast((editingKik?'Проект оновлено ✓':'Проект створено ✓')+' · дані вже в API','ok');backToKik();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
-  finally{if(btn)btn.disabled=false;}
+  finally{setButtonLoading(btn,false);}
 }
 async function deleteKik(id){
   if(!confirm('Видалити проект?'))return;
   try{await api('DELETE',`/api/admin/kik/${id}`);kik=await api('GET','/api/admin/kik');toast('Видалено','ok');backToKik();}
   catch(e){if(e.message!=='unauth')toast(e.message,'er');}
 }
-function backToKik(){editingKik=null;const el=$('#mainContent');if(el)el.style.padding='22px';activeTab='kik';render();}
+function backToKik(){if(!canLeaveEditor())return;editingKik=null;editorDirty=false;const el=$('#mainContent');if(el)el.style.padding='22px';activeTab='kik';render();}
 window.openKikEditor=openKikEditor;window.saveKik=saveKik;window.deleteKik=deleteKik;window.backToKik=backToKik;
 
 // ── SETTINGS ──
@@ -2467,7 +2601,7 @@ document.addEventListener('keydown',e=>{
 window.addEventListener('beforeunload',e=>{
   const hasPageEdits=pageEdited&&Object.keys(pageEdited).length;
   const hasSiteEdits=siteEdited&&Object.keys(siteEdited).length;
-  if(hasPageEdits||hasSiteEdits){e.preventDefault();e.returnValue='';}
+  if(hasPageEdits||hasSiteEdits||editorDirty){e.preventDefault();e.returnValue='';}
 });
 
 // ── MEDIA SEARCH ──
