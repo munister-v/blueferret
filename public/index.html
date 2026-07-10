@@ -180,6 +180,13 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .field-help{margin-top:6px;color:var(--txt-s);font-size:11.5px;line-height:1.45}
 .field-error{margin-top:6px;color:#fca5a5;font-size:12px;line-height:1.4;display:none}
 .field-error.show{display:block}
+.quality-box{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px}
+.quality-box h4{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.38);margin-bottom:10px}
+.quality-list{display:grid;gap:8px}
+.quality-item{display:flex;align-items:flex-start;gap:8px;color:rgba(255,255,255,.58);font-size:12.5px;line-height:1.4}
+.quality-item .q-dot{width:17px;height:17px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 17px;font-size:10px;font-weight:800;margin-top:1px;background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.25)}
+.quality-item.ok{color:rgba(255,255,255,.76)}.quality-item.ok .q-dot{background:rgba(34,197,94,.14);color:#86efac;border-color:rgba(34,197,94,.25)}
+.quality-item.warn .q-dot{background:rgba(245,158,11,.14);color:#fcd34d;border-color:rgba(245,158,11,.25)}
 
 /* ── TABLE ── */
 .tbl{width:100%;border-collapse:collapse}
@@ -1009,7 +1016,9 @@ function renderGameEditor(){
         ${editingGame?`<button class="btn btn-d btn-sm" onclick="deleteGame(${editingGame.id})">🗑 Видалити</button>`:''}
         ${editingGame?`<button class="btn btn-g btn-sm" onclick="copyGameUrl(${editingGame.id})">⧉ URL</button><button class="btn btn-g btn-sm" onclick="openPublicGame(${editingGame.id})">↗ Сайт</button>`:''}
         <button class="btn btn-g btn-sm" onclick="backToGames()">Скасувати</button>
-        <button class="btn btn-p" onclick="saveGame()">💾 Зберегти гру</button>
+        <button class="btn btn-g btn-sm" onclick="saveGame('stay')">💾 Зберегти і лишитись</button>
+        <button class="btn btn-g btn-sm" onclick="saveGame('open')">↗ Зберегти і відкрити</button>
+        <button class="btn btn-p" onclick="saveGame('exit')">💾 Зберегти гру</button>
       </div>
     </div>
 
@@ -1082,6 +1091,10 @@ function renderGameEditor(){
               <div id="pv_mob_btn" style="display:none;background:var(--bf);color:#fff;padding:10px;border-radius:8px;text-align:center;font-weight:700;font-size:13px">Купити →</div>
             </div>
           </div>
+        </div>
+        <div class="quality-box" id="gameQualityBox">
+          <h4>Готовність до публікації</h4>
+          <div class="quality-list" id="gameQualityList"></div>
         </div>
       </div>
     </div>
@@ -1201,8 +1214,26 @@ function updatePreview(){
   if(mtt)mtt.textContent=title;
   if(mtg)mtg.innerHTML=mobTagHtml;
   if(mb)mb.style.display=buy?'block':'none';
+  updateGameQuality({ title, desc, cover, players, age, dur, slug, status, buy });
 }
 window.updatePreview=updatePreview;
+
+function updateGameQuality(g){
+  const el=$('#gameQualityList'); if(!el)return;
+  const checks=[
+    {ok:g.title.trim().length>=3,text:'Назва заповнена і виглядає як реальна назва'},
+    {ok:!!g.cover,text:'Є обкладинка для каталогу та соцмереж'},
+    {ok:g.desc.trim().length>=80,warn:g.desc.trim().length>=40,text:'Опис достатній для сторінки та SEO'},
+    {ok:[g.players,g.age,g.dur].filter(Boolean).length>=2,warn:[g.players,g.age,g.dur].filter(Boolean).length>=1,text:'Є ключові характеристики: гравці, вік, тривалість'},
+    {ok:!!g.slug&&g.slug===slugifyClient(g.slug),text:'URL чистий і готовий до публікації'},
+    {ok:g.status!=='published'||!!g.cover&&g.desc.trim().length>=40,warn:g.status!=='published',text:g.status==='published'?'Опублікована гра має мінімальний контент':'Чернетка не показується в каталозі'},
+  ];
+  el.innerHTML=checks.map(c=>{
+    const cls=c.ok?'ok':c.warn?'warn':'';
+    const mark=c.ok?'✓':c.warn?'!':'×';
+    return `<div class="quality-item ${cls}"><span class="q-dot">${mark}</span><span>${esc(c.text)}</span></div>`;
+  }).join('');
+}
 
 function bindGameEditorQuality(){
   const form=$('#gedForm'); if(!form)return;
@@ -1223,12 +1254,21 @@ function bindGameEditorQuality(){
   });
 }
 
-async function saveGame(){
+async function verifyPublishedGame(slug){
+  if(!slug)return false;
+  try{
+    const r=await fetch(`/igry/${encodeURIComponent(slug)}/?cms_check=${Date.now()}`,{cache:'no-store'});
+    return r.ok;
+  }catch{return false;}
+}
+
+async function saveGame(mode='exit'){
   const title=$('#g_title')?.value;
   if(!title){toast('Назва обов\'язкова','er');return;}
   const slug=$('#g_slug')?.value;
   if(slug&&slug!==slugifyClient(slug)){toast('Перевірте slug','er');return;}
-  const btn=document.querySelector('.ged-actions .btn-p');setButtonLoading(btn,true,'Збереження…');
+  const btn=mode==='exit'?document.querySelector('.ged-actions .btn-p'):event?.currentTarget;
+  setButtonLoading(btn,true,'Збереження…');
   try{
     const body={title,slug:$('#g_slug')?.value,subtitle:$('#g_subtitle')?.value,
       description:$('#g_desc')?.value,status:$('#g_status')?.value,
@@ -1238,9 +1278,17 @@ async function saveGame(){
     const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
     const publicUrl=saved?.slug?`/igry/${saved.slug}/`:'/igry/';
+    const liveOk=await verifyPublishedGame(saved?.slug);
     setEditorDirty(false);
-    toast((editingGame?'Гру оновлено ✓':'Гру створено ✓')+' · опубліковано: '+publicUrl,'ok');
-    backToGames();
+    toast((editingGame?'Гру оновлено ✓':'Гру створено ✓')+` · ${liveOk?'сторінка доступна':'збережено в CMS'} · ${publicUrl}`,'ok');
+    if(mode==='open'&&saved?.slug)window.open(absUrl(publicUrl),'_blank','noopener');
+    if(mode==='stay'){
+      editingGame=saved;
+      gameGallery=parseGalleryValue(saved.gallery);
+      renderGameEditor();
+    }else{
+      backToGames();
+    }
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
   finally{setButtonLoading(btn,false);}
 }
