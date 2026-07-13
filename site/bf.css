@@ -494,3 +494,124 @@ section[class*="min-h-[100vh]"] {
   width: auto;
   height: auto;
 }
+
+/* -- Catalog game card visual polish -- */
+[data-bf-games-grid] > a[href*="trymaysia"] {
+  border-color: rgba(0,159,227,.30) !important;
+  box-shadow: 0 16px 42px -34px rgba(15,23,42,.50), inset 0 0 0 1px rgba(255,255,255,.72) !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child {
+  min-height: 170px !important;
+  aspect-ratio: 16 / 9 !important;
+  background:
+    radial-gradient(circle at 52% 8%, rgba(255,255,255,.16), transparent 30%),
+    linear-gradient(135deg, #203a55 0%, #14273b 58%, #0f1b2a 100%) !important;
+  border-bottom: 1px solid rgba(0,159,227,.16) !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child img {
+  object-fit: contain !important;
+  object-position: center !important;
+  padding: 12px 18px 10px !important;
+  transform: scale(.98) !important;
+  filter: saturate(.96) contrast(1.03) !important;
+  background: transparent !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(15,23,42,.04), rgba(15,23,42,.22));
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child + div {
+  padding-top: 28px !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] h2 {
+  font-family: Comfortaa, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  letter-spacing: -0.035em !important;
+  font-weight: 800 !important;
+  color: #132238 !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] p {
+  color: #41536b !important;
+  line-height: 1.72 !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child a,
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child button,
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child [class*="rounded"]:has(svg) {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 22px -14px rgba(15,23,42,.55) !important;
+}
+@media (max-width: 640px) {
+  [data-bf-games-grid] > a[href*="trymaysia"] > div:first-child {
+    min-height: 150px !important;
+  }
+  [data-bf-games-grid] > a[href*="trymaysia"] > div:first-child img {
+    padding: 10px 14px 8px !important;
+  }
+}
+
+/* -- Catalog game card hydration-safe fixes -- */
+main a[href="/igry/trymaysia/"] {
+  min-height: 0 !important;
+  border-color: rgba(0,159,227,.34) !important;
+  box-shadow: 0 18px 44px -34px rgba(15,23,42,.52), inset 0 0 0 1px rgba(255,255,255,.76) !important;
+}
+main a[href="/igry/trymaysia/"] > div:first-child {
+  display: block !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 170px !important;
+  flex: 0 0 auto !important;
+  aspect-ratio: 16 / 9 !important;
+  background:
+    radial-gradient(circle at 52% 8%, rgba(255,255,255,.16), transparent 30%),
+    linear-gradient(135deg, #203a55 0%, #14273b 58%, #0f1b2a 100%) !important;
+  border-bottom: 1px solid rgba(0,159,227,.16) !important;
+}
+main a[href="/igry/trymaysia/"] > div:first-child img {
+  object-fit: contain !important;
+  object-position: center !important;
+  padding: 12px 18px 10px !important;
+  transform: scale(.98) !important;
+  filter: saturate(.96) contrast(1.03) !important;
+  background: transparent !important;
+}
+main a[href="/igry/trymaysia/"] > div:nth-child(2) {
+  padding-top: 28px !important;
+}
+main a[href="/igry/trymaysia/"] h2 {
+  font-family: Comfortaa, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  letter-spacing: -0.035em !important;
+  font-weight: 800 !important;
+  color: #132238 !important;
+}
+main a[href="/igry/trymaysia/"] p {
+  color: #41536b !important;
+  line-height: 1.72 !important;
+}
+@media (max-width: 640px) {
+  main a[href="/igry/trymaysia/"] > div:first-child {
+    min-height: 156px !important;
+  }
+  main a[href="/igry/trymaysia/"] > div:first-child img {
+    padding: 10px 14px 8px !important;
+  }
+}
+
+/* -- Catalog card reveal safety -- */
+main a[href^="/igry/"] h2.bf-reveal,
+main a[href^="/igry/"] .bf-reveal {
+  opacity: 1 !important;
+  transform: none !important;
+}
+main a[href="/igry/trymaysia/"] > div:nth-child(2) {
+  padding: 26px 22px 22px !important;
+}
+main a[href="/igry/trymaysia/"] h2 {
+  margin-bottom: 14px !important;
+}
+
