@@ -334,10 +334,25 @@ function cleanText(v) { return String(v ?? '').trim(); }
 function escapeHtml(s) {
   return cleanText(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;'}[c]));
 }
+function renderDescriptionBlocks(text) {
+  const blocks = String(text || '').split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+  if (!blocks.length) return '<p>Опис гри скоро з\'явиться.</p>';
+  return blocks.map(block => {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length > 1 && lines.every(l => l.startsWith('- '))) {
+      return `<ul class="bfg-list">${lines.map(l => `<li>${escapeHtml(l.slice(2))}</li>`).join('')}</ul>`;
+    }
+    return `<p>${escapeHtml(lines.join(' '))}</p>`;
+  }).join('');
+}
+function renderGallerySection(gallery, title) {
+  if (!gallery || !gallery.length) return '';
+  const items = gallery.map(url => `<div class="bfg-gallery-item"><img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" loading="lazy"></div>`).join('');
+  return `<section class="bfg-gallery"><div class="bfg-gallery-inner"><h2 class="bfg-section-title">Галерея</h2><div class="bfg-gallery-grid">${items}</div></div></section>`;
+}
 function generatedGameHtml(g) {
   const title = escapeHtml(g.title || g.slug);
   const subtitle = escapeHtml(g.subtitle || g.players || 'Настільна гра Blue Ferret');
-  const desc = escapeHtml(g.description || 'Опис гри скоро з\'явиться.');
   const cover = escapeHtml(g.cover_url || '/images/placeholder-game.svg');
   const statusRaw = (g.status || 'published');
   const statusLabel = statusRaw === 'draft' ? 'Чернетка' : statusRaw === 'archived' ? 'Архів' : statusRaw === 'preorder' ? 'Передзамовлення' : statusRaw === 'onsale' ? 'У продажі' : 'Анонс';
@@ -346,16 +361,17 @@ function generatedGameHtml(g) {
   const duration = escapeHtml(g.duration || '');
   const buy = escapeHtml(g.buy_url || '');
   const chips = [players && `<span class="bf-chip">👥 ${players}</span>`, age && `<span class="bf-chip">🎂 ${age}</span>`, duration && `<span class="bf-chip">⏱ ${duration}</span>`].filter(Boolean).join('');
+  const metaDesc = escapeHtml(String(g.description || '').split(/\n\s*\n/)[0] || 'Опис гри скоро з\'явиться.').replace(/^- /, '');
   return `<!doctype html>
 <html lang="uk">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${title} | Blue Ferret</title>
-<meta name="description" content="${desc.slice(0, 155)}">
+<meta name="description" content="${metaDesc.slice(0, 155)}">
 <link rel="canonical" href="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
 <meta property="og:title" content="${title} | Blue Ferret">
-<meta property="og:description" content="${desc.slice(0, 155)}">
+<meta property="og:description" content="${metaDesc.slice(0, 155)}">
 <meta property="og:url" content="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
 <meta property="og:type" content="website">
 <meta property="og:image" content="${cover.startsWith('http') ? cover : 'https://blueferret.com.ua' + cover}">
@@ -384,6 +400,16 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
 .bfg-title{font-size:clamp(40px,7vw,88px);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;font-weight:900;color:#0f172a}
 .bfg-sub{font-size:clamp(17px,2.2vw,24px);line-height:1.35;color:#334155;margin:0 0 18px;max-width:620px}
 .bfg-desc{font-size:16px;line-height:1.8;color:#475569;max-width:660px}
+.bfg-desc p{margin:0 0 14px}
+.bfg-desc p:last-child{margin-bottom:0}
+.bfg-list{margin:0 0 14px;padding-left:20px}
+.bfg-list li{margin-bottom:4px}
+.bfg-gallery{padding:10px 18px 100px}
+.bfg-gallery-inner{max-width:1120px;margin:0 auto}
+.bfg-section-title{font-size:clamp(24px,3.5vw,34px);font-weight:900;color:#0f172a;margin:0 0 24px;letter-spacing:-.03em}
+.bfg-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.bfg-gallery-item{border-radius:16px;overflow:hidden;background:#0f172a;box-shadow:0 14px 34px -18px rgba(15,23,42,.35)}
+.bfg-gallery-item img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
 .bfg-chips{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}
 .bfg-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #dbeafe;background:#fff;border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600;color:#1e3a8a;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .bfg-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
@@ -424,7 +450,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       <span class="bfg-kicker">${statusLabel}</span>
       <h1 class="bfg-title">${title}</h1>
       <p class="bfg-sub">${subtitle}</p>
-      <p class="bfg-desc">${desc}</p>
+      <div class="bfg-desc">${renderDescriptionBlocks(g.description)}</div>
       <div class="bfg-chips">${chips}</div>
       <div class="bfg-actions">
         ${buy ? `<a class="bfg-btn primary" href="${buy}">Придбати →</a>` : ''}
@@ -435,6 +461,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       <img src="${cover}" alt="${title}" loading="eager">
     </figure>
   </section>
+  ${renderGallerySection(g.gallery, title)}
   <footer class="bfg-footer">
     <div class="bfg-footer-inner">
       <p>© 2026 <a href="/">Blue Ferret</a> — Незалежне видавництво настільних ігор</p>
