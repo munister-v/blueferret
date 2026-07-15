@@ -521,6 +521,7 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .m-ov button{background:#fff;border:none;border-radius:7px;padding:5px 10px;font:600 11.5px inherit;cursor:pointer;width:100%;transition:.1s}
 .m-ov button:hover{background:#f1f5f9}
 .m-ov .del{background:#fff0f0;color:var(--red)}
+.m-static-badge{position:absolute;top:6px;right:6px;background:rgba(10,15,26,.75);color:#fff;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:5px;z-index:1}
 .m-lbl{padding:6px 8px;font-size:10.5px;color:var(--txt-m);background:#fff;border-top:1px solid var(--line)}
 .m-lbl .fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt);font-weight:600;font-size:11px}
 .m-lbl .sz{color:var(--txt-s);font-size:10px}
@@ -2350,10 +2351,11 @@ async function renderMedia(){
   const grid=mediaList.length?mediaList.map(f=>`<div class="m-i${selectedMedia===f.filename?' sel':''}" data-fn="${esc(f.filename)}" data-url="${esc(f.url)}" onclick="selectMedia('${esc(f.filename)}','${esc(f.url)}',${f.size})">
     <div class="m-i-img">
       <img src="${esc(f.url)}" loading="lazy" onerror="this.style.opacity='.3'">
+      ${f.deletable===false?'<span class="m-static-badge" title="Файл сайту — завантажений напряму на сервер, видалення недоступне з адмінки">сайт</span>':''}
       <div class="m-ov">
         <button onclick="event.stopPropagation();openLightbox('${esc(f.url)}')">🔍 Переглянути</button>
         <button onclick="event.stopPropagation();copyUrl('${esc(f.url)}')">📋 Копіювати URL</button>
-        <button class="del" onclick="event.stopPropagation();delMedia('${esc(f.filename)}')">🗑 Видалити</button>
+        ${f.deletable===false?'':`<button class="del" onclick="event.stopPropagation();delMedia('${esc(f.filename)}')">🗑 Видалити</button>`}
       </div>
     </div>
     <div class="m-lbl">

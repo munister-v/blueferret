@@ -777,15 +777,38 @@ app.post('/api/admin/upload', requireAuth, (req, res, next) => {
   res.json({ ok:true, url, filename:req.file.filename, size:req.file.size });
 });
 
+const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif|svg|avif)$/i;
+// Walks SITE_ROOT/images (game art, characters, etc. — assets that were
+// deployed straight to disk rather than through the upload button) so they
+// show up as pickable/browsable, even though only /uploads files can be
+// deleted through this admin.
+function walkStaticImages(dir, base) {
+  let out = [];
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  for (const e of entries) {
+    if (e.name.startsWith('.')) continue;
+    const full = path.join(dir, e.name);
+    const rel = base ? `${base}/${e.name}` : e.name;
+    if (e.isDirectory()) {
+      out = out.concat(walkStaticImages(full, rel));
+    } else if (IMAGE_EXT_RE.test(e.name)) {
+      const stat = fs.statSync(full);
+      out.push({ filename: rel, url: `/images/${rel}`, size: stat.size, mtime: stat.mtimeMs, deletable: false });
+    }
+  }
+  return out;
+}
 app.get('/api/admin/media', requireAuth, (_req, res) => {
   try {
-    const files = fs.readdirSync(UPLOADS)
-      .filter(f => !f.startsWith('.') && /\.(jpe?g|png|webp|gif|svg|avif)$/i.test(f))
+    const uploaded = fs.readdirSync(UPLOADS)
+      .filter(f => !f.startsWith('.') && IMAGE_EXT_RE.test(f))
       .map(f => {
         const stat = fs.statSync(path.join(UPLOADS, f));
-        return { filename:f, url:`/uploads/${f}`, size:stat.size, mtime:stat.mtimeMs };
-      }).sort((a,b) => b.mtime - a.mtime);
-    res.json(files);
+        return { filename:f, url:`/uploads/${f}`, size:stat.size, mtime:stat.mtimeMs, deletable: true };
+      });
+    const staticImages = walkStaticImages(path.join(SITE_ROOT, 'images'), '');
+    res.json([...uploaded, ...staticImages].sort((a,b) => b.mtime - a.mtime));
   } catch { res.json([]); }
 });
 
