@@ -484,6 +484,10 @@ function writeGeneratedGamePage(row) {
   if (fs.existsSync(file)) {
     const existing = fs.readFileSync(file, 'utf8');
     if (existing === nextHtml) return;
+    // A page at this slug that doesn't carry our marker is a hand-crafted
+    // page (e.g. a real Next.js-rendered design) placed here outside the
+    // CMS — never clobber it with the generic generated template.
+    if (!existing.includes('data-bf-generated-game="true"')) return;
     writeBackup(file);
   }
   writeAtomic(file, nextHtml);
