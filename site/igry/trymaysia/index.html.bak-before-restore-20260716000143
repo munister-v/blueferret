@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Тримайся | Blue Ferret</title>
+<meta name="description" content="Динамічна командна гра на реакцію та спритність — хапайся за мотузку і тримайся до кінця! Для всіх, хто любить активний відпочинок, сміх і азарт.">
+<link rel="canonical" href="https://blueferret.com.ua/igry/trymaysia/">
+<meta property="og:title" content="Тримайся | Blue Ferret">
+<meta property="og:description" content="Динамічна командна гра на реакцію та спритність — хапайся за мотузку і тримайся до кінця! Для всіх, хто любить активний відпочинок, сміх і азарт.">
+<meta property="og:url" content="https://blueferret.com.ua/igry/trymaysia/">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://blueferret.com.ua/images/trymaysia/box-front-center-v11.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Тримайся | Blue Ferret">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="stylesheet" href="/_next/static/css/a80874b32dc71380.css">
+<link rel="stylesheet" href="/bf.css?v=8">
+<style>
+body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-serif}
+.bfg-wrap{min-height:100vh;background:radial-gradient(ellipse 100% 70% at 50% -10%,rgba(0,159,227,.18),transparent 60%),linear-gradient(135deg,#f6fbff,#fff,#eefaf3)}
+.bfg-header{background:#0a0f1a/98;backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.05);position:sticky;top:0;z-index:50}
+.bfg-nav{max-width:1120px;margin:0 auto;padding:0 18px;display:flex;justify-content:space-between;align-items:center;height:64px}
+.bfg-logo{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff}
+.bfg-logo img{width:40px;height:40px;object-fit:contain}
+.bfg-logo-text{display:flex;flex-direction:column}
+.bfg-logo-name{font-weight:800;font-size:15px;color:#fff;letter-spacing:-.01em}
+.bfg-logo-sub{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:#94a3b8}
+.bfg-nav-links{display:flex;align-items:center;gap:4px}
+.bfg-nav-links a{color:#94a3b8;text-decoration:none;font-weight:500;font-size:14px;padding:8px 14px;border-radius:10px;transition:all .2s}
+.bfg-nav-links a:hover{color:#fff;background:rgba(255,255,255,.1)}
+.bfg-nav-links a.active{color:#fff;background:rgba(255,255,255,.12)}
+.bfg-shell{max-width:1120px;margin:0 auto;padding:56px 18px 100px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:48px;align-items:center}
+.bfg-copy{padding:24px 0}
+.bfg-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(0,159,227,.25);background:rgba(0,159,227,.08);border-radius:999px;padding:8px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#0369a1;margin-bottom:20px}
+.bfg-title{font-size:clamp(40px,7vw,88px);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;font-weight:900;color:#0f172a}
+.bfg-sub{font-size:clamp(17px,2.2vw,24px);line-height:1.35;color:#334155;margin:0 0 18px;max-width:620px}
+.bfg-desc{font-size:16px;line-height:1.8;color:#475569;max-width:660px}
+.bfg-desc p{margin:0 0 14px}
+.bfg-desc p:last-child{margin-bottom:0}
+.bfg-list{margin:0 0 14px;padding-left:20px}
+.bfg-list li{margin-bottom:4px}
+.bfg-gallery{padding:10px 18px 100px}
+.bfg-gallery-inner{max-width:1120px;margin:0 auto}
+.bfg-section-title{font-size:clamp(24px,3.5vw,34px);font-weight:900;color:#0f172a;margin:0 0 24px;letter-spacing:-.03em}
+.bfg-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.bfg-gallery-item{border-radius:16px;overflow:hidden;background:#0f172a;box-shadow:0 14px 34px -18px rgba(15,23,42,.35)}
+.bfg-gallery-item img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.bfg-chips{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}
+.bfg-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #dbeafe;background:#fff;border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600;color:#1e3a8a;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.bfg-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
+.bfg-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:14px;text-decoration:none;font-weight:700;font-size:15px;transition:all .2s}
+.bfg-btn.primary{background:#009fe3;color:#fff;box-shadow:0 12px 30px -12px rgba(0,159,227,.7)}
+.bfg-btn.primary:hover{background:#0088c4;transform:translateY(-1px)}
+.bfg-btn.secondary{background:#fff;color:#0f172a;border:1px solid #cbd5e1}
+.bfg-btn.secondary:hover{border-color:#009fe3;color:#009fe3}
+.bfg-cover{background:#0f172a;border-radius:24px;box-shadow:0 30px 70px -30px rgba(15,23,42,.6);overflow:hidden;aspect-ratio:4/3;position:relative}
+.bfg-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.bfg-footer{background:linear-gradient(to bottom,#0f172a,#0a0f1a);padding:60px 18px 40px;text-align:center;margin-top:80px}
+.bfg-footer-inner{max-width:600px;margin:0 auto}
+.bfg-footer p{color:#64748b;font-size:14px;margin:0}
+.bfg-footer a{color:#009fe3;text-decoration:none}
+@media(max-width:800px){.bfg-shell{grid-template-columns:1fr;padding-top:28px;gap:32px}.bfg-cover{order:-1;border-radius:18px}.bfg-title{font-size:clamp(36px,10vw,60px)}.bfg-nav-links{display:none}}
+</style>
+</head>
+<body>
+<div class="bfg-wrap" data-bf-generated-game="true">
+  <header class="bfg-header">
+    <nav class="bfg-nav">
+      <a class="bfg-logo" href="/">
+        <img src="/logo-blue-ferret.png" alt="Blue Ferret">
+        <div class="bfg-logo-text">
+          <span class="bfg-logo-name">BLUE FERRET</span>
+          <span class="bfg-logo-sub">видавництво</span>
+        </div>
+      </a>
+      <div class="bfg-nav-links">
+        <a href="/">Головна</a>
+        <a href="/igry/" class="active">Наші ігри</a>
+        <a href="/kontakty/">Контакти</a>
+      </div>
+    </nav>
+  </header>
+  <section class="bfg-shell">
+    <div class="bfg-copy">
+      <span class="bfg-kicker">Анонс</span>
+      <h1 class="bfg-title">Тримайся</h1>
+      <p class="bfg-sub">За все, що можеш!</p>
+      <div class="bfg-desc"><p>Динамічна командна гра на реакцію та спритність — хапайся за мотузку і тримайся до кінця! Для всіх, хто любить активний відпочинок, сміх і азарт.</p><p>Ви — команда моряків у розпалі шторму! Корабель хитає на хвилях, снасті розхитуються, а на кону — і товари, і ваші життя. Разом ви маєте встигати зав&#x27;язувати морські вузли під дедлайном таймера. Але буря не проста — карти умов ускладнять завдання: вузол доведеться в&#x27;язати на одній нозі, із заплющеним оком чи навіть чужим тросом!</p><p>Виживете ви чи потонете — залежить від злагодженості вашої команди.</p><p>У коробці:</p><ul class="bfg-list"><li>30 карт вузлів</li><li>25 карт умов</li><li>Лічильник міцності корабля</li><li>5 паличок</li><li>10 шнурів</li><li>5 металевих кілець</li></ul><p>Авторка гри: Рогачова Вероніка.</p></div>
+      <div class="bfg-chips"><span class="bf-chip">👥 2-5 гравців</span><span class="bf-chip">🎂 Від 6+</span><span class="bf-chip">⏱ ~15 хв</span></div>
+      <div class="bfg-actions">
+        
+        <a class="bfg-btn secondary" href="/igry/">← Назад до каталогу</a>
+      </div>
+    </div>
+    <figure class="bfg-cover">
+      <img src="/images/trymaysia/box-front-center-v11.jpg" alt="Тримайся" loading="eager">
+    </figure>
+  </section>
+  <section class="bfg-gallery"><div class="bfg-gallery-inner"><h2 class="bfg-section-title">Галерея</h2><div class="bfg-gallery-grid"><div class="bfg-gallery-item"><img src="/images/trymaysia/box-front-center-v11.jpg" alt="Тримайся" loading="lazy"></div><div class="bfg-gallery-item"><img src="/images/trymaysia/box-back-center-v11.jpg" alt="Тримайся" loading="lazy"></div><div class="bfg-gallery-item"><img src="/images/trymaysia/characters/char-2.png" alt="Тримайся" loading="lazy"></div><div class="bfg-gallery-item"><img src="/images/trymaysia/characters/char-4.png" alt="Тримайся" loading="lazy"></div></div></div></section>
+  <footer class="bfg-footer">
+    <div class="bfg-footer-inner">
+      <p>© 2026 <a href="/">Blue Ferret</a> — Незалежне видавництво настільних ігор</p>
+    </div>
+  </footer>
+</div>
+<script src="/api/public/runtime.js" defer></script>
+</body>
+</html>
