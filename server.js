@@ -1004,8 +1004,11 @@ function extractBlocks(html, managedValues){
   }
 
   // ── Paragraphs — allow <p> with simple inline tags (strong, em, a) ──
+  // Cap raised from 14→80: pages with more real content (e.g. the homepage,
+  // which has 20+ genuine paragraphs) were silently losing the tail past the
+  // old cap — "editor has way fewer blocks than the page actually has" bug.
   const pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; let pi=0, kept=0;
-  while((m=pr.exec(safe))!==null && kept<14){
+  while((m=pr.exec(safe))!==null && kept<80){
     const inner=m[1];
     const t=cleanInner(inner);
     const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t);
@@ -1020,7 +1023,7 @@ function extractBlocks(html, managedValues){
 
   // ── Links (<a> with meaningful text) ──
   const ar=/<a[^>]*>([\s\S]*?)<\/a>/gi; let ai=0, aKept=0;
-  while((m=ar.exec(safe))!==null && aKept<10){
+  while((m=ar.exec(safe))!==null && aKept<60){
     const inner=m[1];
     const t=cleanInner(inner);
     // Card-style anchors that wrap a whole heading+paragraph produce a huge
@@ -1036,7 +1039,7 @@ function extractBlocks(html, managedValues){
 
   // ── Spans with meaningful text (badges, labels) ──
   const sr=/<span[^>]*>([^<]{4,80})<\/span>/gi; let si=0, sKept=0;
-  while((m=sr.exec(safe))!==null && sKept<8){
+  while((m=sr.exec(safe))!==null && sKept<50){
     const t=decodeHtmlEnts(m[1]).trim();
     // skip very short or numeric-only spans
     if(t && t.length>=4 && t.length<=80 && /[а-яіїєa-z]/i.test(t)){
@@ -1048,7 +1051,7 @@ function extractBlocks(html, managedValues){
 
   // ── Images (<img> with src) ──
   const ir=/<img[^>]+src="([^"]+)"[^>]*>/gi; let ii=0, iKept=0;
-  while((m=ir.exec(safe))!==null && iKept<8){
+  while((m=ir.exec(safe))!==null && iKept<50){
     const src=decodeHtmlEnts(m[1]).trim();
     // skip tiny icons, data URIs, tracking pixels
     if(src && !src.startsWith('data:') && src.length>5 && !/favicon|icon/i.test(src)){
@@ -1061,7 +1064,7 @@ function extractBlocks(html, managedValues){
 
   // ── List items (<li>) ──
   const lr=/<li[^>]*>([\s\S]*?)<\/li>/gi; let li=0, lKept=0;
-  while((m=lr.exec(safe))!==null && lKept<6){
+  while((m=lr.exec(safe))!==null && lKept<50){
     const t=cleanInner(m[1]);
     if(t && t.length>=4 && t.length<=200 && t.includes(' ')){
       add(`li_${li}`,'li','Елемент списку','📌',t,m[0],m[1],li);
