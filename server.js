@@ -358,15 +358,23 @@ function cleanText(v) { return String(v ?? '').trim(); }
 function escapeHtml(s) {
   return cleanText(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;'}[c]));
 }
+// Minimal markdown: **bold** and _italic_ only. Always run AFTER escapeHtml
+// so the raw text is already entity-safe before these get turned into tags —
+// authors can't smuggle real markup through this.
+function inlineMd(escaped) {
+  return escaped
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/_(.+?)_/g, '<em>$1</em>');
+}
 function renderDescriptionBlocks(text) {
   const blocks = String(text || '').split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
   if (!blocks.length) return '<p>Опис гри скоро з\'явиться.</p>';
   return blocks.map(block => {
     const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
     if (lines.length > 1 && lines.every(l => l.startsWith('- '))) {
-      return `<ul class="bfg-list">${lines.map(l => `<li>${escapeHtml(l.slice(2))}</li>`).join('')}</ul>`;
+      return `<ul class="bfg-list">${lines.map(l => `<li>${inlineMd(escapeHtml(l.slice(2)))}</li>`).join('')}</ul>`;
     }
-    return `<p>${escapeHtml(lines.join(' '))}</p>`;
+    return `<p>${inlineMd(escapeHtml(lines.join(' ')))}</p>`;
   }).join('');
 }
 function renderGallerySection(gallery, title) {
@@ -377,7 +385,7 @@ function renderGallerySection(gallery, title) {
 function renderComponentsSection(components){
   const lines = String(components||'').split('\n').map(l=>l.trim()).filter(Boolean);
   if(!lines.length) return '';
-  const items = lines.map(l => `<li>${escapeHtml(l.replace(/^- /,''))}</li>`).join('');
+  const items = lines.map(l => `<li>${inlineMd(escapeHtml(l.replace(/^- /,'')))}</li>`).join('');
   return `<section class="bfg-components"><div class="bfg-components-inner"><h2 class="bfg-section-title">У коробці</h2><ul class="bfg-list">${items}</ul></div></section>`;
 }
 function generatedGameHtml(g) {
