@@ -865,7 +865,17 @@ function hasOnlyInlineTags(raw){
   return tags.every(t => allowed.has(t.slice(1).toLowerCase()));
 }
 
-function extractBlocks(html){
+function flattenSiteContentValues(obj){
+  const out=new Set();
+  function rec(o){
+    if(typeof o==='string'){ if(o.trim()) out.add(o.trim()); return; }
+    if(Array.isArray(o)){ o.forEach(rec); return; }
+    if(o&&typeof o==='object'){ for(const k of Object.keys(o)) rec(o[k]); }
+  }
+  rec(obj);
+  return out;
+}
+function extractBlocks(html, managedValues){
   // strip non-content regions so their text never leaks into blocks
   const safe = html
     .replace(/<script[\s\S]*?<\/script>/gi,'')
@@ -876,10 +886,23 @@ function extractBlocks(html){
     .replace(/<footer[\s\S]*?<\/footer>/gi,'');
   const headOnly = html.slice(0, html.indexOf('</head>')+7 || 2000);
 
+  // Orphaned titles from the homepage's fallbackPillars/fallbackCta cards —
+  // superseded by "Тексти сайту" (home.fallbackPillars[].title etc.) but the
+  // old words are still sitting in the static HTML with nothing pointing at
+  // them, so value-matching against managedValues can't catch them (the
+  // current title text is different words entirely). Listed explicitly so
+  // they stop appearing as if they were live-editable.
+  const ORPHANED_TEXT = new Set(['Досліджуйте','Підтримуйте','Створюйте']);
+
   const blocks=[], seenText=new Set();
   const add=(id,type,label,icon,value,orig,origVal,idx)=>{
     const v=(value||'').trim();
     if(!v) return;
+    // Text also present in site-content.json is live-hydrated from there and
+    // overwritten on every page load — editing the static HTML copy here
+    // would silently do nothing, so skip it in favor of "Тексти сайту".
+    if(type!=='seo' && managedValues && managedValues.has(v)) return;
+    if(type==='h3' && ORPHANED_TEXT.has(v)) return;
     const key=type+'|'+v;
     if(seenText.has(key)) return; seenText.add(key);
     blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx});
@@ -928,7 +951,11 @@ function extractBlocks(html){
   while((m=ar.exec(safe))!==null && aKept<10){
     const inner=m[1];
     const t=cleanInner(inner);
-    if(t && t.length>=3 && t.length<=120 && !/<img/i.test(inner)){
+    // Card-style anchors that wrap a whole heading+paragraph produce a huge
+    // concatenated "link text" that isn't really editable link text — same
+    // inline-only guard used for paragraphs.
+    const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
+    if(t && inlineOk && t.length>=3 && t.length<=120 && !/<img/i.test(inner)){
       add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai);
       aKept++;
     }
@@ -1170,7 +1197,9 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
   if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   try {
     const html = fs.readFileSync(full, 'utf8');
-    res.json({ blocks: extractBlocks(html) });
+    const sc = readSiteContent();
+    const managedValues = sc ? flattenSiteContentValues(sc.obj) : null;
+    res.json({ blocks: extractBlocks(html, managedValues) });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
