@@ -894,6 +894,20 @@ function extractBlocks(html, managedValues){
   // they stop appearing as if they were live-editable.
   const ORPHANED_TEXT = new Set(['Досліджуйте','Підтримуйте','Створюйте']);
 
+  // Same idea as ORPHANED_TEXT/managedValues but for text that's *drifted*
+  // rather than staying byte-identical (e.g. a card description that's since
+  // been trimmed in site-content.json but still has its old, longer wording
+  // sitting in the static HTML) — an exact-match Set can't catch that, so
+  // fall back to substring containment against the live values. Normalize
+  // dash variants/whitespace first since "-" vs "—" alone would otherwise
+  // defeat the containment check.
+  const normForMatch = s => s.replace(/[-–—]/g,'-').replace(/\s+/g,' ').trim();
+  const managedList = managedValues ? [...managedValues].filter(v=>v.length>=12).map(normForMatch) : [];
+  function driftedFromManaged(v){
+    const nv = normForMatch(v);
+    return managedList.some(m => nv.includes(m) || m.includes(nv));
+  }
+
   const blocks=[], seenText=new Set();
   const add=(id,type,label,icon,value,orig,origVal,idx)=>{
     const v=(value||'').trim();
@@ -902,6 +916,7 @@ function extractBlocks(html, managedValues){
     // overwritten on every page load — editing the static HTML copy here
     // would silently do nothing, so skip it in favor of "Тексти сайту".
     if(type!=='seo' && managedValues && managedValues.has(v)) return;
+    if((type==='p'||type==='h1'||type==='h2'||type==='h3') && driftedFromManaged(v)) return;
     if(type==='h3' && ORPHANED_TEXT.has(v)) return;
     const key=type+'|'+v;
     if(seenText.has(key)) return; seenText.add(key);
