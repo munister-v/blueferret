@@ -1011,6 +1011,11 @@ function renderGameEditor(){
           <div class="field"><label class="flbl">Посилання «Купити»</label>
             <input type="url" id="g_buy" value="${esc(g.buy_url)}" placeholder="https://"></div>
         </div>
+        <div class="field"><label class="flbl">Дизайнер / авторка гри</label>
+          <input type="text" id="g_designer" value="${esc(g.designer)}" placeholder="Ім'я та прізвище" oninput="updatePreview()"></div>
+        <div class="field"><label class="flbl">Що в коробці</label>
+          <textarea id="g_components" style="min-height:90px" placeholder="Один компонент на рядок, напр.:&#10;30 карт вузлів&#10;5 паличок">${esc(g.components)}</textarea>
+          <div class="field-help">По одному пункту на рядок — виведеться списком на сторінці гри.</div></div>
       </div>
 
       <div class="ged-actions">
@@ -1275,7 +1280,8 @@ async function saveGame(mode='exit'){
       description:$('#g_desc')?.value,status:$('#g_status')?.value,
       cover_url:$('#g_cover')?.value,gallery:gameGallery,
       players:$('#g_players')?.value,age:$('#g_age')?.value,duration:$('#g_duration')?.value,
-      buy_url:$('#g_buy')?.value,sort_order:+$('#g_sort')?.value||0};
+      buy_url:$('#g_buy')?.value,designer:$('#g_designer')?.value,components:$('#g_components')?.value,
+      sort_order:+$('#g_sort')?.value||0};
     const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
     const publicUrl=saved?.slug?`/igry/${saved.slug}/`:'/igry/';

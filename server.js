@@ -63,6 +63,14 @@ db.exec(`
     updated_at INTEGER
   );
 `);
+// Lightweight column migration: add new game fields to DBs created before
+// this version without needing a manual ALTER TABLE on the server.
+(function migrateGamesColumns(){
+  const cols = db.prepare("PRAGMA table_info(games)").all().map(c => c.name);
+  const add = (name, ddl) => { if (!cols.includes(name)) db.exec(`ALTER TABLE games ADD COLUMN ${ddl}`); };
+  add('designer', "designer TEXT DEFAULT ''");
+  add('components', "components TEXT DEFAULT ''");
+})();
 
 const getRow  = db.prepare('SELECT value FROM settings WHERE key=?');
 const upsert  = db.prepare(`INSERT INTO settings(key,value,updated_at) VALUES(?,?,?)
@@ -365,6 +373,12 @@ function renderGallerySection(gallery, title) {
   const items = gallery.map(url => `<div class="bfg-gallery-item"><img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" loading="lazy"></div>`).join('');
   return `<section class="bfg-gallery"><div class="bfg-gallery-inner"><h2 class="bfg-section-title">Галерея</h2><div class="bfg-gallery-grid">${items}</div></div></section>`;
 }
+function renderComponentsSection(components){
+  const lines = String(components||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return '';
+  const items = lines.map(l => `<li>${escapeHtml(l.replace(/^- /,''))}</li>`).join('');
+  return `<section class="bfg-components"><div class="bfg-components-inner"><h2 class="bfg-section-title">У коробці</h2><ul class="bfg-list">${items}</ul></div></section>`;
+}
 function generatedGameHtml(g) {
   const title = escapeHtml(g.title || g.slug);
   const subtitle = escapeHtml(g.subtitle || g.players || 'Настільна гра Blue Ferret');
@@ -375,7 +389,8 @@ function generatedGameHtml(g) {
   const age = escapeHtml(g.age || '');
   const duration = escapeHtml(g.duration || '');
   const buy = escapeHtml(g.buy_url || '');
-  const chips = [players && `<span class="bf-chip">👥 ${players}</span>`, age && `<span class="bf-chip">🎂 ${age}</span>`, duration && `<span class="bf-chip">⏱ ${duration}</span>`].filter(Boolean).join('');
+  const designer = escapeHtml(g.designer || '');
+  const chips = [players && `<span class="bf-chip">👥 ${players}</span>`, age && `<span class="bf-chip">🎂 ${age}</span>`, duration && `<span class="bf-chip">⏱ ${duration}</span>`, designer && `<span class="bf-chip">✏️ ${designer}</span>`].filter(Boolean).join('');
   const metaDesc = escapeHtml(String(g.description || '').split(/\n\s*\n/)[0] || 'Опис гри скоро з\'явиться.').replace(/^- /, '');
   return `<!doctype html>
 <html lang="uk">
@@ -419,6 +434,11 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
 .bfg-desc p:last-child{margin-bottom:0}
 .bfg-list{margin:0 0 14px;padding-left:20px}
 .bfg-list li{margin-bottom:4px}
+.bfg-components{padding:10px 18px 20px}
+.bfg-components-inner{max-width:1120px;margin:0 auto}
+.bfg-components-inner .bfg-list{columns:2;column-gap:32px;font-size:16px;color:#334155}
+.bfg-components-inner .bfg-list li{break-inside:avoid;margin-bottom:8px}
+@media(max-width:640px){.bfg-components-inner .bfg-list{columns:1}}
 .bfg-gallery{padding:10px 18px 100px}
 .bfg-gallery-inner{max-width:1120px;margin:0 auto}
 .bfg-section-title{font-size:clamp(24px,3.5vw,34px);font-weight:900;color:#0f172a;margin:0 0 24px;letter-spacing:-.03em}
@@ -476,6 +496,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       <img src="${cover}" alt="${title}" loading="eager">
     </figure>
   </section>
+  ${renderComponentsSection(g.components)}
   ${renderGallerySection(g.gallery, title)}
   <footer class="bfg-footer">
     <div class="bfg-footer-inner">
@@ -522,9 +543,9 @@ function removeGeneratedGamePage(slug) {
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
 function syncPublicGames() {
@@ -542,6 +563,7 @@ function gameBody(b, ex={}) {
     status:b.status||ex.status||'published', cover_url:cleanText(b.cover_url??ex.cover_url??''),
     gallery:JSON.stringify(gallery), players:cleanText(b.players??ex.players??''),
     age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:cleanText(b.buy_url??ex.buy_url??''),
+    designer:cleanText(b.designer??ex.designer??''), components:cleanText(b.components??ex.components??''),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 
