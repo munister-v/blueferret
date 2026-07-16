@@ -1191,11 +1191,124 @@ function setByPath(obj,pathStr,val){
   o[last]=val; return true;
 }
 
+// ── Cross-chunk text propagation ──────────────────────────────────────────
+// Next.js's static export bakes page content into a SEPARATE, per-route JS
+// chunk at build time (getStaticProps/RSC payload), in addition to the one
+// shared "site-content" dictionary chunk the admin edits directly. Since
+// there's no Next.js source project to rebuild from, those page-specific
+// copies never picked up a site-content edit — this is *the* cause behind
+// "saved, but the live page still shows the old text": the value really did
+// change in one chunk, just not the one that page actually renders from.
+//
+// Fix: whenever ANY editor here changes a text value, also find-and-replace
+// that exact value across every other chunk/page that independently embeds
+// it, so every copy stays in lockstep instead of just one.
+function replaceInJsChunk(content, oldValue, newValue) {
+  let changed = false;
+  // Plain JSON string literal — {"title":"Атмосфера",...} and the JSON body
+  // *inside* JSON.parse('...') both use standard JSON escaping for this.
+  const jsonForm = JSON.stringify(oldValue);
+  const jsonNew = JSON.stringify(newValue);
+  if (content.includes(jsonForm)) {
+    content = content.split(jsonForm).join(jsonNew);
+    changed = true;
+  }
+  // JSON.parse('...') wraps that JSON text in a single-quoted JS string
+  // literal, so any apostrophe inside the value gets a SECOND layer of
+  // escaping ( ' → \' ) on top of the JSON encoding above — only differs
+  // when the value actually contains an apostrophe.
+  const jsEscapedForm = jsonForm.replace(/'/g, "\\'");
+  const jsEscapedNew = jsonNew.replace(/'/g, "\\'");
+  if (jsEscapedForm !== jsonForm && content.includes(jsEscapedForm)) {
+    content = content.split(jsEscapedForm).join(jsEscapedNew);
+    changed = true;
+  }
+  return { content, changed };
+}
+// Safety floor before propagating a value site-wide: a lone short word
+// ("Так", "Купити") is exactly the kind of string likely to also appear as
+// an unrelated button/label elsewhere, so a pure length cutoff would need
+// to sit high enough to exclude those — but real short HEADINGS (Ukrainian
+// titles run shorter than English, e.g. "Йти до кінця" is 12 chars/3 words)
+// would then get excluded too. Multi-word phrases are specific enough to be
+// safe even when short; single words need to actually be long to qualify.
+function isSafeToPropagate(value){
+  const v=value.trim();
+  return v.includes(' ') ? v.length>=8 : v.length>=15;
+}
+function propagateTextChange(oldValue, newValue) {
+  if (!oldValue || !newValue || oldValue === newValue) return { chunksChanged: 0, htmlChanged: 0 };
+  if (!isSafeToPropagate(oldValue)) return { chunksChanged: 0, htmlChanged: 0 };
+
+  const chunksDir = path.join(SITE_ROOT, '_next', 'static', 'chunks');
+  const jsFiles = [];
+  (function walk(d) {
+    let entries; try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name.startsWith('.')) continue;
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.name.endsWith('.js') && !e.name.includes('.bak')) jsFiles.push(full);
+    }
+  })(chunksDir);
+
+  const renamedChunks = new Map(); // oldName -> newName
+  let chunksChanged = 0;
+  for (const file of jsFiles) {
+    let content; try { content = fs.readFileSync(file, 'utf8'); } catch { continue; }
+    const patched = replaceInJsChunk(content, oldValue, newValue);
+    if (!patched.changed) continue;
+    const oldName = path.basename(file);
+    const dir = path.dirname(file);
+    const prefix = oldName.split('-')[0];
+    const hash = crypto.createHash('sha256').update(patched.content).digest('hex').slice(0, 16);
+    const newName = `${prefix}-${hash}.js`;
+    writeAtomic(path.join(dir, newName), patched.content);
+    if (newName !== oldName) { try { fs.unlinkSync(file); } catch {} renamedChunks.set(oldName, newName); }
+    chunksChanged++;
+  }
+
+  const oldEnc = encodeHtmlEnts(oldValue);
+  const newEnc = encodeHtmlEnts(newValue);
+  let htmlChanged = 0;
+  (function walk(d) {
+    let entries; try { entries = fs.readdirSync(d); } catch { return; }
+    for (const f of entries) {
+      if (f.startsWith('.') || f === '_next' || f === 'uploads' || f === 'cdn-cgi') continue;
+      const full = path.join(d, f);
+      let st; try { st = fs.statSync(full); } catch { continue; }
+      if (st.isDirectory()) { walk(full); continue; }
+      if (!f.endsWith('.html')) continue;
+      let h; try { h = fs.readFileSync(full, 'utf8'); } catch { continue; }
+      let changed = false;
+      for (const [oldName, newName] of renamedChunks) {
+        if (h.includes(oldName)) { h = h.split(oldName).join(newName); changed = true; }
+      }
+      if (h.includes(oldEnc)) { h = h.split(oldEnc).join(newEnc); changed = true; }
+      if (changed) { writeAtomic(full, h); htmlChanged++; }
+    }
+  })(SITE_ROOT);
+
+  if (chunksChanged || htmlChanged) {
+    try { execFileSync('restorecon', ['-R', SITE_ROOT], { stdio: 'ignore', timeout: 15000 }); } catch {}
+  }
+  return { chunksChanged, htmlChanged };
+}
+
 app.get('/api/admin/site-content', requireAuth, (_req,res)=>{
   const sc=readSiteContent();
   if(!sc) return res.status(404).json({error:'content bundle not found'});
   res.json({ content: sc.obj, bundle: sc.bundle.name });
 });
+
+function getByPath(obj,pathStr){
+  const parts=pathStr.split('.'); let o=obj;
+  for(const p of parts){
+    const k=/^\d+$/.test(p)?+p:p;
+    if(o==null) return undefined; o=o[k];
+  }
+  return o;
+}
 
 app.put('/api/admin/site-content', requireAuth, (req,res)=>{
   const { changes } = req.body||{};
@@ -1203,9 +1316,14 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
   const sc=readSiteContent();
   if(!sc) return res.status(404).json({error:'content bundle not found'});
   let applied=0;
+  const propagatePairs=[]; // [oldValue, newValue] — synced to other chunks/pages AFTER the primary write
   for(const c of changes){
     if(c && typeof c.path==='string' && typeof c.value==='string'){
-      if(setByPath(sc.obj,c.path,c.value)) applied++;
+      const before=getByPath(sc.obj,c.path);
+      if(setByPath(sc.obj,c.path,c.value)){
+        applied++;
+        if(typeof before==='string' && before!==c.value) propagatePairs.push([before,c.value]);
+      }
     }
   }
   if(!applied) return res.json({ok:true, applied:0});
@@ -1241,9 +1359,18 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
     })(SITE_ROOT);
     // best-effort SELinux restore
     try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+    // Sync any OTHER page-specific chunk / static HTML that independently
+    // baked in the OLD wording — see propagateTextChange() for why this is
+    // necessary (Next.js static export duplicates content per route).
+    let propagated={chunksChanged:0,htmlChanged:0};
+    for(const [before,after] of propagatePairs){
+      const r=propagateTextChange(before,after);
+      propagated.chunksChanged+=r.chunksChanged;
+      propagated.htmlChanged+=r.htmlChanged;
+    }
     const publishedAt = bumpPublishedAt();
-    audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged,publishedAt});
-    res.json({ok:true, applied, bundle:newName, htmlChanged, publishedAt});
+    audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged,propagated,publishedAt});
+    res.json({ok:true, applied, bundle:newName, htmlChanged, propagated, publishedAt});
   }catch(e){
     res.status(500).json({error:e.message});
   }
@@ -1290,6 +1417,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   // backup
   writeBackup(full);
   let changed = 0;
+  const propagatePairs = []; // [oldValue, newValue] — text blocks only, not img src
   for (const b of blocks) {
     if (!b.orig || b.origVal === b.newVal || b.newVal == null) continue;
     // img blocks: replace src attribute value, not text content
@@ -1299,13 +1427,24 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     } else {
       const encoded = encodeHtmlEnts(b.newVal);
       const newOrig = b.orig.replace(b.origVal, encoded);
-      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
+      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; propagatePairs.push([b.origVal, b.newVal]); }
     }
   }
   writeAtomic(full, html);
+  // Sync any OTHER page/chunk that independently baked in this same text —
+  // see propagateTextChange() for why a single-page HTML edit alone can
+  // leave the change invisible (or only half-applied) on a Next.js static
+  // export. Runs against the WHOLE site, so this also fixes duplicate
+  // wording that appears verbatim on more than one page.
+  let propagated = {chunksChanged:0, htmlChanged:0};
+  for (const [before, after] of propagatePairs) {
+    const r = propagateTextChange(before, after);
+    propagated.chunksChanged += r.chunksChanged;
+    propagated.htmlChanged += r.htmlChanged;
+  }
   const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'page_patch', {path: rel, changed, publishedAt});
-  res.json({ok: true, changed, publishedAt});
+  audit(req.ip, 'page_patch', {path: rel, changed, propagated, publishedAt});
+  res.json({ok: true, changed, propagated, publishedAt});
 });
 
 app.get('/api/admin/pages/*', requireAuth, (req, res) => {
