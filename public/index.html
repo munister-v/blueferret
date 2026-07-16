@@ -1827,7 +1827,7 @@ async function renderPages(){
       const isSys=SYS_PAGES.has(p.file);
       const isActive=activePage===p.file;
       return`<div class="p-row${isActive?' ap':''}" data-file="${esc(p.file)}" data-path="${esc(p.path)}"
-        onclick="selectPage('${esc(p.file)}')">
+        onclick="selectPage('${jsq(p.file)}')">
         <span class="p-ico">${pIco(p.path)}</span>
         <div class="p-inf">
           <div class="p-path">${esc(p.path==='/'?'Головна':p.path.split('/').pop()||p.path)}</div>
@@ -1835,8 +1835,8 @@ async function renderPages(){
         </div>
         ${isSys?`<span class="pg-sys">SYS</span>`:''}
         <div class="pg-row-actions">
-          <button class="pg-act-btn" onclick="event.stopPropagation();duplicatePage('${esc(p.file)}')" title="Дублювати">⧉</button>
-          ${!isSys?`<button class="pg-act-btn del" onclick="event.stopPropagation();deletePage('${esc(p.file)}')" title="Видалити">🗑</button>`:''}
+          <button class="pg-act-btn" onclick="event.stopPropagation();duplicatePage('${jsq(p.file)}')" title="Дублювати">⧉</button>
+          ${!isSys?`<button class="pg-act-btn del" onclick="event.stopPropagation();deletePage('${jsq(p.file)}')" title="Видалити">🗑</button>`:''}
         </div>
       </div>`;
     }).join('')}
@@ -2348,14 +2348,14 @@ async function renderMedia(){
     if(mediaSort==='name') return a.filename.localeCompare(b.filename);
     return b.mtime-a.mtime; // date (default)
   });
-  const grid=mediaList.length?mediaList.map(f=>`<div class="m-i${selectedMedia===f.filename?' sel':''}" data-fn="${esc(f.filename)}" data-url="${esc(f.url)}" onclick="selectMedia('${esc(f.filename)}','${esc(f.url)}',${f.size})">
+  const grid=mediaList.length?mediaList.map(f=>`<div class="m-i${selectedMedia===f.filename?' sel':''}" data-fn="${esc(f.filename)}" data-url="${esc(f.url)}" onclick="selectMedia('${jsq(f.filename)}','${jsq(f.url)}',${f.size})">
     <div class="m-i-img">
       <img src="${esc(f.url)}" loading="lazy" onerror="this.style.opacity='.3'">
       ${f.deletable===false?'<span class="m-static-badge" title="Файл сайту — завантажений напряму на сервер, видалення недоступне з адмінки">сайт</span>':''}
       <div class="m-ov">
-        <button onclick="event.stopPropagation();openLightbox('${esc(f.url)}')">🔍 Переглянути</button>
-        <button onclick="event.stopPropagation();copyUrl('${esc(f.url)}')">📋 Копіювати URL</button>
-        ${f.deletable===false?'':`<button class="del" onclick="event.stopPropagation();delMedia('${esc(f.filename)}')">🗑 Видалити</button>`}
+        <button onclick="event.stopPropagation();openLightbox('${jsq(f.url)}')">🔍 Переглянути</button>
+        <button onclick="event.stopPropagation();copyUrl('${jsq(f.url)}')">📋 Копіювати URL</button>
+        ${f.deletable===false?'':`<button class="del" onclick="event.stopPropagation();delMedia('${jsq(f.filename)}')">🗑 Видалити</button>`}
       </div>
     </div>
     <div class="m-lbl">
