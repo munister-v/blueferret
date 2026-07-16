@@ -84,10 +84,25 @@ function writeAtomic(file, content) {
   fs.writeFileSync(tmp, content, 'utf8');
   fs.renameSync(tmp, file);
 }
+const BACKUP_KEEP = 15;
 function writeBackup(file) {
   if (!fs.existsSync(file)) return;
   const ts = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
   fs.copyFileSync(file, `${file}.bak-${ts}`);
+  // Every edit adds a new .bak-<timestamp> and nothing ever removed the old
+  // ones, so they accumulated forever across every page directory — keep
+  // only the most recent BACKUP_KEEP per file.
+  try {
+    const dir = path.dirname(file);
+    const base = path.basename(file);
+    const prefix = `${base}.bak-`;
+    const backups = fs.readdirSync(dir)
+      .filter(f => f.startsWith(prefix))
+      .sort(); // timestamp-suffixed names sort chronologically
+    for (const old of backups.slice(0, -BACKUP_KEEP)) {
+      try { fs.unlinkSync(path.join(dir, old)); } catch {}
+    }
+  } catch {}
 }
 function bumpPublishedAt() {
   const g = Object.assign({}, DEFAULTS.general, getSetting('general', {}));
@@ -1048,9 +1063,9 @@ app.post('/api/admin/pages/create', requireAuth, (req,res)=>{
   if(fs.existsSync(dir)) return res.status(409).json({error:'page_exists', slug});
   fs.mkdirSync(dir,{recursive:true});
   let html;
-  if(copyFrom){
-    const srcFull = path.join(PAGES_ROOT, copyFrom.replace(/\.\./g,''));
-    if(fs.existsSync(srcFull)){
+  if(copyFrom && typeof copyFrom==='string'){
+    const srcFull = path.join(PAGES_ROOT, copyFrom);
+    if(srcFull.startsWith(PAGES_ROOT) && fs.existsSync(srcFull)){
       html = fs.readFileSync(srcFull,'utf8');
       if(title) html = html.replace(/<title>[^<]*<\/title>/,`<title>${encodeHtmlEnts(title)} | Blue Ferret</title>`);
     }
