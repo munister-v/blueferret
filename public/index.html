@@ -636,6 +636,7 @@ let pickerCallback=null;
 // editor state
 let editingGame=null, editingKik=null;
 let gameGallery=[];
+let gameLinks=[];
 let editorDirty=false, gameSearch='';
 
 // ── NAV ──
@@ -932,6 +933,7 @@ window.openPublicGame=openPublicGame;window.copyGameUrl=copyGameUrl;window.dupli
 function openGameEditor(id){
   editingGame=id?games.find(x=>x.id===id)||null:null;
   gameGallery=editingGame?parseGalleryValue(editingGame.gallery):[];
+  gameLinks=editingGame?parseLinksValue(editingGame.links):[];
   editorDirty=false;
   activeTab='game-editor'; render();
 }
@@ -942,6 +944,26 @@ function parseGalleryValue(value){
   }
   return [];
 }
+function parseLinksValue(value){
+  if(Array.isArray(value))return value.filter(l=>l&&(l.label||l.url));
+  if(typeof value==='string'){
+    try{const parsed=JSON.parse(value||'[]');return Array.isArray(parsed)?parsed.filter(l=>l&&(l.label||l.url)):[];}catch{return [];}
+  }
+  return [];
+}
+function renderLinksList(){
+  const box=$('#linksList'); if(!box)return;
+  box.innerHTML=gameLinks.length?gameLinks.map((l,i)=>`<div class="row2" style="margin-bottom:8px;align-items:flex-start">
+    <div class="field" style="margin-bottom:0"><input type="text" placeholder="Назва кнопки, напр. Правила PDF" value="${esc(l.label)}" oninput="updateGameLink(${i},'label',this.value)"></div>
+    <div class="field" style="margin-bottom:0;display:flex;gap:6px">
+      <input type="url" placeholder="https://" value="${esc(l.url)}" oninput="updateGameLink(${i},'url',this.value)" style="flex:1">
+      <button type="button" class="btn btn-g btn-sm" onclick="removeGameLink(${i})" title="Видалити">✕</button>
+    </div>
+  </div>`).join('') : '<div class="field-help">Ще немає посилань.</div>';
+}
+window.addGameLink=function(){gameLinks.push({label:'',url:''});renderLinksList();setEditorDirty(true);}
+window.removeGameLink=function(i){gameLinks.splice(i,1);renderLinksList();setEditorDirty(true);}
+window.updateGameLink=function(i,key,val){if(gameLinks[i]){gameLinks[i][key]=val;setEditorDirty(true);}}
 
 function renderGameEditor(){
   const g=editingGame||{};
@@ -1016,6 +1038,13 @@ function renderGameEditor(){
         <div class="field"><label class="flbl">Що в коробці</label>
           <textarea id="g_components" style="min-height:90px" placeholder="Один компонент на рядок, напр.:&#10;30 карт вузлів&#10;5 паличок">${esc(g.components)}</textarea>
           <div class="field-help">По одному пункту на рядок — виведеться списком на сторінці гри.</div></div>
+      </div>
+
+      <div class="ged-section">
+        <h4>Додаткові посилання / кнопки</h4>
+        <div id="linksList"></div>
+        <button type="button" class="btn btn-g btn-sm" style="margin-top:6px;width:100%" onclick="addGameLink()">+ Додати посилання</button>
+        <div class="field-help" style="margin-top:6px">Зʼявляються як кнопки поруч із «Придбати» на сторінці гри — напр. правила PDF, BoardGameGeek, відео.</div>
       </div>
 
       <div class="ged-actions">
@@ -1107,6 +1136,7 @@ function renderGameEditor(){
   </div>`;
   el.style.padding='0';
   renderGallery();
+  renderLinksList();
   updatePreview();
   bindGameEditorQuality();
   setEditorDirty(false);
@@ -1281,6 +1311,7 @@ async function saveGame(mode='exit'){
       cover_url:$('#g_cover')?.value,gallery:gameGallery,
       players:$('#g_players')?.value,age:$('#g_age')?.value,duration:$('#g_duration')?.value,
       buy_url:$('#g_buy')?.value,designer:$('#g_designer')?.value,components:$('#g_components')?.value,
+      links:gameLinks.filter(l=>l.label?.trim()&&l.url?.trim()),
       sort_order:+$('#g_sort')?.value||0};
     const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
@@ -1292,6 +1323,7 @@ async function saveGame(mode='exit'){
     if(mode==='stay'){
       editingGame=saved;
       gameGallery=parseGalleryValue(saved.gallery);
+      gameLinks=parseLinksValue(saved.links);
       renderGameEditor();
     }else{
       backToGames();
@@ -1306,7 +1338,7 @@ async function deleteGame(id){
 }
 function backToGames(){
   if(!canLeaveEditor())return;
-  editingGame=null;gameGallery=[];
+  editingGame=null;gameGallery=[];gameLinks=[];
   editorDirty=false;
   const el=$('#mainContent');if(el)el.style.padding='22px';
   activeTab='games';render();

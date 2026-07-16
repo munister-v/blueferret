@@ -70,6 +70,7 @@ db.exec(`
   const add = (name, ddl) => { if (!cols.includes(name)) db.exec(`ALTER TABLE games ADD COLUMN ${ddl}`); };
   add('designer', "designer TEXT DEFAULT ''");
   add('components', "components TEXT DEFAULT ''");
+  add('links', "links TEXT DEFAULT '[]'");
 })();
 
 const getRow  = db.prepare('SELECT value FROM settings WHERE key=?');
@@ -275,7 +276,7 @@ app.get('/api/admin/stats', requireAuth, (_req, res) => {
 
 // ---------- games CRUD ----------
 function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
-function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery) } : null; }
+function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), links: parseLinks(r.links) } : null; }
 function isPublicGameStatus(status) {
   return !['draft', 'archived'].includes(String(status || 'published'));
 }
@@ -391,6 +392,8 @@ function generatedGameHtml(g) {
   const buy = escapeHtml(g.buy_url || '');
   const designer = escapeHtml(g.designer || '');
   const chips = [players && `<span class="bf-chip">👥 ${players}</span>`, age && `<span class="bf-chip">🎂 ${age}</span>`, duration && `<span class="bf-chip">⏱ ${duration}</span>`, designer && `<span class="bf-chip">✏️ ${designer}</span>`].filter(Boolean).join('');
+  const extraLinks = (Array.isArray(g.links) ? g.links : parseLinks(g.links))
+    .map(l => `<a class="bfg-btn secondary" href="${escapeHtml(l.url)}">${escapeHtml(l.label)}</a>`).join('');
   const metaDesc = escapeHtml(String(g.description || '').split(/\n\s*\n/)[0] || 'Опис гри скоро з\'явиться.').replace(/^- /, '');
   return `<!doctype html>
 <html lang="uk">
@@ -489,6 +492,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       <div class="bfg-chips">${chips}</div>
       <div class="bfg-actions">
         ${buy ? `<a class="bfg-btn primary" href="${buy}">Придбати →</a>` : ''}
+        ${extraLinks}
         <a class="bfg-btn secondary" href="/igry/">← Назад до каталогу</a>
       </div>
     </div>
@@ -543,9 +547,9 @@ function removeGeneratedGamePage(slug) {
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
 function syncPublicGames() {
@@ -555,15 +559,23 @@ function syncPublicGames() {
   try { execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); } catch {}
 }
 
+function parseLinks(v) {
+  const arr = Array.isArray(v) ? v : (() => { try { return JSON.parse(v||'[]'); } catch { return []; } })();
+  return arr
+    .map(l => ({ label: cleanText(l && l.label), url: cleanText(l && l.url) }))
+    .filter(l => l.label && l.url);
+}
 function gameBody(b, ex={}) {
   const rawSlug = (b.slug||ex.slug||b.title||'').toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
   const slug = rawSlug || `game-${Date.now()}`;
   const gallery = Array.isArray(b.gallery) ? b.gallery : parseGallery(ex.gallery);
+  const links = b.links !== undefined ? parseLinks(b.links) : parseLinks(ex.links);
   return { slug, title:cleanText(b.title??ex.title), subtitle:cleanText(b.subtitle??ex.subtitle??''), description:cleanText(b.description??ex.description??''),
     status:b.status||ex.status||'published', cover_url:cleanText(b.cover_url??ex.cover_url??''),
     gallery:JSON.stringify(gallery), players:cleanText(b.players??ex.players??''),
     age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:cleanText(b.buy_url??ex.buy_url??''),
     designer:cleanText(b.designer??ex.designer??''), components:cleanText(b.components??ex.components??''),
+    links:JSON.stringify(links),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 
