@@ -95,7 +95,6 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       <div class="bfg-chips"><span class="bf-chip">👥 2-4 гравці</span></div>
       <div class="bfg-actions">
         
-        
         <a class="bfg-btn secondary" href="/igry/">← Назад до каталогу</a>
       </div>
     </div>
