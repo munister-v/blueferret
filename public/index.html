@@ -1760,8 +1760,7 @@ async function execPgAction(){
     pages=await api('GET','/api/admin/pages');
     closePgDialog();
     activePage=res.file; pageBlocks=[]; pageEdited={};
-    const extr=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(res.file)}`).catch(()=>({blocks:[]}));
-    pageBlocks=extr.blocks||[];
+    pageBlocks=await loadPageBlocks(res.file);
     toast(`Сторінку /${res.slug}/ створено ✓`,'ok');
     await renderPages();
   }catch(e){ if(e.message!=='unauth') toast('Помилка: '+e.message,'er'); }
@@ -1788,8 +1787,7 @@ async function duplicatePage(file){
     const res=await api('POST','/api/admin/pages/duplicate',{from:file,slug:slug.trim()});
     pages=await api('GET','/api/admin/pages');
     activePage=res.file; pageBlocks=[];pageEdited={};
-    const extr=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(res.file)}`).catch(()=>({blocks:[]}));
-    pageBlocks=extr.blocks||[];
+    pageBlocks=await loadPageBlocks(res.file);
     toast(`Дублікат /${res.slug}/ створено ✓`,'ok');
     await renderPages();
   }catch(e){ if(e.message!=='unauth') toast('Помилка: '+e.message,'er'); }
@@ -1800,12 +1798,12 @@ let pedTab='seo', pedSearch='';
 
 function buildBlocksHtml(blocks, tabFilter, search){
   const SEO_LIMITS={title:60,og_title:60,meta_desc:160};
-  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images'};
+  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images',pc:'content'};
   let filtered=blocks.filter(b=>(typeToTab[b.type]||'texts')===tabFilter);
   if(search) filtered=filtered.filter(b=>b.value.toLowerCase().includes(search)||b.label.toLowerCase().includes(search));
   if(!filtered.length) return`<div class="tab-empty">${search?'Нічого не знайдено':'Немає блоків'}</div>`;
   return filtered.map(b=>{
-    const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc');
+    const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc')||(b.type==='pc'&&b.value.length>80);
     const maxLen=SEO_LIMITS[b.id]||0;
     const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
     const curLen=curVal.length;
@@ -1853,11 +1851,11 @@ function buildBlocksHtml(blocks, tabFilter, search){
 }
 
 function countTabChanges(tab){
-  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images'};
+  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images',pc:'content'};
   return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab&&pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value).length;
 }
 function countTab(tab){
-  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images'};
+  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images',pc:'content'};
   return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab).length;
 }
 
@@ -1915,7 +1913,7 @@ async function renderPages(){
   // build editor area
   let edHtml='', pvSrc='';
   if(activePage && pageBlocks.length){
-    const seoCount=countTab('seo'), hCount=countTab('headings'), tCount=countTab('texts'), iCount=countTab('images');
+    const seoCount=countTab('seo'), hCount=countTab('headings'), tCount=countTab('texts'), iCount=countTab('images'), cCount=countTab('content');
     const editorContent=`
       <div class="ped-tabs">
         <button class="ped-tab${pedTab==='seo'?' on':''}" data-tab="seo" onclick="switchPedTab('seo')">
@@ -1930,8 +1928,11 @@ async function renderPages(){
         <button class="ped-tab${pedTab==='images'?' on':''}" data-tab="images" onclick="switchPedTab('images')">
           🖼 Зображення<span class="tab-cnt">${iCount}</span><span class="tab-dot"></span>
         </button>
+        <button class="ped-tab${pedTab==='content'?' on':''}" data-tab="content" onclick="switchPedTab('content')" title="Текст, запечений у код сторінки на етапі збірки (напр. блоки 'Атмосфера'/'Хто ми') — не в HTML і не в загальному словнику">
+          ⚙️ Контент<span class="tab-cnt">${cCount}</span><span class="tab-dot"></span>
+        </button>
       </div>
-      ${(hCount===0&&tCount===0&&iCount===0)?`<div class="ped-hint" style="margin:14px 16px 0;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#92400e">
+      ${(hCount===0&&tCount===0&&iCount===0&&cCount===0)?`<div class="ped-hint" style="margin:14px 16px 0;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#92400e">
         ⚡ Ця сторінка генерується динамічно — її заголовки й тексти редагуються в розділі
         <button onclick="activeTab='sitetext';saveTab('sitetext');render()" style="background:none;border:none;color:var(--bf);font:700 12px inherit;cursor:pointer;text-decoration:underline;padding:0">🌐 Тексти сайту</button>
       </div>`:''}
@@ -2192,27 +2193,64 @@ async function saveSiteContent(){
 window.saveSiteContent=saveSiteContent;
 window.renderSiteText=renderSiteText;
 
+// Merges TWO independent sources into one flat block list so the editor
+// shows "every section" the user actually sees on the page in one place:
+//  - page-extract: text living directly in this page's static HTML
+//  - page-chunk-content: text baked into this page's OWN Next.js JS chunk
+//    at build time (getStaticProps payload) — invisible in the static HTML
+//    and NOT the same data as the site-content dictionary. See server.js
+//    for how this was found (e.g. the "Атмосфера" pillar-card text).
+async function loadPageBlocks(file){
+  const [extr, pc] = await Promise.all([
+    api('GET',`/api/admin/page-extract?path=${encodeURIComponent(file)}`).catch(()=>({blocks:[]})),
+    api('GET',`/api/admin/page-chunk-content?path=${encodeURIComponent(file)}`).catch(()=>({fields:[]})),
+  ]);
+  const htmlBlocks = extr.blocks||[];
+  const pcBlocks = (pc.fields||[]).map((f,i)=>{
+    const lastKey=f.path.split('.').pop();
+    return {
+      id:`pc_${i}`, type:'pc', label:`${fieldLabel(lastKey)} · ${f.section}`, icon:'⚙️',
+      value:f.value, orig:null, origVal:f.value,
+      chunk:f.chunk, blobIndex:f.blobIndex, jsPath:f.path, domIndex:i,
+    };
+  });
+  return htmlBlocks.concat(pcBlocks);
+}
+
 async function selectPage(file){
   if(activePage===file) return;
   activePage=file; pageBlocks=[]; pageEdited={};
-  try{const res=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(file)}`);pageBlocks=res.blocks||[];}catch{}
+  try{ pageBlocks=await loadPageBlocks(file); }catch{}
   await renderPages();
 }
 window.selectPage=selectPage;
 
 async function savePatchedPage(){
   const btn=$('#pedSaveBtn');if(btn)btn.disabled=true;
-  const updates=pageBlocks.map(b=>({
-    orig:b.orig, origVal:b.origVal,
-    newVal: pageEdited[b.id]!==undefined ? pageEdited[b.id] : b.value
-  })).filter(u=>u.newVal!==undefined&&u.newVal!==u.origVal);
-  if(!updates.length){toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;}
+  const edited=pageBlocks.filter(b=>{
+    const v=pageEdited[b.id];
+    return v!==undefined && v!==b.value;
+  });
+  const htmlUpdates=edited.filter(b=>b.type!=='pc').map(b=>({
+    orig:b.orig, origVal:b.origVal, newVal:pageEdited[b.id],
+  }));
+  const chunkUpdates=edited.filter(b=>b.type==='pc').map(b=>({
+    chunk:b.chunk, blobIndex:b.blobIndex, path:b.jsPath, value:pageEdited[b.id],
+  }));
+  if(!htmlUpdates.length && !chunkUpdates.length){toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;}
   try{
-    const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`,{blocks:updates});
-    toast(`Збережено (${res.changed} змін) ✓`,'ok');
-    // Re-read blocks from the saved file so the next edit uses fresh orig/origVal contexts.
-    const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
-    if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;
+    let changed=0;
+    if(htmlUpdates.length){
+      const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`,{blocks:htmlUpdates});
+      changed+=res.changed||0;
+    }
+    if(chunkUpdates.length){
+      const res=await api('PUT',`/api/admin/page-chunk-content?path=${encodeURIComponent(activePage)}`,{changes:chunkUpdates});
+      changed+=res.applied||0;
+    }
+    toast(`Збережено (${changed} змін) ✓`,'ok');
+    // Re-read blocks from the saved file(s) so the next edit uses fresh orig/origVal contexts.
+    pageBlocks=await loadPageBlocks(activePage).catch(()=>pageBlocks);
     pageEdited={};
     refreshPreview();
     renderPages();

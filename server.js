@@ -1190,6 +1190,184 @@ function setByPath(obj,pathStr,val){
   if(o==null||typeof o[last]==='undefined') return false;
   o[last]=val; return true;
 }
+// A baked getStaticProps blob mixes real prose in with structural data that
+// happens to also be a string (hex colors, slugs, image paths, enum-like
+// status flags, raw IDs) — none of which belong in a TEXT editor. Almost
+// all real prose on this site is Ukrainian, so "contains a Cyrillic letter"
+// is a strong, simple signal; the length+space fallback catches longer
+// English/mixed strings without letting short technical tokens through.
+function looksLikeEditableProse(v){
+  const s=v.trim();
+  if(!s || s.length>2000) return false;
+  if(/^https?:\/\//i.test(s) || s.startsWith('/')) return false;          // URL / path
+  if(/^#[0-9a-fA-F]{3,8}$/.test(s)) return false;                          // hex color
+  if(/^-?\d+(\.\d+)?$/.test(s)) return false;                             // pure number
+  if(/[а-яёіїєґ]/i.test(s)) return true;                                  // Cyrillic → real content
+  return s.includes(' ') && s.length>=15;                                 // longer English/mixed phrase
+}
+function flattenContentServer(obj){
+  const out=[];
+  function rec(o,pathArr,section){
+    if(typeof o==='string'){ if(looksLikeEditableProse(o)) out.push({path:pathArr.join('.'),value:o,section}); return; }
+    if(Array.isArray(o)){ o.forEach((v,i)=>rec(v,[...pathArr,i],section)); return; }
+    if(o&&typeof o==='object'){ for(const k of Object.keys(o)) rec(o[k],[...pathArr,k],section||k); }
+  }
+  for(const k of Object.keys(obj)) rec(obj[k],[k],k);
+  return out;
+}
+
+// ════════════════════════════════════════════════════════
+//  PAGE-SPECIFIC BAKED CONTENT (Next.js getStaticProps payload)
+//  A static export bakes each route's own props into that route's OWN JS
+//  chunk (app/**/page-*.js) — separate from, and NOT the same data as, the
+//  shared "site-content" dictionary chunk above. Sections like the "about"
+//  story / "values" pillar cards live ONLY here; they were previously
+//  invisible to every editor (not in static HTML, not in site-content) —
+//  see server.js commit history for how this was diagnosed.
+// ════════════════════════════════════════════════════════
+function findAllJsonParseBlobs(content){
+  const blobs=[]; const marker="JSON.parse('";
+  let searchFrom=0;
+  while(true){
+    const m=content.indexOf(marker, searchFrom);
+    if(m<0) break;
+    const braceStart=content.indexOf('{', m);
+    if(braceStart<0 || braceStart>m+marker.length+5){ searchFrom=m+marker.length; continue; }
+    let depth=0,k=braceStart;
+    while(k<content.length){
+      const c=content[k];
+      if(c==='"'){ k++; while(k<content.length&&content[k]!=='"'){ if(content[k]==='\\')k++; k++; } }
+      else if(c==='{') depth++;
+      else if(c==='}'){ depth--; if(depth===0){ k++; break; } }
+      k++;
+    }
+    const raw=content.slice(braceStart,k);
+    try{ blobs.push({start:braceStart, end:k, obj:JSON.parse(jsToJson(raw))}); }catch(e){ /* not JSON, skip */ }
+    searchFrom=k;
+  }
+  return blobs;
+}
+function findPageOwnChunks(pageHtml){
+  // Only this route's own "page-*.js" bundle — NOT layout/error/not-found,
+  // which are the shared app-shell chunks reused across every route and can
+  // carry OTHER pages' baked data (e.g. a specific game's id/slug/palette)
+  // that has nothing to do with the page currently being edited.
+  const refs=new Set(); const re=/_next\/static\/chunks\/app\/[^"'\s]*\/?page-[^"'\s/]+\.js/g;
+  let m; while((m=re.exec(pageHtml))!==null) refs.add(m[0]);
+  return [...refs];
+}
+// Same "content-hash rename + update every HTML <script> ref" pattern as
+// the site-content PUT handler, factored out so both call sites share it.
+function rehashChunkAndRelink(dir, oldName, newContent){
+  const prefix=oldName.split('-')[0];
+  const hash=crypto.createHash('sha256').update(newContent).digest('hex').slice(0,16);
+  const newName=`${prefix}-${hash}.js`;
+  writeAtomic(path.join(dir,newName), newContent);
+  if(newName!==oldName){
+    try{ fs.unlinkSync(path.join(dir,oldName)); }catch{}
+    let htmlChanged=0;
+    (function walk(d){
+      for(const f of fs.readdirSync(d)){
+        if(f.startsWith('.')||f==='_next'||f==='uploads'||f==='cdn-cgi') continue;
+        const full=path.join(d,f); let st; try{st=fs.statSync(full);}catch{continue;}
+        if(st.isDirectory()) walk(full);
+        else if(f.endsWith('.html')){
+          let h; try{h=fs.readFileSync(full,'utf8');}catch{continue;}
+          if(h.includes(oldName)){ h=h.split(oldName).join(newName); writeAtomic(full,h); htmlChanged++; }
+        }
+      }
+    })(SITE_ROOT);
+    return {newName, htmlChanged};
+  }
+  return {newName, htmlChanged:0};
+}
+
+app.get('/api/admin/page-chunk-content', requireAuth, (req,res)=>{
+  const rel=req.query.path;
+  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
+  const full=path.join(PAGES_ROOT,rel);
+  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
+  let html; try{ html=fs.readFileSync(full,'utf8'); }catch(e){ return res.status(500).json({error:e.message}); }
+  const fields=[];
+  for(const ref of findPageOwnChunks(html)){
+    const chunkFull=path.join(SITE_ROOT, ref);
+    if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) continue;
+    let content; try{ content=fs.readFileSync(chunkFull,'utf8'); }catch{ continue; }
+    findAllJsonParseBlobs(content).forEach((blob,bi)=>{
+      // The shared site-content dictionary is already editable via
+      // /api/admin/site-content — skip it here to avoid listing it twice.
+      if(blob.obj && blob.obj.metadata && blob.obj.metadata.siteTitle) return;
+      flattenContentServer(blob.obj).forEach(f=>fields.push({...f, chunk:ref, blobIndex:bi}));
+    });
+  }
+  res.json({fields});
+});
+
+app.put('/api/admin/page-chunk-content', requireAuth, (req,res)=>{
+  const rel=req.query.path;
+  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
+  const full=path.join(PAGES_ROOT,rel);
+  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
+  const { changes } = req.body||{};
+  if(!Array.isArray(changes)||!changes.length) return res.status(400).json({error:'no changes'});
+  let html; try{ html=fs.readFileSync(full,'utf8'); }catch(e){ return res.status(500).json({error:e.message}); }
+
+  // group requested changes by which chunk file they belong to
+  const byChunk=new Map();
+  for(const c of changes){
+    if(!c||typeof c.chunk!=='string'||typeof c.path!=='string'||typeof c.value!=='string') continue;
+    if(!byChunk.has(c.chunk)) byChunk.set(c.chunk,[]);
+    byChunk.get(c.chunk).push(c);
+  }
+
+  let applied=0, chunksRewritten=0, htmlRefsUpdated=0;
+  const propagatePairs=[];
+  try{
+    for(const [ref, chunkChanges] of byChunk){
+      const chunkFull=path.join(SITE_ROOT, ref);
+      if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) continue;
+      const dir=path.dirname(chunkFull); const oldName=path.basename(chunkFull);
+      let content=fs.readFileSync(chunkFull,'utf8');
+      const blobs=findAllJsonParseBlobs(content);
+      // apply edits to each blob's parsed object, grouped by blobIndex
+      const byBlob=new Map();
+      for(const c of chunkChanges){
+        const bi = typeof c.blobIndex==='number' ? c.blobIndex : 0;
+        if(!byBlob.has(bi)) byBlob.set(bi,[]);
+        byBlob.get(bi).push(c);
+      }
+      // splice from the LAST blob backward so earlier offsets stay valid
+      const order=[...byBlob.keys()].sort((a,b)=>b-a);
+      for(const bi of order){
+        const blob=blobs[bi]; if(!blob) continue;
+        for(const c of byBlob.get(bi)){
+          const before=getByPath(blob.obj,c.path);
+          if(setByPath(blob.obj,c.path,c.value)){
+            applied++;
+            if(typeof before==='string' && before!==c.value) propagatePairs.push([before,c.value]);
+          }
+        }
+        const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
+        content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
+      }
+      if(!byBlob.size) continue;
+      const {newName, htmlChanged}=rehashChunkAndRelink(dir, oldName, content);
+      chunksRewritten++; htmlRefsUpdated+=htmlChanged;
+    }
+    if(!applied) return res.json({ok:true, applied:0});
+    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+    let propagated={chunksChanged:0,htmlChanged:0};
+    for(const [before,after] of propagatePairs){
+      const r=propagateTextChange(before,after);
+      propagated.chunksChanged+=r.chunksChanged; propagated.htmlChanged+=r.htmlChanged;
+    }
+    const publishedAt=bumpPublishedAt();
+    audit(req.ip,'page_chunk_save',{path:rel,applied,chunksRewritten,htmlRefsUpdated,propagated,publishedAt});
+    res.json({ok:true, applied, chunksRewritten, htmlRefsUpdated, propagated, publishedAt});
+  }catch(e){
+    res.status(500).json({error:e.message});
+  }
+});
 
 // ── Cross-chunk text propagation ──────────────────────────────────────────
 // Next.js's static export bakes page content into a SEPARATE, per-route JS
@@ -1234,7 +1412,9 @@ function replaceInJsChunk(content, oldValue, newValue) {
 // safe even when short; single words need to actually be long to qualify.
 function isSafeToPropagate(value){
   const v=value.trim();
-  return v.includes(' ') ? v.length>=8 : v.length>=15;
+  if(v.includes(' ')) return v.length>=8;
+  if(/[а-яёіїєґ]/i.test(v)) return v.length>=6; // Cyrillic single words are distinctive, low collision risk
+  return v.length>=15;
 }
 function propagateTextChange(oldValue, newValue) {
   if (!oldValue || !newValue || oldValue === newValue) return { chunksChanged: 0, htmlChanged: 0 };
