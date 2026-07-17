@@ -2046,6 +2046,7 @@ async function renderPages(){
         <div class="ped-toolbar">
           <span class="ped-filename">/${activePage}</span>
           <span id="unsaved-badge" class="unsaved-badge" style="font-size:10px"></span>
+          <span id="autosave-status" style="font-size:10.5px;color:var(--txt-s);opacity:0;transition:opacity .25s"></span>
           <div style="margin-left:auto;display:flex;gap:6px">
             <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px" onclick="closePagesEditor()" title="Закрити (Esc)">✕</button>
             <button class="btn btn-sm" id="pedSaveBtn" onclick="savePatchedPage()" style="background:var(--bf);color:#fff;padding:6px 14px;box-shadow:0 2px 10px rgba(0,159,227,.35)" title="Зберегти (Cmd+S)">💾 Зберегти</button>
@@ -2112,6 +2113,7 @@ function markEdited(id){
   syncToPreview(id,el.value,orig?.type);
   const inlinePrev=document.getElementById('prev_'+id);
   if(inlinePrev) inlinePrev.innerHTML=sanitizePreviewHtml(el.value);
+  scheduleAutosave();
 }
 function sanitizePreviewHtml(v){
   const re=/<a href="([^"<>]*)">([^<>]*)<\/a>|<(strong|em)>([^<>]*)<\/\3>/g;
@@ -2145,6 +2147,7 @@ function markHrefEdited(id){
   el.closest('.blk')?.classList.toggle('edited',changed);
   updateTabBadges();
   syncHrefToPreview(id,el.value);
+  scheduleAutosave();
 }
 function markAltEdited(id){
   const el=document.querySelector(`[data-blkalt="${id}"]`);
@@ -2156,6 +2159,7 @@ function markAltEdited(id){
   updateTabBadges();
   const pvEl=blockElMap[id];
   if(pvEl&&pvEl.nodeType===1&&pvEl.tagName==='IMG'){ try{pvEl.alt=el.value;}catch{} }
+  scheduleAutosave();
 }
 function wrapSelectionInField(id, openTag, closeTag){
   const el=document.querySelector(`[data-blk="${id}"]`);if(!el)return;
@@ -2219,6 +2223,7 @@ function resetField(id){
   if(orig.type==='img'){ const pvEl=blockElMap[id]; if(pvEl&&pvEl.nodeType===1&&pvEl.tagName==='IMG'){ try{pvEl.alt=orig.alt||'';}catch{} } }
   const cnt=pageBlocks.filter(blockHasEdit).length;
   const badge=$('#unsaved-badge');if(badge){badge.textContent=cnt+' змін';badge.classList.toggle('show',cnt>0);}
+  if(cnt===0){ clearTimeout(autosaveTimer); setAutosaveStatus('',false); } else { scheduleAutosave(); }
 }
 window.markEdited=markEdited;window.resetField=resetField;window.markHrefEdited=markHrefEdited;
 window.markAltEdited=markAltEdited;window.insertLinkInField=insertLinkInField;
@@ -2390,6 +2395,7 @@ async function loadPageBlocks(file){
 
 async function selectPage(file){
   if(activePage===file) return;
+  await flushAutosave();
   activePage=file; pageBlocks=[]; pageEdited={}; pageEditedHref={}; pageEditedAlt={};
   try{ pageBlocks=await loadPageBlocks(file); }catch{}
   await renderPages();
@@ -2455,8 +2461,31 @@ async function removePcItem(chunk, blobIndex, arrayPath, index){
 }
 window.removePcItem=removePcItem;
 
-async function savePatchedPage(){
-  const btn=$('#pedSaveBtn');if(btn)btn.disabled=true;
+function setAutosaveStatus(text,fade){
+  const el=$('#autosave-status');if(!el)return;
+  el.textContent=text;
+  el.style.opacity=text?'1':'0';
+  if(fade) setTimeout(()=>{ if(el.textContent===text) el.style.opacity='0'; },2500);
+}
+let autosaveTimer=null;
+function scheduleAutosave(){
+  if(!activePage||activeTab!=='pages') return;
+  clearTimeout(autosaveTimer);
+  setAutosaveStatus('Незбережені зміни…');
+  autosaveTimer=setTimeout(()=>{ savePatchedPage(true); },2500);
+}
+window.scheduleAutosave=scheduleAutosave;
+// Flush a pending debounced autosave immediately instead of just cancelling
+// it — otherwise switching pages right after typing silently drops the edit.
+async function flushAutosave(){
+  if(!autosaveTimer) return;
+  clearTimeout(autosaveTimer); autosaveTimer=null;
+  if(pageBlocks.some(blockHasEdit)) await savePatchedPage(true).catch(()=>{});
+}
+
+async function savePatchedPage(auto){
+  clearTimeout(autosaveTimer);
+  const btn=$('#pedSaveBtn');if(btn&&!auto)btn.disabled=true;
   const edited=pageBlocks.filter(blockHasEdit);
   const htmlUpdates=edited.filter(b=>b.type!=='pc').map(b=>({
     orig:b.orig, origVal:b.origVal, type:b.type,
@@ -2469,7 +2498,13 @@ async function savePatchedPage(){
   const chunkUpdates=edited.filter(b=>b.type==='pc').map(b=>({
     chunk:b.chunk, blobIndex:b.blobIndex, path:b.jsPath, value:pageEdited[b.id],
   }));
-  if(!htmlUpdates.length && !chunkUpdates.length){toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;}
+  if(!htmlUpdates.length && !chunkUpdates.length){
+    if(!auto){toast('Немає змін для збереження','i');}
+    setAutosaveStatus('',false);
+    if(btn)btn.disabled=false;
+    return;
+  }
+  if(auto) setAutosaveStatus('Автозбереження…');
   try{
     let changed=0;
     if(htmlUpdates.length){
@@ -2480,7 +2515,7 @@ async function savePatchedPage(){
       const res=await api('PUT',`/api/admin/page-chunk-content?path=${encodeURIComponent(activePage)}`,{changes:chunkUpdates});
       changed+=res.applied||0;
     }
-    toast(`Збережено (${changed} змін) ✓`,'ok');
+    if(!auto) toast(`Збережено (${changed} змін) ✓`,'ok');
     // Re-read blocks from the saved file(s) so the next edit uses fresh orig/origVal contexts.
     pageBlocks=await loadPageBlocks(activePage).catch(()=>pageBlocks);
     pageEdited={};
@@ -2488,7 +2523,11 @@ async function savePatchedPage(){
     pageEditedAlt={};
     refreshPreview();
     renderPages();
-  }catch(e){toast('Помилка: '+e.message,'er');}
+    setAutosaveStatus(auto?'Автозбережено ✓':'',auto);
+  }catch(e){
+    setAutosaveStatus('Помилка автозбереження',true);
+    toast('Помилка: '+e.message,'er');
+  }
   finally{if(btn)btn.disabled=false;}
 }
 // ── Preview device / zoom / drag ──
@@ -2686,7 +2725,8 @@ document.addEventListener('keydown',e=>{
     if(pv){pv.style.display=pv.style.display==='none'?'':'none';}
   }
 });
-function closePagesEditor(){
+async function closePagesEditor(){
+  await flushAutosave();
   activePage=null;pageBlocks=[];pageEdited={};pageEditedHref={};pageEditedAlt={};
   $('#mainContent').style.padding='22px';
   renderPages();
