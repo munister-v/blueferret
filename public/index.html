@@ -1671,7 +1671,7 @@ async function saveSettings(){
 }
 
 // ── PAGES ──
-let activePage=null, pageBlocks=[], pageEdited={};
+let activePage=null, pageBlocks=[], pageEdited={}, pageEditedHref={};
 const PICO={'/':{i:'🏠'},igry:{i:'🎲'},kik:{i:'🚀'},kontakty:{i:'📬'}};
 function pIco(p){const s=p==='/'?'/':p.split('/')[0];return(PICO[s]||{i:'📄'}).i;}
 function gPages(ps){const g={};for(const p of ps){const s=p.path==='/'?'__root__':p.path.split('/')[0];const l=s==='__root__'?'Головна':s==='igry'?'🎲 Ігри':s==='kik'?'🚀 КІК':s==='kontakty'?'📬 Контакти':s;if(!g[s])g[s]={l,items:[]};g[s].items.push(p);}return g;}
@@ -1759,7 +1759,7 @@ async function execPgAction(){
     }
     pages=await api('GET','/api/admin/pages');
     closePgDialog();
-    activePage=res.file; pageBlocks=[]; pageEdited={};
+    activePage=res.file; pageBlocks=[]; pageEdited={}; pageEditedHref={};
     pageBlocks=await loadPageBlocks(res.file);
     toast(`Сторінку /${res.slug}/ створено ✓`,'ok');
     await renderPages();
@@ -1774,7 +1774,7 @@ async function deletePage(file){
   if(!confirm(`Видалити сторінку "${pg.path}"?\n\nЦе незворотно!`)) return;
   try{
     await api('DELETE',`/api/admin/pages/delete?path=${encodeURIComponent(file)}`);
-    if(activePage===file){ activePage=null; pageBlocks=[]; pageEdited={}; }
+    if(activePage===file){ activePage=null; pageBlocks=[]; pageEdited={}; pageEditedHref={}; }
     pages=await api('GET','/api/admin/pages');
     toast(`Сторінку "${pg.path}" видалено`,'ok');
     await renderPages();
@@ -1786,7 +1786,7 @@ async function duplicatePage(file){
   try{
     const res=await api('POST','/api/admin/pages/duplicate',{from:file,slug:slug.trim()});
     pages=await api('GET','/api/admin/pages');
-    activePage=res.file; pageBlocks=[];pageEdited={};
+    activePage=res.file; pageBlocks=[];pageEdited={};pageEditedHref={};
     pageBlocks=await loadPageBlocks(res.file);
     toast(`Дублікат /${res.slug}/ створено ✓`,'ok');
     await renderPages();
@@ -1796,13 +1796,50 @@ window.deletePage=deletePage; window.duplicatePage=duplicatePage;
 
 let pedTab='seo', pedSearch='';
 
+const TAB_TITLES={seo:'🔍 SEO',headings:'H Заголовки',texts:'¶ Тексти',images:'🖼 Зображення',content:'⚙️ Контент'};
+// pc-content fields whose jsPath crosses a numeric array index (e.g.
+// "values.items.2.title") belong to one card of an editable list — group
+// them so each card's fields can share a single pair of ▲▼ reorder buttons.
+function pcGroupInfo(b, allBlocks){
+  const parts=(b.jsPath||'').split('.');
+  const idxPos=parts.findIndex(p=>/^\d+$/.test(p));
+  if(idxPos<0) return null;
+  const arrayPath=parts.slice(0,idxPos).join('.');
+  const itemIndex=+parts[idxPos];
+  const siblings=new Set();
+  allBlocks.forEach(x=>{
+    if(x.type!=='pc'||x.chunk!==b.chunk||x.blobIndex!==b.blobIndex) return;
+    const xp=(x.jsPath||'').split('.');
+    const xIdxPos=xp.findIndex(p=>/^\d+$/.test(p));
+    if(xIdxPos<0||xp.slice(0,xIdxPos).join('.')!==arrayPath) return;
+    siblings.add(+xp[xIdxPos]);
+  });
+  return {chunk:b.chunk, blobIndex:b.blobIndex, arrayPath, itemIndex, count:siblings.size};
+}
 function buildBlocksHtml(blocks, tabFilter, search){
   const SEO_LIMITS={title:60,og_title:60,meta_desc:160};
   const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images',pc:'content'};
+  const q=(search||'').toLowerCase();
   let filtered=blocks.filter(b=>(typeToTab[b.type]||'texts')===tabFilter);
-  if(search) filtered=filtered.filter(b=>b.value.toLowerCase().includes(search)||b.label.toLowerCase().includes(search));
-  if(!filtered.length) return`<div class="tab-empty">${search?'Нічого не знайдено':'Немає блоків'}</div>`;
+  if(q) filtered=filtered.filter(b=>b.value.toLowerCase().includes(q)||b.label.toLowerCase().includes(q));
+  if(!filtered.length){
+    if(!q) return`<div class="tab-empty">Немає блоків</div>`;
+    // Search matched nothing in this tab — check other tabs so "nothing found"
+    // doesn't look like a broken search when the match is just one tab over.
+    const elsewhere={};
+    blocks.forEach(b=>{
+      const t=typeToTab[b.type]||'texts';
+      if(t===tabFilter) return;
+      if(b.value.toLowerCase().includes(q)||b.label.toLowerCase().includes(q)) elsewhere[t]=(elsewhere[t]||0)+1;
+    });
+    const other=Object.entries(elsewhere);
+    if(!other.length) return`<div class="tab-empty">Нічого не знайдено</div>`;
+    return`<div class="tab-empty">Нічого не знайдено тут.<br>Є збіги в інших вкладках: ${other.map(([t,n])=>
+      `<button onclick="switchPedTab('${t}')" style="background:none;border:none;color:var(--bf);font:700 12px inherit;cursor:pointer;text-decoration:underline;padding:0 2px">${esc(TAB_TITLES[t]||t)} (${n})</button>`
+    ).join(', ')}</div>`;
+  }
   return filtered.map(b=>{
+    const pcGroup=b.type==='pc'?pcGroupInfo(b,blocks):null;
     const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc')||(b.type==='pc'&&b.value.length>80);
     const maxLen=SEO_LIMITS[b.id]||0;
     const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
@@ -1831,17 +1868,25 @@ function buildBlocksHtml(blocks, tabFilter, search){
       </div>`;
     }
 
-    return`<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="${typeToTab[b.type]||'texts'}" style="padding:14px 16px 12px">
+    const curHref=pageEditedHref[b.id]!==undefined?pageEditedHref[b.id]:(b.href||'');
+    const hrefEdited=b.type==='a'&&pageEditedHref[b.id]!==undefined&&pageEditedHref[b.id]!==(b.href||'');
+    return`<div class="blk ${b.type}${edited||hrefEdited?' edited':''}" data-id="${esc(b.id)}" data-tab="${typeToTab[b.type]||'texts'}" style="padding:14px 16px 12px">
       <div class="blk-head" style="margin-bottom:6px">
         <div class="blk-ico ${b.type==='seo'?'seo':b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
         <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
         <div class="blk-actions">
+          ${b.type==='p'?`<button class="reset-btn" onclick="insertLinkInField('${esc(b.id)}')" title="Вставити посилання у виділений текст">🔗</button>`:''}
+          ${pcGroup&&pcGroup.count>1?`
+            <button class="reset-btn" ${pcGroup.itemIndex<=0?'disabled':''} onclick="reorderPcItem('${esc(pcGroup.chunk)}',${pcGroup.blobIndex},'${esc(pcGroup.arrayPath)}',${pcGroup.itemIndex},${pcGroup.itemIndex-1})" title="Перемістити картку вище">▲</button>
+            <button class="reset-btn" ${pcGroup.itemIndex>=pcGroup.count-1?'disabled':''} onclick="reorderPcItem('${esc(pcGroup.chunk)}',${pcGroup.blobIndex},'${esc(pcGroup.arrayPath)}',${pcGroup.itemIndex},${pcGroup.itemIndex+1})" title="Перемістити картку нижче">▼</button>
+          `:''}
           <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
         </div>
       </div>
       ${isLong
         ?`<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:${b.type==='p'?80:52}px;padding:4px 0">${esc(curVal)}</textarea>`
         :`<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`}
+      ${b.type==='a'?`<input type="text" data-blkhref="${esc(b.id)}" oninput="markHrefEdited('${esc(b.id)}')" value="${esc(curHref)}" placeholder="Куди веде посилання (href)" style="margin-top:6px;font-size:12px;opacity:.85">`:''}
       ${maxLen?`<div class="char-bar">
         <span id="cc_${esc(b.id)}" class="${cntClass}" data-max="${maxLen}">${curLen} / ${maxLen}</span>
         <span style="font-size:10px;color:var(--txt-s)">${maxLen===60?'оптим. 50–60':'оптим. 140–160'}</span>
@@ -1850,9 +1895,14 @@ function buildBlocksHtml(blocks, tabFilter, search){
   }).join('');
 }
 
+function blockHasEdit(b){
+  if(pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value) return true;
+  if(b.type==='a'&&pageEditedHref[b.id]!==undefined&&pageEditedHref[b.id]!==(b.href||'')) return true;
+  return false;
+}
 function countTabChanges(tab){
   const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images',pc:'content'};
-  return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab&&pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value).length;
+  return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab&&blockHasEdit(b)).length;
 }
 function countTab(tab){
   const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images',pc:'content'};
@@ -1882,7 +1932,7 @@ function updateTabBadges(){
     t.classList.toggle('has-changes',changes>0);
   });
   // update unsaved badge total
-  const total=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length;
+  const total=pageBlocks.filter(blockHasEdit).length;
   const badge=$('#unsaved-badge');if(badge){badge.textContent=total+' змін';badge.classList.toggle('show',total>0);}
 }
 
@@ -2039,18 +2089,41 @@ function updateCharCounter(id,val){
   cnt.textContent=n+(max?` / ${max}`:'');
   cnt.className='char-cnt'+(max&&n>max?' over':max&&n>max*.85?' warn':'');
 }
+function markHrefEdited(id){
+  const el=document.querySelector(`[data-blkhref="${id}"]`);
+  if(!el)return;
+  pageEditedHref[id]=el.value;
+  const orig=pageBlocks.find(b=>b.id===id);
+  const changed=orig&&(el.value!==(orig.href||'')||blockHasEdit(orig));
+  el.closest('.blk')?.classList.toggle('edited',changed);
+  updateTabBadges();
+}
+function insertLinkInField(id){
+  const el=document.querySelector(`[data-blk="${id}"]`);if(!el)return;
+  const start=el.selectionStart, end=el.selectionEnd;
+  if(start===end){toast('Спочатку виділіть текст, який стане посиланням','i');return;}
+  const selected=el.value.slice(start,end);
+  const url=prompt('URL посилання (напр. kik/index.html або https://…)','');
+  if(!url)return;
+  el.value=el.value.slice(0,start)+`<a href="${url}">${selected}</a>`+el.value.slice(end);
+  markEdited(id);
+}
 function resetField(id){
   const orig=pageBlocks.find(b=>b.id===id);if(!orig)return;
   const el=document.querySelector(`[data-blk="${id}"]`);if(!el)return;
   el.value=orig.value;
   delete pageEdited[id];
-  el.closest('.blk')?.classList.remove('edited');
   updateCharCounter(id,orig.value);
   if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
-  const cnt=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length;
+  const hrefEl=document.querySelector(`[data-blkhref="${id}"]`);
+  if(hrefEl){hrefEl.value=orig.href||'';}
+  delete pageEditedHref[id];
+  el.closest('.blk')?.classList.remove('edited');
+  updateTabBadges();
+  const cnt=pageBlocks.filter(blockHasEdit).length;
   const badge=$('#unsaved-badge');if(badge){badge.textContent=cnt+' змін';badge.classList.toggle('show',cnt>0);}
 }
-window.markEdited=markEdited;window.resetField=resetField;
+window.markEdited=markEdited;window.resetField=resetField;window.markHrefEdited=markHrefEdited;window.insertLinkInField=insertLinkInField;
 
 // ══════════ SITE TEXT (content dictionary) ══════════
 let siteContent=null, siteEdited={}, siteSearch='', siteSection='all';
@@ -2219,20 +2292,35 @@ async function loadPageBlocks(file){
 
 async function selectPage(file){
   if(activePage===file) return;
-  activePage=file; pageBlocks=[]; pageEdited={};
+  activePage=file; pageBlocks=[]; pageEdited={}; pageEditedHref={};
   try{ pageBlocks=await loadPageBlocks(file); }catch{}
   await renderPages();
 }
 window.selectPage=selectPage;
 
+async function reorderPcItem(chunk, blobIndex, arrayPath, fromIndex, toIndex){
+  if(fromIndex===toIndex) return;
+  if((Object.keys(pageEdited).length||Object.keys(pageEditedHref).length) &&
+     !confirm('У вас є незбережені зміни в інших полях — перестановка перезавантажить сторінку і вони будуть втрачені. Продовжити?')) return;
+  try{
+    await api('POST',`/api/admin/page-chunk-reorder?path=${encodeURIComponent(activePage)}`,{chunk,blobIndex,arrayPath,fromIndex,toIndex});
+    toast('Порядок змінено ✓','ok');
+    pageBlocks=await loadPageBlocks(activePage).catch(()=>pageBlocks);
+    pageEdited={}; pageEditedHref={};
+    refreshPreview();
+    renderPages();
+  }catch(e){ toast('Помилка: '+e.message,'er'); }
+}
+window.reorderPcItem=reorderPcItem;
+
 async function savePatchedPage(){
   const btn=$('#pedSaveBtn');if(btn)btn.disabled=true;
-  const edited=pageBlocks.filter(b=>{
-    const v=pageEdited[b.id];
-    return v!==undefined && v!==b.value;
-  });
+  const edited=pageBlocks.filter(blockHasEdit);
   const htmlUpdates=edited.filter(b=>b.type!=='pc').map(b=>({
-    orig:b.orig, origVal:b.origVal, newVal:pageEdited[b.id],
+    orig:b.orig, origVal:b.origVal, type:b.type,
+    newVal:pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value,
+    origHref:b.type==='a'?(b.href||''):undefined,
+    newHref:b.type==='a'?(pageEditedHref[b.id]!==undefined?pageEditedHref[b.id]:(b.href||'')):undefined,
   }));
   const chunkUpdates=edited.filter(b=>b.type==='pc').map(b=>({
     chunk:b.chunk, blobIndex:b.blobIndex, path:b.jsPath, value:pageEdited[b.id],
@@ -2252,6 +2340,7 @@ async function savePatchedPage(){
     // Re-read blocks from the saved file(s) so the next edit uses fresh orig/origVal contexts.
     pageBlocks=await loadPageBlocks(activePage).catch(()=>pageBlocks);
     pageEdited={};
+    pageEditedHref={};
     refreshPreview();
     renderPages();
   }catch(e){toast('Помилка: '+e.message,'er');}
@@ -2441,7 +2530,7 @@ document.addEventListener('keydown',e=>{
   }
 });
 function closePagesEditor(){
-  activePage=null;pageBlocks=[];pageEdited={};
+  activePage=null;pageBlocks=[];pageEdited={};pageEditedHref={};
   $('#mainContent').style.padding='22px';
   renderPages();
 }
@@ -2757,7 +2846,7 @@ document.addEventListener('keydown',e=>{
 });
 
 window.addEventListener('beforeunload',e=>{
-  const hasPageEdits=pageEdited&&Object.keys(pageEdited).length;
+  const hasPageEdits=(pageEdited&&Object.keys(pageEdited).length)||(pageEditedHref&&Object.keys(pageEditedHref).length);
   const hasSiteEdits=siteEdited&&Object.keys(siteEdited).length;
   if(hasPageEdits||hasSiteEdits||editorDirty){e.preventDefault();e.returnValue='';}
 });
