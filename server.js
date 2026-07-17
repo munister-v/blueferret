@@ -908,6 +908,23 @@ function decodeHtmlEnts(s){
 function encodeHtmlEnts(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 }
+// Paragraph text edited in the page editor may contain a <a href="...">text</a>
+// span inserted via the "insert link" toolbar button. Only that exact, simple
+// pattern is allowed through as real markup — everything else (including any
+// other stray angle brackets the user typed) gets HTML-encoded, so a plain
+// textarea can carry one safe kind of inline HTML without becoming an XSS hole.
+function sanitizeUserHtml(v){
+  const re=/<a href="([^"<>]*)">([^<>]*)<\/a>/g;
+  let out='', last=0, m;
+  while((m=re.exec(v))!==null){
+    out += encodeHtmlEnts(v.slice(last, m.index));
+    const href=m[1];
+    out += /^\s*(javascript|data):/i.test(href) ? encodeHtmlEnts(m[0]) : `<a href="${encodeHtmlEnts(href)}">${encodeHtmlEnts(m[2])}</a>`;
+    last = re.lastIndex;
+  }
+  out += encodeHtmlEnts(v.slice(last));
+  return out;
+}
 function cleanInner(raw){
   // strip tags inserting spaces so adjacent elements don't concatenate, collapse whitespace
   return decodeHtmlEnts(raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim());
@@ -966,7 +983,7 @@ function extractBlocks(html, managedValues){
   }
 
   const blocks=[], seenText=new Set();
-  const add=(id,type,label,icon,value,orig,origVal,idx)=>{
+  const add=(id,type,label,icon,value,orig,origVal,idx,extra)=>{
     const v=(value||'').trim();
     if(!v) return;
     // Text also present in site-content.json is live-hydrated from there and
@@ -975,9 +992,12 @@ function extractBlocks(html, managedValues){
     if(type!=='seo' && managedValues && managedValues.has(v)) return;
     if((type==='p'||type==='h1'||type==='h2'||type==='h3') && driftedFromManaged(v)) return;
     if(type==='h3' && ORPHANED_TEXT.has(v)) return;
-    const key=type+'|'+v;
+    // Links with identical visible text but different hrefs must stay distinct
+    // (e.g. two "Детальніше" buttons pointing at different pages) — dedup key
+    // includes href for 'a' blocks, not just the visible text.
+    const key=type+'|'+v+(type==='a'?'|'+(extra&&extra.href||''):'');
     if(seenText.has(key)) return; seenText.add(key);
-    blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx});
+    blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx,...(extra||{})});
   };
 
   // ── SEO (from <head>) ──
@@ -1011,10 +1031,14 @@ function extractBlocks(html, managedValues){
   while((m=pr.exec(safe))!==null && kept<80){
     const inner=m[1];
     const t=cleanInner(inner);
-    const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t);
-    // Allow paragraphs with simple inline tags (strong, em, a, etc.)
+    // Allow paragraphs with simple inline tags (strong, em, a, etc.). Tag-based
+    // concatenation garbage (nav/footer link lists jammed together) is already
+    // excluded above/here via inlineOk — a bare lowercase→Uppercase heuristic
+    // was tried here previously but rejected genuinely edited paragraphs
+    // outright (e.g. a proper noun typed without a leading space), making the
+    // whole block silently vanish from the editor on next load.
     const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
-    if(t && inlineOk && !looksConcat && t.includes(' ') && t.length>=20 && t.length<=900){
+    if(t && inlineOk && t.includes(' ') && t.length>=20 && t.length<=900){
       add(`p_${pi}`,'p','Абзац тексту','¶',t,m[0],inner,pi);
       kept++;
     }
@@ -1030,8 +1054,10 @@ function extractBlocks(html, managedValues){
     // concatenated "link text" that isn't really editable link text — same
     // inline-only guard used for paragraphs.
     const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
-    if(t && inlineOk && t.length>=3 && t.length<=120 && !/<img/i.test(inner)){
-      add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai);
+    const hrefM=m[0].match(/\shref="([^"]*)"/);
+    const href=hrefM?decodeHtmlEnts(hrefM[1]):'';
+    if(t && inlineOk && t.length>=3 && t.length<=120 && !/<img/i.test(inner) && href){
+      add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai,{href});
       aKept++;
     }
     ai++;
@@ -1056,7 +1082,7 @@ function extractBlocks(html, managedValues){
     // skip tiny icons, data URIs, tracking pixels
     if(src && !src.startsWith('data:') && src.length>5 && !/favicon|icon/i.test(src)){
       const alt=(m[0].match(/alt="([^"]*)"/)||[])[1]||'';
-      add(`img_${ii}`,'img',decodeHtmlEnts(alt)||'Зображення','🖼',src,m[0],m[1],ii);
+      add(`img_${ii}`,'img',decodeHtmlEnts(alt)||'Зображення','🖼',src,m[0],m[1],ii,{alt:decodeHtmlEnts(alt)});
       iKept++;
     }
     ii++;
@@ -1369,6 +1395,184 @@ app.put('/api/admin/page-chunk-content', requireAuth, (req,res)=>{
   }
 });
 
+function resolvePath(obj, pathStr){
+  const parts=pathStr.split('.'); let o=obj;
+  for(const p of parts){
+    const k=/^\d+$/.test(p)?+p:p;
+    if(o==null) return undefined;
+    o=o[k];
+  }
+  return o;
+}
+// Order-insensitive identity for an array's contents, used to recognize "this
+// is the same duplicated list" in another page's own chunk (e.g. the pillar
+// cards baked separately into index/kontakty/kik/kik/pro-kik) without relying
+// on array order, which is exactly what these operations are changing.
+function arrayFingerprint(arr){
+  return arr.map(x=>JSON.stringify(x)).sort().join('');
+}
+function blankStringLeaves(o){
+  if(typeof o==='string') return 'Новий пункт';
+  if(Array.isArray(o)) return o.map(blankStringLeaves);
+  if(o&&typeof o==='object'){ const r={}; for(const k of Object.keys(o)) r[k]=blankStringLeaves(o[k]); return r; }
+  return o;
+}
+// Find the same array (by content fingerprint, taken BEFORE the caller's own
+// mutation) baked into any OTHER page's own chunk, and apply the identical
+// structural change there — otherwise reordering/adding/removing a card only
+// fixes the page currently being edited while its duplicates on other pages
+// silently drift out of sync.
+function syncArrayToDuplicates(sourceChunkFull, arrayPath, beforeFingerprint, applyFn){
+  let chunksChanged=0;
+  const chunksAppDir=path.join(SITE_ROOT,'_next','static','chunks','app');
+  (function walk(d){
+    let entries; try{ entries=fs.readdirSync(d,{withFileTypes:true}); }catch{ return; }
+    for(const e of entries){
+      const full=path.join(d,e.name);
+      if(e.isDirectory()){ walk(full); continue; }
+      if(!e.name.endsWith('.js')||full===sourceChunkFull) continue;
+      let content; try{ content=fs.readFileSync(full,'utf8'); }catch{ continue; }
+      if(!content.includes("JSON.parse('")) continue;
+      const blobs=findAllJsonParseBlobs(content);
+      const matchIdx=[];
+      blobs.forEach((blob,bi)=>{
+        const arr=resolvePath(blob.obj, arrayPath);
+        if(Array.isArray(arr) && arrayFingerprint(arr)===beforeFingerprint) matchIdx.push(bi);
+      });
+      if(!matchIdx.length) continue;
+      matchIdx.sort((a,b)=>b-a).forEach(bi=>{
+        const blob=blobs[bi];
+        applyFn(resolvePath(blob.obj, arrayPath));
+        const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
+        content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
+      });
+      const dir=path.dirname(full), oldName=path.basename(full);
+      rehashChunkAndRelink(dir, oldName, content);
+      chunksChanged++;
+    }
+  })(chunksAppDir);
+  return chunksChanged;
+}
+
+// Move one entry within an array baked into a page's own JS chunk (e.g. the
+// "values.items" pillar list) — same edit family as page-chunk-content but a
+// position swap rather than a value change, so it gets its own endpoint
+// instead of overloading PUT's per-field {path,value} shape.
+app.post('/api/admin/page-chunk-reorder', requireAuth, (req,res)=>{
+  const rel=req.query.path;
+  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
+  const full=path.join(PAGES_ROOT,rel);
+  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
+  const { chunk, blobIndex, arrayPath, fromIndex, toIndex } = req.body||{};
+  if(typeof chunk!=='string'||typeof blobIndex!=='number'||typeof arrayPath!=='string'||
+     !Number.isInteger(fromIndex)||!Number.isInteger(toIndex)) return res.status(400).json({error:'invalid'});
+  const chunkFull=path.join(SITE_ROOT, chunk);
+  if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) return res.status(404).json({error:'chunk_not_found'});
+  try{
+    let content=fs.readFileSync(chunkFull,'utf8');
+    const blobs=findAllJsonParseBlobs(content);
+    const blob=blobs[blobIndex];
+    if(!blob) return res.status(404).json({error:'blob_not_found'});
+    const arr=resolvePath(blob.obj, arrayPath);
+    if(!Array.isArray(arr)) return res.status(400).json({error:'not_an_array'});
+    if(fromIndex<0||fromIndex>=arr.length||toIndex<0||toIndex>=arr.length) return res.status(400).json({error:'index_out_of_range'});
+    const beforeFingerprint=arrayFingerprint(arr);
+    const [item]=arr.splice(fromIndex,1);
+    arr.splice(toIndex,0,item);
+    const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
+    content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
+    // Sync duplicate arrays on OTHER pages before renaming this chunk — the
+    // exclusion check compares full paths, so it must run while chunkFull's
+    // old filename still exists on disk (a rename first would let this same
+    // file, now under its new name, get matched and double-applied to).
+    const dupChunksChanged=syncArrayToDuplicates(chunkFull, arrayPath, beforeFingerprint, a=>{ const [it]=a.splice(fromIndex,1); a.splice(toIndex,0,it); });
+    const dir=path.dirname(chunkFull), oldName=path.basename(chunkFull);
+    const {newName, htmlChanged}=rehashChunkAndRelink(dir, oldName, content);
+    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+    const publishedAt=bumpPublishedAt();
+    audit(req.ip,'page_chunk_reorder',{path:rel,chunk,arrayPath,fromIndex,toIndex,newName,dupChunksChanged,publishedAt});
+    res.json({ok:true, newChunk: chunk.replace(oldName,newName), htmlRefsUpdated: htmlChanged, dupChunksChanged, publishedAt});
+  }catch(e){
+    res.status(500).json({error:e.message});
+  }
+});
+
+// Insert a new item into an array baked into a page's own JS chunk, cloning
+// the shape of a sibling item with its string leaves blanked to a visible
+// placeholder — the new item then edits like any other pc-content field.
+app.post('/api/admin/page-chunk-array-insert', requireAuth, (req,res)=>{
+  const rel=req.query.path;
+  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
+  const full=path.join(PAGES_ROOT,rel);
+  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
+  const { chunk, blobIndex, arrayPath, afterIndex } = req.body||{};
+  if(typeof chunk!=='string'||typeof blobIndex!=='number'||typeof arrayPath!=='string')
+    return res.status(400).json({error:'invalid'});
+  const chunkFull=path.join(SITE_ROOT, chunk);
+  if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) return res.status(404).json({error:'chunk_not_found'});
+  try{
+    let content=fs.readFileSync(chunkFull,'utf8');
+    const blobs=findAllJsonParseBlobs(content);
+    const blob=blobs[blobIndex];
+    if(!blob) return res.status(404).json({error:'blob_not_found'});
+    const arr=resolvePath(blob.obj, arrayPath);
+    if(!Array.isArray(arr)) return res.status(400).json({error:'not_an_array'});
+    if(!arr.length) return res.status(400).json({error:'empty_array_no_template'});
+    const insertAt=Number.isInteger(afterIndex)?Math.min(Math.max(afterIndex+1,0),arr.length):arr.length;
+    const beforeFingerprint=arrayFingerprint(arr);
+    const template=arr[Math.min(insertAt,arr.length-1)] ?? arr[0];
+    const clone=blankStringLeaves(JSON.parse(JSON.stringify(template)));
+    arr.splice(insertAt,0,clone);
+    const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
+    content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
+    const dupChunksChanged=syncArrayToDuplicates(chunkFull, arrayPath, beforeFingerprint, a=>{ a.splice(insertAt,0,JSON.parse(JSON.stringify(clone))); });
+    const dir=path.dirname(chunkFull), oldName=path.basename(chunkFull);
+    const {newName, htmlChanged}=rehashChunkAndRelink(dir, oldName, content);
+    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+    const publishedAt=bumpPublishedAt();
+    audit(req.ip,'page_chunk_array_insert',{path:rel,chunk,arrayPath,insertAt,newName,dupChunksChanged,publishedAt});
+    res.json({ok:true, newChunk: chunk.replace(oldName,newName), htmlRefsUpdated: htmlChanged, dupChunksChanged, publishedAt});
+  }catch(e){
+    res.status(500).json({error:e.message});
+  }
+});
+
+// Remove an item from an array baked into a page's own JS chunk.
+app.post('/api/admin/page-chunk-array-remove', requireAuth, (req,res)=>{
+  const rel=req.query.path;
+  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
+  const full=path.join(PAGES_ROOT,rel);
+  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
+  const { chunk, blobIndex, arrayPath, index } = req.body||{};
+  if(typeof chunk!=='string'||typeof blobIndex!=='number'||typeof arrayPath!=='string'||!Number.isInteger(index))
+    return res.status(400).json({error:'invalid'});
+  const chunkFull=path.join(SITE_ROOT, chunk);
+  if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) return res.status(404).json({error:'chunk_not_found'});
+  try{
+    let content=fs.readFileSync(chunkFull,'utf8');
+    const blobs=findAllJsonParseBlobs(content);
+    const blob=blobs[blobIndex];
+    if(!blob) return res.status(404).json({error:'blob_not_found'});
+    const arr=resolvePath(blob.obj, arrayPath);
+    if(!Array.isArray(arr)) return res.status(400).json({error:'not_an_array'});
+    if(index<0||index>=arr.length) return res.status(400).json({error:'index_out_of_range'});
+    if(arr.length<=1) return res.status(400).json({error:'cannot_remove_last_item'});
+    const beforeFingerprint=arrayFingerprint(arr);
+    arr.splice(index,1);
+    const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
+    content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
+    const dupChunksChanged=syncArrayToDuplicates(chunkFull, arrayPath, beforeFingerprint, a=>{ if(a.length>1) a.splice(index,1); });
+    const dir=path.dirname(chunkFull), oldName=path.basename(chunkFull);
+    const {newName, htmlChanged}=rehashChunkAndRelink(dir, oldName, content);
+    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+    const publishedAt=bumpPublishedAt();
+    audit(req.ip,'page_chunk_array_remove',{path:rel,chunk,arrayPath,index,newName,dupChunksChanged,publishedAt});
+    res.json({ok:true, newChunk: chunk.replace(oldName,newName), htmlRefsUpdated: htmlChanged, dupChunksChanged, publishedAt});
+  }catch(e){
+    res.status(500).json({error:e.message});
+  }
+});
+
 // ── Cross-chunk text propagation ──────────────────────────────────────────
 // Next.js's static export bakes page content into a SEPARATE, per-route JS
 // chunk at build time (getStaticProps/RSC payload), in addition to the one
@@ -1597,18 +1801,50 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   // backup
   writeBackup(full);
   let changed = 0;
-  const propagatePairs = []; // [oldValue, newValue] — text blocks only, not img src
+  const propagatePairs = []; // [oldValue, newValue] — plain text blocks only, not img src / href
   for (const b of blocks) {
-    if (!b.orig || b.origVal === b.newVal || b.newVal == null) continue;
-    // img blocks: replace src attribute value, not text content
+    if (!b.orig) continue;
+    const textChanged = b.newVal != null && b.origVal !== b.newVal;
+    const hrefChanged = typeof b.newHref === 'string' && b.newHref !== (b.origHref || '');
+    const altChanged = typeof b.newAlt === 'string' && b.newAlt !== (b.origAlt || '');
+    if (!textChanged && !hrefChanged && !altChanged) continue;
+    // img blocks: replace src/alt attribute values, not text content
     if (b.orig.match(/^<img\s/i)) {
-      const newOrig = b.orig.replace(`src="${b.origVal}"`, `src="${encodeHtmlEnts(b.newVal)}"`);
-      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
-    } else {
-      const encoded = encodeHtmlEnts(b.newVal);
-      const newOrig = b.orig.replace(b.origVal, encoded);
-      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; propagatePairs.push([b.origVal, b.newVal]); }
+      let newOrig = b.orig, didChange = false;
+      if (textChanged) {
+        const replaced = newOrig.replace(`src="${b.origVal}"`, `src="${encodeHtmlEnts(b.newVal)}"`);
+        if (replaced !== newOrig) { newOrig = replaced; didChange = true; }
+      }
+      if (altChanged) {
+        const altAttr = `alt="${encodeHtmlEnts(b.origAlt || '')}"`;
+        const replaced = newOrig.includes(altAttr)
+          ? newOrig.replace(altAttr, `alt="${encodeHtmlEnts(b.newAlt)}"`)
+          : newOrig.replace(/^<img\s/i, `<img alt="${encodeHtmlEnts(b.newAlt)}" `);
+        if (replaced !== newOrig) { newOrig = replaced; didChange = true; }
+      }
+      if (didChange) { html = html.split(b.orig).join(newOrig); changed++; }
+      continue;
     }
+    let newOrig = b.orig, didChange = false;
+    if (hrefChanged) {
+      const hrefAttr = `href="${encodeHtmlEnts(b.origHref || '')}"`;
+      if (newOrig.includes(hrefAttr)) {
+        newOrig = newOrig.replace(hrefAttr, `href="${encodeHtmlEnts(b.newHref)}"`);
+        didChange = true;
+      }
+    }
+    if (textChanged) {
+      // Paragraph edits may contain a simple <a href="...">text</a> inserted via
+      // the editor's link button — sanitize so only that exact, safe pattern
+      // survives as real markup and any other stray angle brackets are encoded.
+      const encoded = b.type === 'p' ? sanitizeUserHtml(b.newVal) : encodeHtmlEnts(b.newVal);
+      const replaced = newOrig.replace(b.origVal, encoded);
+      if (replaced !== newOrig) {
+        newOrig = replaced; didChange = true;
+        if (!/<a href=/i.test(b.newVal)) propagatePairs.push([b.origVal, b.newVal]);
+      }
+    }
+    if (didChange) { html = html.split(b.orig).join(newOrig); changed++; }
   }
   writeAtomic(full, html);
   // Sync any OTHER page/chunk that independently baked in this same text —
