@@ -416,7 +416,7 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .at code{background:#f1f5f9;padding:1px 6px;border-radius:5px;font-size:11.5px;color:var(--txt);font-family:ui-monospace,monospace}
 
 /* ── TOAST ── */
-#toast{position:fixed;right:18px;bottom:22px;padding:12px 18px;border-radius:11px;font:600 13px inherit;opacity:0;transform:translateY(6px);transition:.25s;z-index:999;pointer-events:none;max-width:320px;display:flex;align-items:center;gap:8px}
+#toast{position:fixed;right:18px;bottom:22px;padding:12px 18px;border-radius:11px;font:600 13px inherit;opacity:0;transform:translateY(6px);transition:.25s;z-index:999;pointer-events:none;max-width:480px;display:flex;align-items:flex-start;gap:8px}
 #toast.s{opacity:1;transform:none}
 #toast.ok{background:linear-gradient(135deg,#065f46,#047857);color:#d1fae5;border:1px solid rgba(16,185,129,.3)}
 #toast.er{background:linear-gradient(135deg,#7f1d1d,#991b1b);color:#fecaca;border:1px solid rgba(239,68,68,.3)}
@@ -714,11 +714,11 @@ function fallbackCopy(text){
 }
 
 const TOAST_ICO={ok:'✓',er:'✕',i:'ℹ'};
-function toast(msg,type='i'){
-  const t=$('#toast');t.textContent='';
+function toast(msg,type='i',duration=3000){
+  const t=$('#toast');t.textContent='';t.style.whiteSpace='pre-line';
   const ico=document.createElement('span');ico.style.opacity='.7';ico.textContent=TOAST_ICO[type]||'';
   t.appendChild(ico);t.appendChild(document.createTextNode(String(msg??'')));
-  t.className='s '+type;clearTimeout(t._tid);t._tid=setTimeout(()=>t.className='',3000);
+  t.className='s '+type;clearTimeout(t._tid);t._tid=setTimeout(()=>t.className='',duration);
 }
 window.addEventListener('offline',()=>toast('Немає інтернету. Зміни краще не зберігати до відновлення звʼязку.','er'));
 window.addEventListener('online',()=>toast('Звʼязок відновлено ✓','ok'));
@@ -2361,7 +2361,13 @@ async function saveSiteContent(){
       const last=/^\d+$/.test(parts.at(-1))?+parts.at(-1):parts.at(-1);o[last]=c.value;
     });
     siteEdited={};
-    toast(`Збережено ${r.applied} змін ✓`,'ok');
+    if(r.staleWarnings && r.staleWarnings.length){
+      const total=r.staleWarnings.reduce((n,w)=>n+w.files.length,0);
+      const detail=r.staleWarnings.map(w=>`«${w.value.slice(0,40)}» → ${w.files.slice(0,3).join(', ')}${w.files.length>3?` +${w.files.length-3}`:''}`).join('\n');
+      toast(`Збережено, але старе значення досі знайдено в ${total} файлах — можливо, потрібна ручна правка:\n${detail}`,'er',9000);
+    } else {
+      toast(`Збережено ${r.applied} змін ✓`,'ok');
+    }
     renderSiteText();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}

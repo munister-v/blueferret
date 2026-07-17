@@ -1685,6 +1685,32 @@ function propagateTextChange(oldValue, newValue) {
   return { chunksChanged, htmlChanged };
 }
 
+// Scans the live site for leftover literal occurrences of a value we just
+// tried to change. propagateTextChange() deliberately skips short/generic
+// values (isSafeToPropagate) to avoid collisions, and Next.js static export
+// can bake the same string into HTML that isn't caught by that pass either
+// — both cases leave stale content live while the save reports "success".
+// This surfaces that gap instead of hiding it.
+function findStaleOccurrences(value, limit = 8) {
+  const v = (value || '').trim();
+  if (!v || v.length < 3) return [];
+  const found = [];
+  (function walk(d) {
+    if (found.length >= limit) return;
+    let entries; try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (found.length >= limit) return;
+      if (e.name.startsWith('.') || e.name === 'uploads' || e.name === 'cdn-cgi') continue;
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) { walk(full); continue; }
+      if (!e.name.endsWith('.html') && !e.name.endsWith('.js')) continue;
+      let h; try { h = fs.readFileSync(full, 'utf8'); } catch { continue; }
+      if (h.includes(v) || h.includes(encodeHtmlEnts(v))) found.push(path.relative(SITE_ROOT, full));
+    }
+  })(SITE_ROOT);
+  return found;
+}
+
 app.get('/api/admin/site-content', requireAuth, (_req,res)=>{
   const sc=readSiteContent();
   if(!sc) return res.status(404).json({error:'content bundle not found'});
@@ -1758,9 +1784,17 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
       propagated.chunksChanged+=r.chunksChanged;
       propagated.htmlChanged+=r.htmlChanged;
     }
+    // Verify the change actually took everywhere — propagateTextChange skips
+    // short/generic values on purpose, so a "successful" save can still
+    // leave the old value live on the site with no indication to the admin.
+    const staleWarnings=[];
+    for(const [before,after] of propagatePairs){
+      const files=findStaleOccurrences(before);
+      if(files.length) staleWarnings.push({value:before, files});
+    }
     const publishedAt = bumpPublishedAt();
-    audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged,propagated,publishedAt});
-    res.json({ok:true, applied, bundle:newName, htmlChanged, propagated, publishedAt});
+    audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged,propagated,staleWarnings,publishedAt});
+    res.json({ok:true, applied, bundle:newName, htmlChanged, propagated, staleWarnings, publishedAt});
   }catch(e){
     res.status(500).json({error:e.message});
   }
