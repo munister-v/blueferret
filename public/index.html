@@ -1892,9 +1892,9 @@ function buildBlocksHtml(blocks, tabFilter, search){
         <div class="blk-ico ${b.type==='seo'?'seo':b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
         <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
         <div class="blk-actions">
-          ${b.type==='p'?`
-            <button class="reset-btn" onclick="wrapSelectionInField('${esc(b.id)}','<strong>','</strong>')" title="Жирний (виділіть текст)"><b>Ж</b></button>
-            <button class="reset-btn" onclick="wrapSelectionInField('${esc(b.id)}','<em>','</em>')" title="Курсив (виділіть текст)"><i>К</i></button>
+          ${(b.type==='p'||b.type==='span'||b.type==='li')?`
+            <button class="reset-btn" onclick="wrapSelectionInField('${esc(b.id)}','<strong>','</strong>')" title="Жирний (виділіть текст, або Ctrl+B)"><b>Ж</b></button>
+            <button class="reset-btn" onclick="wrapSelectionInField('${esc(b.id)}','<em>','</em>')" title="Курсив (виділіть текст, або Ctrl+I)"><i>К</i></button>
             <button class="reset-btn" onclick="insertLinkInField('${esc(b.id)}')" title="Вставити посилання у виділений текст">🔗</button>
           `:''}
           ${pcGroup?`
@@ -1909,9 +1909,10 @@ function buildBlocksHtml(blocks, tabFilter, search){
           <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
         </div>
       </div>
-      ${isLong
-        ?`<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:${b.type==='p'?80:52}px;padding:4px 0">${esc(curVal)}</textarea>`
-        :`<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`}
+      ${(()=>{const fmtKb=(b.type==='p'||b.type==='span'||b.type==='li')?` onkeydown="handleFormatShortcut(event,'${esc(b.id)}')"`:'';return isLong
+        ?`<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')"${fmtKb} style="min-height:${b.type==='p'?80:52}px;padding:4px 0">${esc(curVal)}</textarea>`
+        :`<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')"${fmtKb} value="${esc(curVal)}">`;})()}
+      ${(b.type==='p'||b.type==='span'||b.type==='li')?`<div class="inline-preview" id="prev_${esc(b.id)}" style="margin-top:6px;padding:8px 10px;font-size:12.5px;line-height:1.5;color:var(--txt-s);background:rgba(255,255,255,.03);border-radius:8px;border:1px solid var(--glass-border)">${sanitizePreviewHtml(curVal)}</div>`:''}
       ${b.type==='a'?`<input type="text" data-blkhref="${esc(b.id)}" oninput="markHrefEdited('${esc(b.id)}')" value="${esc(curHref)}" placeholder="Куди веде посилання (href)" style="margin-top:6px;font-size:12px;opacity:.85">`:''}
       ${maxLen?`<div class="char-bar">
         <span id="cc_${esc(b.id)}" class="${cntClass}" data-max="${maxLen}">${curLen} / ${maxLen}</span>
@@ -2109,7 +2110,26 @@ function markEdited(id){
   if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
   // live preview sync
   syncToPreview(id,el.value);
+  const inlinePrev=document.getElementById('prev_'+id);
+  if(inlinePrev) inlinePrev.innerHTML=sanitizePreviewHtml(el.value);
 }
+function sanitizePreviewHtml(v){
+  const re=/<a href="([^"<>]*)">([^<>]*)<\/a>|<(strong|em)>([^<>]*)<\/\3>/g;
+  let out='', last=0, m;
+  while((m=re.exec(v))!==null){
+    out += esc(v.slice(last, m.index));
+    out += m[3] ? `<${m[3]}>${esc(m[4])}</${m[3]}>` : `<a href="${esc(m[1])}" target="_blank" rel="noopener">${esc(m[2])}</a>`;
+    last = re.lastIndex;
+  }
+  out += esc(v.slice(last));
+  return out;
+}
+function handleFormatShortcut(e,id){
+  if(!(e.ctrlKey||e.metaKey)) return;
+  if(e.key==='b'||e.key==='B'){ e.preventDefault(); wrapSelectionInField(id,'<strong>','</strong>'); }
+  else if(e.key==='i'||e.key==='I'){ e.preventDefault(); wrapSelectionInField(id,'<em>','</em>'); }
+}
+window.handleFormatShortcut=handleFormatShortcut;
 function updateCharCounter(id,val){
   const cnt=$(`#cc_${CSS.escape(id)}`);if(!cnt)return;
   const n=val.length, max=+cnt.dataset.max||0;
@@ -2181,6 +2201,8 @@ function resetField(id){
   delete pageEdited[id];
   updateCharCounter(id,orig.value);
   if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+  const inlinePrev=document.getElementById('prev_'+id);
+  if(inlinePrev) inlinePrev.innerHTML=sanitizePreviewHtml(orig.value);
   const hrefEl=document.querySelector(`[data-blkhref="${id}"]`);
   if(hrefEl){hrefEl.value=orig.href||'';}
   delete pageEditedHref[id];

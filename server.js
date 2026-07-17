@@ -1840,14 +1840,15 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
       }
     }
     if (textChanged) {
-      // Paragraph edits may contain a simple <a href="...">text</a> inserted via
-      // the editor's link button — sanitize so only that exact, safe pattern
-      // survives as real markup and any other stray angle brackets are encoded.
-      const encoded = b.type === 'p' ? sanitizeUserHtml(b.newVal) : encodeHtmlEnts(b.newVal);
+      // p/span/li edits may contain a simple <a href="...">/<strong>/<em> span
+      // inserted via the editor's formatting buttons — sanitize so only those
+      // exact, safe patterns survive as real markup and any other stray angle
+      // brackets are encoded.
+      const encoded = (b.type === 'p' || b.type === 'span' || b.type === 'li') ? sanitizeUserHtml(b.newVal) : encodeHtmlEnts(b.newVal);
       const replaced = newOrig.replace(b.origVal, encoded);
       if (replaced !== newOrig) {
         newOrig = replaced; didChange = true;
-        if (!/<a href=/i.test(b.newVal)) propagatePairs.push([b.origVal, b.newVal]);
+        if (!/<a href=|<strong>|<em>/i.test(b.newVal)) propagatePairs.push([b.origVal, b.newVal]);
       }
     }
     if (didChange) { html = html.split(b.orig).join(newOrig); changed++; }
