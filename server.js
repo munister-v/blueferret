@@ -909,23 +909,17 @@ function encodeHtmlEnts(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 }
 // Paragraph text edited in the page editor may contain a <a href="...">text</a>
-// span (insert-link button) or a <strong>text</strong>/<em>text</em> span
-// (bold/italic buttons). Only these exact, simple, non-nested patterns are
-// allowed through as real markup — everything else (including any other
-// stray angle brackets the user typed) gets HTML-encoded, so a plain
-// textarea can carry a small safe set of inline HTML without becoming an
-// XSS hole.
+// span inserted via the "insert link" toolbar button. Only that exact, simple
+// pattern is allowed through as real markup — everything else (including any
+// other stray angle brackets the user typed) gets HTML-encoded, so a plain
+// textarea can carry one safe kind of inline HTML without becoming an XSS hole.
 function sanitizeUserHtml(v){
-  const re=/<a href="([^"<>]*)">([^<>]*)<\/a>|<(strong|em)>([^<>]*)<\/\3>/g;
+  const re=/<a href="([^"<>]*)">([^<>]*)<\/a>/g;
   let out='', last=0, m;
   while((m=re.exec(v))!==null){
     out += encodeHtmlEnts(v.slice(last, m.index));
-    if(m[3]){
-      out += `<${m[3]}>${encodeHtmlEnts(m[4])}</${m[3]}>`;
-    } else {
-      const href=m[1];
-      out += /^\s*(javascript|data):/i.test(href) ? encodeHtmlEnts(m[0]) : `<a href="${encodeHtmlEnts(href)}">${encodeHtmlEnts(m[2])}</a>`;
-    }
+    const href=m[1];
+    out += /^\s*(javascript|data):/i.test(href) ? encodeHtmlEnts(m[0]) : `<a href="${encodeHtmlEnts(href)}">${encodeHtmlEnts(m[2])}</a>`;
     last = re.lastIndex;
   }
   out += encodeHtmlEnts(v.slice(last));

@@ -870,13 +870,7 @@ function renderGamesList(){
     <td style="width:54px">${g.cover_url?`<img class="thumb" src="${esc(g.cover_url)}" onerror="this.outerHTML='<span class=&quot;thumb-empty&quot;>?</span>'">`:`<span class="thumb-empty">🎲</span>`}</td>
     <td><div style="font-weight:700">${esc(g.title)}</div><span class="url-pill"><code>${esc(publicGameUrl(g))}</code></span></td>
     <td>
-      <select class="badge ${g.status==='published'?'b-g':g.status==='draft'?'b-r':'b-s'}" style="cursor:pointer;border:none" onchange="quickSetGameStatus(${g.id},this.value)" title="Змінити статус">
-        <option value="published" ${g.status==='published'?'selected':''}>✅ published</option>
-        <option value="draft" ${g.status==='draft'?'selected':''}>📝 draft</option>
-        <option value="archived" ${g.status==='archived'?'selected':''}>📦 archived</option>
-        <option value="preorder" ${g.status==='preorder'?'selected':''}>⏳ preorder</option>
-        <option value="onsale" ${g.status==='onsale'?'selected':''}>🛒 onsale</option>
-      </select>
+      <span class="badge ${g.status==='published'?'b-g':g.status==='draft'?'b-r':'b-s'}" style="cursor:pointer" onclick="quickToggleStatus('game',${g.id},'${g.status}')" title="Клікніть щоб змінити статус">${g.status}</span>
     </td>
     <td style="color:var(--txt-m);font-size:12px">${[g.players,g.age,g.duration].filter(Boolean).join(' · ')||'—'}</td>
     <td class="row-actions">
@@ -916,14 +910,6 @@ async function quickToggleStatus(type,id,current){
   }catch(e){toast(e.message,'er');}
 }
 window.quickToggleStatus=quickToggleStatus;
-async function quickSetGameStatus(id,status){
-  try{
-    await api('PUT',`/api/admin/games/${id}`,{status});
-    games=await api('GET','/api/admin/games');
-    toast(`Статус → ${status}`);render();
-  }catch(e){toast(e.message,'er');}
-}
-window.quickSetGameStatus=quickSetGameStatus;
 
 function findGame(id){return games.find(g=>Number(g.id)===Number(id));}
 function openPublicGame(id){
@@ -1886,19 +1872,13 @@ function buildBlocksHtml(blocks, tabFilter, search){
 
     const curHref=pageEditedHref[b.id]!==undefined?pageEditedHref[b.id]:(b.href||'');
     const hrefEdited=b.type==='a'&&pageEditedHref[b.id]!==undefined&&pageEditedHref[b.id]!==(b.href||'');
-    const pcDragAttrs=pcGroup?`draggable="true" data-pc-item="${esc(pcGroup.chunk)}|${pcGroup.blobIndex}|${esc(pcGroup.arrayPath)}|${pcGroup.itemIndex}" ondragstart="pcDragStart(event)" ondragover="pcDragOver(event)" ondrop="pcDrop(event)" ondragenter="event.preventDefault()" ondragend="this.style.opacity='1'"`:'';
-    return`<div class="blk ${b.type}${edited||hrefEdited?' edited':''}" data-id="${esc(b.id)}" data-tab="${typeToTab[b.type]||'texts'}" style="padding:14px 16px 12px" ${pcDragAttrs}>
+    return`<div class="blk ${b.type}${edited||hrefEdited?' edited':''}" data-id="${esc(b.id)}" data-tab="${typeToTab[b.type]||'texts'}" style="padding:14px 16px 12px">
       <div class="blk-head" style="margin-bottom:6px">
         <div class="blk-ico ${b.type==='seo'?'seo':b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
         <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
         <div class="blk-actions">
-          ${b.type==='p'?`
-            <button class="reset-btn" onclick="wrapSelectionInField('${esc(b.id)}','<strong>','</strong>')" title="Жирний (виділіть текст)"><b>Ж</b></button>
-            <button class="reset-btn" onclick="wrapSelectionInField('${esc(b.id)}','<em>','</em>')" title="Курсив (виділіть текст)"><i>К</i></button>
-            <button class="reset-btn" onclick="insertLinkInField('${esc(b.id)}')" title="Вставити посилання у виділений текст">🔗</button>
-          `:''}
+          ${b.type==='p'?`<button class="reset-btn" onclick="insertLinkInField('${esc(b.id)}')" title="Вставити посилання у виділений текст">🔗</button>`:''}
           ${pcGroup?`
-            <span class="reset-btn" style="cursor:grab" title="Перетягніть, щоб змінити порядок">⠿</span>
             ${pcGroup.count>1?`
               <button class="reset-btn" ${pcGroup.itemIndex<=0?'disabled':''} onclick="reorderPcItem('${esc(pcGroup.chunk)}',${pcGroup.blobIndex},'${esc(pcGroup.arrayPath)}',${pcGroup.itemIndex},${pcGroup.itemIndex-1})" title="Перемістити картку вище">▲</button>
               <button class="reset-btn" ${pcGroup.itemIndex>=pcGroup.count-1?'disabled':''} onclick="reorderPcItem('${esc(pcGroup.chunk)}',${pcGroup.blobIndex},'${esc(pcGroup.arrayPath)}',${pcGroup.itemIndex},${pcGroup.itemIndex+1})" title="Перемістити картку нижче">▼</button>
@@ -2134,15 +2114,6 @@ function markAltEdited(id){
   el.closest('.blk')?.classList.toggle('edited',changed);
   updateTabBadges();
 }
-function wrapSelectionInField(id, openTag, closeTag){
-  const el=document.querySelector(`[data-blk="${id}"]`);if(!el)return;
-  const start=el.selectionStart, end=el.selectionEnd;
-  if(start===end){toast('Спочатку виділіть текст','i');return;}
-  const selected=el.value.slice(start,end);
-  el.value=el.value.slice(0,start)+openTag+selected+closeTag+el.value.slice(end);
-  markEdited(id);
-}
-window.wrapSelectionInField=wrapSelectionInField;
 function closeLinkPopup(){ document.getElementById('link-insert-popup')?.remove(); }
 function insertLinkInField(id){
   const el=document.querySelector(`[data-blk="${id}"]`);if(!el)return;
@@ -2377,26 +2348,6 @@ async function afterPcStructuralOp(){
   refreshPreview();
   renderPages();
 }
-let pcDragSource=null;
-function pcDragStart(e){
-  pcDragSource=e.currentTarget.dataset.pcItem;
-  e.dataTransfer.effectAllowed='move';
-  e.dataTransfer.setData('text/plain',pcDragSource);
-  e.currentTarget.style.opacity='0.5';
-}
-function pcDragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; }
-function pcDrop(e){
-  e.preventDefault();
-  e.currentTarget.style.opacity='1';
-  const target=e.currentTarget.dataset.pcItem;
-  if(!pcDragSource||!target||pcDragSource===target){ pcDragSource=null; return; }
-  const [sChunk,sBlob,sPath,sIdx]=pcDragSource.split('|');
-  const [tChunk,tBlob,tPath,tIdx]=target.split('|');
-  pcDragSource=null;
-  if(sChunk!==tChunk||sBlob!==tBlob||sPath!==tPath) return; // different array — not a valid move
-  reorderPcItem(sChunk,+sBlob,sPath,+sIdx,+tIdx);
-}
-window.pcDragStart=pcDragStart; window.pcDragOver=pcDragOver; window.pcDrop=pcDrop;
 async function reorderPcItem(chunk, blobIndex, arrayPath, fromIndex, toIndex){
   if(fromIndex===toIndex) return;
   if(hasUnsavedPageEdits() && !confirm('У вас є незбережені зміни в інших полях — перестановка перезавантажить сторінку і вони будуть втрачені. Продовжити?')) return;
