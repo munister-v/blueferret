@@ -1796,29 +1796,12 @@ window.deletePage=deletePage; window.duplicatePage=duplicatePage;
 
 let pedTab='seo', pedSearch='';
 
-const TAB_TITLES={seo:'🔍 SEO',headings:'H Заголовки',texts:'¶ Тексти',images:'🖼 Зображення',content:'⚙️ Контент'};
 function buildBlocksHtml(blocks, tabFilter, search){
   const SEO_LIMITS={title:60,og_title:60,meta_desc:160};
   const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images',pc:'content'};
-  const q=(search||'').toLowerCase();
   let filtered=blocks.filter(b=>(typeToTab[b.type]||'texts')===tabFilter);
-  if(q) filtered=filtered.filter(b=>b.value.toLowerCase().includes(q)||b.label.toLowerCase().includes(q));
-  if(!filtered.length){
-    if(!q) return`<div class="tab-empty">Немає блоків</div>`;
-    // Search matched nothing in this tab — check other tabs so "nothing found"
-    // doesn't look like a broken search when the match is just one tab over.
-    const elsewhere={};
-    blocks.forEach(b=>{
-      const t=typeToTab[b.type]||'texts';
-      if(t===tabFilter) return;
-      if(b.value.toLowerCase().includes(q)||b.label.toLowerCase().includes(q)) elsewhere[t]=(elsewhere[t]||0)+1;
-    });
-    const other=Object.entries(elsewhere);
-    if(!other.length) return`<div class="tab-empty">Нічого не знайдено</div>`;
-    return`<div class="tab-empty">Нічого не знайдено тут.<br>Є збіги в інших вкладках: ${other.map(([t,n])=>
-      `<button onclick="switchPedTab('${t}')" style="background:none;border:none;color:var(--bf);font:700 12px inherit;cursor:pointer;text-decoration:underline;padding:0 2px">${esc(TAB_TITLES[t]||t)} (${n})</button>`
-    ).join(', ')}</div>`;
-  }
+  if(search) filtered=filtered.filter(b=>b.value.toLowerCase().includes(search)||b.label.toLowerCase().includes(search));
+  if(!filtered.length) return`<div class="tab-empty">${search?'Нічого не знайдено':'Немає блоків'}</div>`;
   return filtered.map(b=>{
     const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc')||(b.type==='pc'&&b.value.length>80);
     const maxLen=SEO_LIMITS[b.id]||0;

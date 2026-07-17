@@ -1011,14 +1011,10 @@ function extractBlocks(html, managedValues){
   while((m=pr.exec(safe))!==null && kept<80){
     const inner=m[1];
     const t=cleanInner(inner);
-    // Allow paragraphs with simple inline tags (strong, em, a, etc.). Tag-based
-    // concatenation garbage (nav/footer link lists jammed together) is already
-    // excluded above/here via inlineOk — a bare lowercase→Uppercase heuristic
-    // was tried here previously but rejected genuinely edited paragraphs
-    // outright (e.g. a proper noun typed without a leading space), making the
-    // whole block silently vanish from the editor on next load.
+    const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t);
+    // Allow paragraphs with simple inline tags (strong, em, a, etc.)
     const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
-    if(t && inlineOk && t.includes(' ') && t.length>=20 && t.length<=900){
+    if(t && inlineOk && !looksConcat && t.includes(' ') && t.length>=20 && t.length<=900){
       add(`p_${pi}`,'p','Абзац тексту','¶',t,m[0],inner,pi);
       kept++;
     }
