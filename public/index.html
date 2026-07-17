@@ -2109,7 +2109,7 @@ function markEdited(id){
   updateTabBadges();
   if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
   // live preview sync
-  syncToPreview(id,el.value);
+  syncToPreview(id,el.value,orig?.type);
   const inlinePrev=document.getElementById('prev_'+id);
   if(inlinePrev) inlinePrev.innerHTML=sanitizePreviewHtml(el.value);
 }
@@ -2144,6 +2144,7 @@ function markHrefEdited(id){
   const changed=orig&&blockHasEdit(orig);
   el.closest('.blk')?.classList.toggle('edited',changed);
   updateTabBadges();
+  syncHrefToPreview(id,el.value);
 }
 function markAltEdited(id){
   const el=document.querySelector(`[data-blkalt="${id}"]`);
@@ -2153,6 +2154,8 @@ function markAltEdited(id){
   const changed=orig&&blockHasEdit(orig);
   el.closest('.blk')?.classList.toggle('edited',changed);
   updateTabBadges();
+  const pvEl=blockElMap[id];
+  if(pvEl&&pvEl.nodeType===1&&pvEl.tagName==='IMG'){ try{pvEl.alt=el.value;}catch{} }
 }
 function wrapSelectionInField(id, openTag, closeTag){
   const el=document.querySelector(`[data-blk="${id}"]`);if(!el)return;
@@ -2211,6 +2214,9 @@ function resetField(id){
   delete pageEditedAlt[id];
   el.closest('.blk')?.classList.remove('edited');
   updateTabBadges();
+  syncToPreview(id,orig.value,orig.type);
+  if(orig.type==='a') syncHrefToPreview(id,orig.href||'');
+  if(orig.type==='img'){ const pvEl=blockElMap[id]; if(pvEl&&pvEl.nodeType===1&&pvEl.tagName==='IMG'){ try{pvEl.alt=orig.alt||'';}catch{} } }
   const cnt=pageBlocks.filter(blockHasEdit).length;
   const badge=$('#unsaved-badge');if(badge){badge.textContent=cnt+' змін';badge.classList.toggle('show',cnt>0);}
 }
@@ -2597,19 +2603,31 @@ function openBlockForEdit(id){
 window.openBlockForEdit=openBlockForEdit;
 
 // live-sync editor → preview element
-function syncToPreview(id,val){
+function syncToPreview(id,val,type){
   const el=blockElMap[id];if(!el)return;
   try{
     if(el.set){el.set(val);return;} // title setter
     if(el.nodeType===1){
       if(el.tagName==='IMG'){
         el.src=val;
+      } else if(type==='p'||type==='span'||type==='li'){
+        // render actual <strong>/<em>/<a> formatting instead of literal
+        // tag text, so the preview matches what will actually be saved
+        el.innerHTML=sanitizePreviewHtml(val);
       } else {
         el.textContent=val;
       }
       el.classList.add('bf-edit-flash');
       setTimeout(()=>el.classList.remove('bf-edit-flash'),900);
     }
+  }catch{}
+}
+function syncHrefToPreview(id,href){
+  const el=blockElMap[id];if(!el||el.nodeType!==1||el.tagName!=='A')return;
+  try{
+    el.setAttribute('href',href);
+    el.classList.add('bf-edit-flash');
+    setTimeout(()=>el.classList.remove('bf-edit-flash'),900);
   }catch{}
 }
 
