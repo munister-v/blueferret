@@ -908,23 +908,6 @@ function decodeHtmlEnts(s){
 function encodeHtmlEnts(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 }
-// Paragraph text edited in the page editor may contain a <a href="...">text</a>
-// span inserted via the "insert link" toolbar button. Only that exact, simple
-// pattern is allowed through as real markup — everything else (including any
-// other stray angle brackets the user typed) gets HTML-encoded, so a plain
-// textarea can carry one safe kind of inline HTML without becoming an XSS hole.
-function sanitizeUserHtml(v){
-  const re=/<a href="([^"<>]*)">([^<>]*)<\/a>/g;
-  let out='', last=0, m;
-  while((m=re.exec(v))!==null){
-    out += encodeHtmlEnts(v.slice(last, m.index));
-    const href=m[1];
-    out += /^\s*(javascript|data):/i.test(href) ? encodeHtmlEnts(m[0]) : `<a href="${encodeHtmlEnts(href)}">${encodeHtmlEnts(m[2])}</a>`;
-    last = re.lastIndex;
-  }
-  out += encodeHtmlEnts(v.slice(last));
-  return out;
-}
 function cleanInner(raw){
   // strip tags inserting spaces so adjacent elements don't concatenate, collapse whitespace
   return decodeHtmlEnts(raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim());
@@ -983,7 +966,7 @@ function extractBlocks(html, managedValues){
   }
 
   const blocks=[], seenText=new Set();
-  const add=(id,type,label,icon,value,orig,origVal,idx,extra)=>{
+  const add=(id,type,label,icon,value,orig,origVal,idx)=>{
     const v=(value||'').trim();
     if(!v) return;
     // Text also present in site-content.json is live-hydrated from there and
@@ -992,12 +975,9 @@ function extractBlocks(html, managedValues){
     if(type!=='seo' && managedValues && managedValues.has(v)) return;
     if((type==='p'||type==='h1'||type==='h2'||type==='h3') && driftedFromManaged(v)) return;
     if(type==='h3' && ORPHANED_TEXT.has(v)) return;
-    // Links with identical visible text but different hrefs must stay distinct
-    // (e.g. two "Детальніше" buttons pointing at different pages) — dedup key
-    // includes href for 'a' blocks, not just the visible text.
-    const key=type+'|'+v+(type==='a'?'|'+(extra&&extra.href||''):'');
+    const key=type+'|'+v;
     if(seenText.has(key)) return; seenText.add(key);
-    blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx,...(extra||{})});
+    blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx});
   };
 
   // ── SEO (from <head>) ──
@@ -1031,14 +1011,10 @@ function extractBlocks(html, managedValues){
   while((m=pr.exec(safe))!==null && kept<80){
     const inner=m[1];
     const t=cleanInner(inner);
-    // Allow paragraphs with simple inline tags (strong, em, a, etc.). Tag-based
-    // concatenation garbage (nav/footer link lists jammed together) is already
-    // excluded above/here via inlineOk — a bare lowercase→Uppercase heuristic
-    // was tried here previously but rejected genuinely edited paragraphs
-    // outright (e.g. a proper noun typed without a leading space), making the
-    // whole block silently vanish from the editor on next load.
+    const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t);
+    // Allow paragraphs with simple inline tags (strong, em, a, etc.)
     const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
-    if(t && inlineOk && t.includes(' ') && t.length>=20 && t.length<=900){
+    if(t && inlineOk && !looksConcat && t.includes(' ') && t.length>=20 && t.length<=900){
       add(`p_${pi}`,'p','Абзац тексту','¶',t,m[0],inner,pi);
       kept++;
     }
@@ -1054,10 +1030,8 @@ function extractBlocks(html, managedValues){
     // concatenated "link text" that isn't really editable link text — same
     // inline-only guard used for paragraphs.
     const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
-    const hrefM=m[0].match(/\shref="([^"]*)"/);
-    const href=hrefM?decodeHtmlEnts(hrefM[1]):'';
-    if(t && inlineOk && t.length>=3 && t.length<=120 && !/<img/i.test(inner) && href){
-      add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai,{href});
+    if(t && inlineOk && t.length>=3 && t.length<=120 && !/<img/i.test(inner)){
+      add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai);
       aKept++;
     }
     ai++;
@@ -1395,53 +1369,6 @@ app.put('/api/admin/page-chunk-content', requireAuth, (req,res)=>{
   }
 });
 
-function resolvePath(obj, pathStr){
-  const parts=pathStr.split('.'); let o=obj;
-  for(const p of parts){
-    const k=/^\d+$/.test(p)?+p:p;
-    if(o==null) return undefined;
-    o=o[k];
-  }
-  return o;
-}
-
-// Move one entry within an array baked into a page's own JS chunk (e.g. the
-// "values.items" pillar list) — same edit family as page-chunk-content but a
-// position swap rather than a value change, so it gets its own endpoint
-// instead of overloading PUT's per-field {path,value} shape.
-app.post('/api/admin/page-chunk-reorder', requireAuth, (req,res)=>{
-  const rel=req.query.path;
-  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full=path.join(PAGES_ROOT,rel);
-  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  const { chunk, blobIndex, arrayPath, fromIndex, toIndex } = req.body||{};
-  if(typeof chunk!=='string'||typeof blobIndex!=='number'||typeof arrayPath!=='string'||
-     !Number.isInteger(fromIndex)||!Number.isInteger(toIndex)) return res.status(400).json({error:'invalid'});
-  const chunkFull=path.join(SITE_ROOT, chunk);
-  if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) return res.status(404).json({error:'chunk_not_found'});
-  try{
-    let content=fs.readFileSync(chunkFull,'utf8');
-    const blobs=findAllJsonParseBlobs(content);
-    const blob=blobs[blobIndex];
-    if(!blob) return res.status(404).json({error:'blob_not_found'});
-    const arr=resolvePath(blob.obj, arrayPath);
-    if(!Array.isArray(arr)) return res.status(400).json({error:'not_an_array'});
-    if(fromIndex<0||fromIndex>=arr.length||toIndex<0||toIndex>=arr.length) return res.status(400).json({error:'index_out_of_range'});
-    const [item]=arr.splice(fromIndex,1);
-    arr.splice(toIndex,0,item);
-    const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
-    content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
-    const dir=path.dirname(chunkFull), oldName=path.basename(chunkFull);
-    const {newName, htmlChanged}=rehashChunkAndRelink(dir, oldName, content);
-    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
-    const publishedAt=bumpPublishedAt();
-    audit(req.ip,'page_chunk_reorder',{path:rel,chunk,arrayPath,fromIndex,toIndex,newName,publishedAt});
-    res.json({ok:true, newChunk: chunk.replace(oldName,newName), htmlRefsUpdated: htmlChanged, publishedAt});
-  }catch(e){
-    res.status(500).json({error:e.message});
-  }
-});
-
 // ── Cross-chunk text propagation ──────────────────────────────────────────
 // Next.js's static export bakes page content into a SEPARATE, per-route JS
 // chunk at build time (getStaticProps/RSC payload), in addition to the one
@@ -1670,39 +1597,18 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   // backup
   writeBackup(full);
   let changed = 0;
-  const propagatePairs = []; // [oldValue, newValue] — plain text blocks only, not img src / href
+  const propagatePairs = []; // [oldValue, newValue] — text blocks only, not img src
   for (const b of blocks) {
-    if (!b.orig) continue;
-    const textChanged = b.newVal != null && b.origVal !== b.newVal;
-    const hrefChanged = typeof b.newHref === 'string' && b.newHref !== (b.origHref || '');
-    if (!textChanged && !hrefChanged) continue;
+    if (!b.orig || b.origVal === b.newVal || b.newVal == null) continue;
     // img blocks: replace src attribute value, not text content
     if (b.orig.match(/^<img\s/i)) {
-      if (!textChanged) continue;
       const newOrig = b.orig.replace(`src="${b.origVal}"`, `src="${encodeHtmlEnts(b.newVal)}"`);
       if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
-      continue;
+    } else {
+      const encoded = encodeHtmlEnts(b.newVal);
+      const newOrig = b.orig.replace(b.origVal, encoded);
+      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; propagatePairs.push([b.origVal, b.newVal]); }
     }
-    let newOrig = b.orig, didChange = false;
-    if (hrefChanged) {
-      const hrefAttr = `href="${encodeHtmlEnts(b.origHref || '')}"`;
-      if (newOrig.includes(hrefAttr)) {
-        newOrig = newOrig.replace(hrefAttr, `href="${encodeHtmlEnts(b.newHref)}"`);
-        didChange = true;
-      }
-    }
-    if (textChanged) {
-      // Paragraph edits may contain a simple <a href="...">text</a> inserted via
-      // the editor's link button — sanitize so only that exact, safe pattern
-      // survives as real markup and any other stray angle brackets are encoded.
-      const encoded = b.type === 'p' ? sanitizeUserHtml(b.newVal) : encodeHtmlEnts(b.newVal);
-      const replaced = newOrig.replace(b.origVal, encoded);
-      if (replaced !== newOrig) {
-        newOrig = replaced; didChange = true;
-        if (!/<a href=/i.test(b.newVal)) propagatePairs.push([b.origVal, b.newVal]);
-      }
-    }
-    if (didChange) { html = html.split(b.orig).join(newOrig); changed++; }
   }
   writeAtomic(full, html);
   // Sync any OTHER page/chunk that independently baked in this same text —
