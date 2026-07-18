@@ -1033,7 +1033,14 @@ function extractBlocks(html, managedValues){
   // Cap raised from 14→80: pages with more real content (e.g. the homepage,
   // which has 20+ genuine paragraphs) were silently losing the tail past the
   // old cap — "editor has way fewer blocks than the page actually has" bug.
-  const pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; let pi=0, kept=0;
+  // The lookahead after "p" is required: without it, [^>]* also matches
+  // <path (SVG icon elements — this page is full of them), so the "opening
+  // tag" match latches onto a <path ...> and then swallows everything up to
+  // the NEXT real </p>, fusing several unrelated elements' text into one
+  // garbled block. Editing/saving that block then replaces the whole
+  // swallowed span, silently deleting the other elements caught in it —
+  // this is the "several text blocks disappeared after editing one" bug.
+  const pr=/<p(?=[\s>])[^>]*>([\s\S]*?)<\/p>/gi; let pi=0, kept=0;
   while((m=pr.exec(safe))!==null && kept<80){
     const inner=m[1];
     const t=cleanInner(inner);
