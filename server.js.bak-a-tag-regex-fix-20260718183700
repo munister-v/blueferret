@@ -1059,12 +1059,7 @@ function extractBlocks(html, managedValues){
   }
 
   // ── Links (<a> with meaningful text) ──
-  // Same word-boundary bug as the <p>/<path> fix above: [^>]* after "a"
-  // would also match <abbr>, <address>, <area>, <article>, <aside>, <audio>
-  // — all common on this site. A false match there swallows text up to the
-  // NEXT real </a>, so a genuine link further down silently never gets its
-  // own block (no visible corruption, just an unreachable link in the editor).
-  const ar=/<a(?=[\s>])[^>]*>([\s\S]*?)<\/a>/gi; let ai=0, aKept=0;
+  const ar=/<a[^>]*>([\s\S]*?)<\/a>/gi; let ai=0, aKept=0;
   while((m=ar.exec(safe))!==null && aKept<60){
     const inner=m[1];
     const t=cleanInner(inner);
@@ -1275,23 +1270,14 @@ function findAllJsonParseBlobs(content){
   while(true){
     const m=content.indexOf(marker, searchFrom);
     if(m<0) break;
-    // The blob's root can be a JSON object OR a JSON array (e.g. the shared
-    // layout chunk's games list is `JSON.parse('[{...},{...}]')`) — find
-    // whichever opening delimiter comes first, not just "{". Scanning only
-    // for "{" here used to latch onto the FIRST element's own opening brace
-    // inside an array, then depth-count only braces — closing after just
-    // that one element and silently ignoring every sibling in the array.
-    let braceStart=-1;
-    for(let p=m+marker.length; p<Math.min(content.length, m+marker.length+10); p++){
-      if(content[p]==='{'||content[p]==='['){ braceStart=p; break; }
-    }
-    if(braceStart<0){ searchFrom=m+marker.length; continue; }
+    const braceStart=content.indexOf('{', m);
+    if(braceStart<0 || braceStart>m+marker.length+5){ searchFrom=m+marker.length; continue; }
     let depth=0,k=braceStart;
     while(k<content.length){
       const c=content[k];
       if(c==='"'){ k++; while(k<content.length&&content[k]!=='"'){ if(content[k]==='\\')k++; k++; } }
-      else if(c==='{'||c==='[') depth++;
-      else if(c==='}'||c===']'){ depth--; if(depth===0){ k++; break; } }
+      else if(c==='{') depth++;
+      else if(c==='}'){ depth--; if(depth===0){ k++; break; } }
       k++;
     }
     const raw=content.slice(braceStart,k);
