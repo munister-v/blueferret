@@ -1832,15 +1832,6 @@ function pcGroupInfo(b, allBlocks){
 }
 function buildBlocksHtml(blocks, tabFilter, search){
   const SEO_LIMITS={title:60,og_title:60,meta_desc:160};
-  // "pc" (page-chunk-content) fields are baked into a page's own JS chunk as
-  // structured data (see loadPageBlocks/fieldLabel) — some of them are read
-  // by a client-side Zod schema with a hard length limit that, if violated,
-  // doesn't just look bad — it throws at hydration and crashes the WHOLE
-  // SITE (every page shares the root layout chunk). shortDescription:260 is
-  // the one that actually did this on 2026-07-18. Keyed by the JSON field
-  // name (last segment of jsPath), since "pc" block ids are array indices
-  // (pc_0, pc_1…), not stable per-field keys.
-  const PC_FIELD_LIMITS={shortDescription:260};
   const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images',pc:'content'};
   const q=(search||'').toLowerCase();
   let filtered=blocks.filter(b=>(typeToTab[b.type]||'texts')===tabFilter);
@@ -1864,7 +1855,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
   return filtered.map(b=>{
     const pcGroup=b.type==='pc'?pcGroupInfo(b,blocks):null;
     const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc')||(b.type==='pc'&&b.value.length>80);
-    const maxLen=SEO_LIMITS[b.id]||(b.type==='pc'?PC_FIELD_LIMITS[(b.jsPath||'').split('.').pop()]:0)||0;
+    const maxLen=SEO_LIMITS[b.id]||0;
     const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
     const curLen=curVal.length;
     const cntClass='char-cnt'+(maxLen&&curLen>maxLen?' over':maxLen&&curLen>maxLen*.85?' warn':'');
@@ -1925,7 +1916,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
       ${b.type==='a'?`<input type="text" data-blkhref="${esc(b.id)}" oninput="markHrefEdited('${esc(b.id)}')" value="${esc(curHref)}" placeholder="Куди веде посилання (href)" style="margin-top:6px;font-size:12px;opacity:.85">`:''}
       ${maxLen?`<div class="char-bar">
         <span id="cc_${esc(b.id)}" class="${cntClass}" data-max="${maxLen}">${curLen} / ${maxLen}</span>
-        <span style="font-size:10px;color:${maxLen===260?'#e5484d':'var(--txt-s)'}">${maxLen===60?'оптим. 50–60':maxLen===160?'оптим. 140–160':maxLen===260?'⚠️ жорсткий ліміт — довший текст зламає весь сайт':''}</span>
+        <span style="font-size:10px;color:var(--txt-s)">${maxLen===60?'оптим. 50–60':'оптим. 140–160'}</span>
       </div>`:''}
     </div>`;
   }).join('');
