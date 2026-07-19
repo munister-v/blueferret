@@ -75,7 +75,20 @@ db.exec(`
   add('always_visible', "always_visible INTEGER DEFAULT 0");
   add('accent_color', "accent_color TEXT DEFAULT ''");
   add('hero_bg_url', "hero_bg_url TEXT DEFAULT ''");
+  add('stage_notes', "stage_notes TEXT DEFAULT '{}'");
 })();
+
+// The four launch stages shown as a progress tracker (à la trymaysia's
+// "Етапи проєкту") — order matters, it's also the funnel order used to
+// figure out which stages are "done" vs "locked" relative to g.status.
+const STAGE_ORDER = ['published', 'preorder', 'production', 'onsale'];
+const STAGE_LABELS = { published: 'Анонс', preorder: 'Передзамовлення', production: 'Виробництво', onsale: 'У продажі' };
+function parseStageNotes(v) {
+  let obj; try { obj = typeof v === 'string' ? JSON.parse(v || '{}') : (v || {}); } catch { obj = {}; }
+  const out = {};
+  for (const k of STAGE_ORDER) out[k] = cleanText(obj[k] || '').slice(0, 400);
+  return out;
+}
 
 const getRow  = db.prepare('SELECT value FROM settings WHERE key=?');
 const upsert  = db.prepare(`INSERT INTO settings(key,value,updated_at) VALUES(?,?,?)
@@ -280,7 +293,7 @@ app.get('/api/admin/stats', requireAuth, (_req, res) => {
 
 // ---------- games CRUD ----------
 function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
-function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), links: parseLinks(r.links), always_visible: !!r.always_visible } : null; }
+function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), links: parseLinks(r.links), always_visible: !!r.always_visible, stage_notes: parseStageNotes(r.stage_notes) } : null; }
 function isPublicGameStatus(status) {
   return !['draft', 'archived'].includes(String(status || 'published'));
 }
@@ -392,18 +405,64 @@ function renderComponentsSection(components){
   const items = lines.map(l => `<li>${inlineMd(escapeHtml(l.replace(/^- /,'')))}</li>`).join('');
   return `<section class="bfg-components"><div class="bfg-components-inner"><h2 class="bfg-section-title">У коробці</h2><ul class="bfg-list">${items}</ul></div></section>`;
 }
+// "Паспорт гри" — trymaysia's stat-card treatment, generalized: any subset of
+// players/age/duration/designer that's actually filled in renders as a card;
+// the whole section disappears if none are set (nothing to show beats an
+// empty dark band).
+function renderPassportSection(players, age, duration, designer){
+  const items = [
+    players && {ico:'👥', label:'Гравці', value:players},
+    age && {ico:'🎂', label:'Вік', value:age},
+    duration && {ico:'⏱', label:'Тривалість', value:duration},
+    designer && {ico:'✏️', label:'Автор', value:designer},
+  ].filter(Boolean);
+  if (!items.length) return '';
+  return `<section class="bfg-passport"><div class="bfg-passport-inner">
+    <p class="bfg-eyebrow">Про гру</p>
+    <h2 class="bfg-section-title light">Паспорт гри</h2>
+    <div class="bfg-passport-grid">
+      ${items.map(it => `<div class="bfg-pp-card">
+        <div class="bfg-pp-ico">${it.ico}</div>
+        <p class="bfg-pp-label">${escapeHtml(it.label.toUpperCase())}</p>
+        <p class="bfg-pp-value">${escapeHtml(it.value)}</p>
+      </div>`).join('')}
+    </div>
+  </div></section>`;
+}
+// "Етапи запуску" — the launch-progress tracker from trymaysia (Анонс →
+// Передзамовлення → Виробництво → У продажі). Opt-in by content: it only
+// appears once the author writes at least one stage note, so a plain
+// already-in-the-shop game doesn't get a "campaign" narrative it doesn't need.
+function renderStagesSection(status, stageNotes){
+  const hasAny = STAGE_ORDER.some(k => stageNotes[k]);
+  if (!hasAny) return '';
+  const curIdx = STAGE_ORDER.indexOf(status);
+  const cards = STAGE_ORDER.map((key, i) => {
+    const state = curIdx < 0 ? 'upcoming' : (i < curIdx ? 'done' : i === curIdx ? 'active' : 'upcoming');
+    const ico = state === 'done' ? '✓' : state === 'active' ? '🔓' : '🔒';
+    const note = stageNotes[key];
+    return `<article class="bfg-stage ${state}">
+      <div class="bfg-stage-head"><span class="bfg-stage-ico">${ico}</span><h3>${escapeHtml(STAGE_LABELS[key])}</h3></div>
+      ${note ? `<p class="bfg-stage-note">${escapeHtml(note)}</p>` : ''}
+    </article>`;
+  }).join('');
+  return `<section class="bfg-stages"><div class="bfg-stages-inner">
+    <p class="bfg-eyebrow">Прогрес</p>
+    <h2 class="bfg-section-title light">Етапи запуску</h2>
+    <div class="bfg-stage-list">${cards}</div>
+  </div></section>`;
+}
 function generatedGameHtml(g) {
   const title = escapeHtml(g.title || g.slug);
   const subtitle = escapeHtml(g.subtitle || g.players || 'Настільна гра Blue Ferret');
   const cover = escapeHtml(g.cover_url || '/images/placeholder-game.svg');
   const statusRaw = (g.status || 'published');
-  const statusLabel = statusRaw === 'draft' ? 'Чернетка' : statusRaw === 'archived' ? 'Архів' : statusRaw === 'preorder' ? 'Передзамовлення' : statusRaw === 'onsale' ? 'У продажі' : 'Анонс';
+  const statusLabel = statusRaw === 'draft' ? 'Чернетка' : statusRaw === 'archived' ? 'Архів' : (STAGE_LABELS[statusRaw] || 'Анонс');
   const players = escapeHtml(g.players || '');
   const age = escapeHtml(g.age || '');
   const duration = escapeHtml(g.duration || '');
   const buy = escapeHtml(g.buy_url || '');
   const designer = escapeHtml(g.designer || '');
-  const chips = [players && `<span class="bf-chip">👥 ${players}</span>`, age && `<span class="bf-chip">🎂 ${age}</span>`, duration && `<span class="bf-chip">⏱ ${duration}</span>`, designer && `<span class="bf-chip">✏️ ${designer}</span>`].filter(Boolean).join('');
   const extraLinks = (Array.isArray(g.links) ? g.links : parseLinks(g.links))
     .map(l => `<a class="bfg-btn secondary" href="${escapeHtml(l.url)}">${escapeHtml(l.label)}</a>`).join('');
   const metaDesc = escapeHtml(String(g.description || '').split(/\n\s*\n/)[0] || 'Опис гри скоро з\'явиться.').replace(/^- /, '');
@@ -413,6 +472,9 @@ function generatedGameHtml(g) {
   // a bespoke page per game — same template, different theming inputs.
   const accent = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(g.accent_color || '') ? g.accent_color : '#009fe3';
   const heroBg = g.hero_bg_url ? escapeHtml(g.hero_bg_url) : '';
+  const stageNotes = parseStageNotes(g.stage_notes);
+  const passportHtml = renderPassportSection(players, age, duration, designer);
+  const stagesHtml = renderStagesSection(statusRaw, stageNotes);
   return `<!doctype html>
 <html lang="uk">
 <head>
@@ -471,9 +533,30 @@ ${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
 .bfg-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
 .bfg-gallery-item{border-radius:16px;overflow:hidden;background:#0f172a;box-shadow:0 14px 34px -18px rgba(15,23,42,.35)}
 .bfg-gallery-item img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
-.bfg-chips{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}
-.bfg-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #dbeafe;background:#fff;border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600;color:#1e3a8a;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .bfg-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
+/* Passport — dark stat-card section right after the hero (players/age/duration/designer) */
+.bfg-passport{background:#0b0f16;padding:56px 18px}
+.bfg-passport-inner{max-width:1120px;margin:0 auto}
+.bfg-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.35);margin:0 0 10px}
+.bfg-section-title.light{color:rgba(255,255,255,.92)}
+.bfg-passport-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:24px}
+.bfg-pp-card{background:#0f1620;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px}
+.bfg-pp-ico{font-size:20px;margin-bottom:10px}
+.bfg-pp-label{font-size:10.5px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);margin:0 0 6px}
+.bfg-pp-value{font-size:16px;font-weight:700;color:rgba(255,255,255,.9);margin:0}
+/* Stages — launch progress tracker, only rendered when the author fills at least one note */
+.bfg-stages{background:#070a0f;padding:56px 18px 80px}
+.bfg-stages-inner{max-width:820px;margin:0 auto}
+.bfg-stage-list{display:flex;flex-direction:column;gap:14px;margin-top:24px}
+.bfg-stage{border-radius:18px;padding:20px 24px;border:1px solid rgba(255,255,255,.08);background:#0f1620}
+.bfg-stage.active{background:linear-gradient(135deg,color-mix(in srgb,var(--bfg-accent) 22%,transparent),#0f1620 60%);border-color:color-mix(in srgb,var(--bfg-accent) 55%,transparent);box-shadow:0 20px 40px -28px color-mix(in srgb,var(--bfg-accent) 80%,transparent)}
+.bfg-stage.done{opacity:.7}
+.bfg-stage.upcoming{opacity:.45}
+.bfg-stage-head{display:flex;align-items:center;gap:12px}
+.bfg-stage-ico{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:rgba(255,255,255,.08);flex-shrink:0}
+.bfg-stage.active .bfg-stage-ico{background:color-mix(in srgb,var(--bfg-accent) 30%,transparent)}
+.bfg-stage-head h3{margin:0;font-size:18px;font-weight:700;color:rgba(255,255,255,.92)}
+.bfg-stage-note{margin:10px 0 0 44px;font-size:14px;line-height:1.6;color:rgba(255,255,255,.5)}
 .bfg-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:14px;text-decoration:none;font-weight:700;font-size:15px;transition:all .2s}
 .bfg-btn.primary{background:var(--bfg-accent);color:#fff;box-shadow:0 12px 30px -12px color-mix(in srgb,var(--bfg-accent) 70%,transparent)}
 .bfg-btn.primary:hover{filter:brightness(.92);transform:translateY(-1px)}
@@ -512,7 +595,6 @@ ${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
       <h1 class="bfg-title">${title}</h1>
       <p class="bfg-sub">${subtitle}</p>
       <div class="bfg-desc">${renderDescriptionBlocks(g.description)}</div>
-      <div class="bfg-chips">${chips}</div>
       <div class="bfg-actions">
         ${buy ? `<a class="bfg-btn primary" href="${buy}">Придбати →</a>` : ''}
         ${extraLinks}
@@ -523,6 +605,8 @@ ${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
       <img src="${cover}" alt="${title}" loading="eager">
     </figure>
   </section>
+  ${passportHtml}
+  ${stagesHtml}
   ${renderComponentsSection(g.components)}
   ${renderGallerySection(g.gallery, title)}
   <footer class="bfg-footer">
@@ -570,9 +654,9 @@ function removeGeneratedGamePage(slug) {
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,accent_color,hero_bg_url,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@accent_color,@hero_bg_url,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,accent_color=@accent_color,hero_bg_url=@hero_bg_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,accent_color,hero_bg_url,stage_notes,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@accent_color,@hero_bg_url,@stage_notes,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,accent_color=@accent_color,hero_bg_url=@hero_bg_url,stage_notes=@stage_notes,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
 function syncPublicGames() {
@@ -635,6 +719,7 @@ function gameBody(b, ex={}) {
     always_visible:(b.always_visible!==undefined?!!b.always_visible:!!ex.always_visible)?1:0,
     accent_color:cleanText(b.accent_color??ex.accent_color??''),
     hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''),
+    stage_notes:JSON.stringify(parseStageNotes(b.stage_notes!==undefined?b.stage_notes:ex.stage_notes)),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 

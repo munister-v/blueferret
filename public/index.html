@@ -892,6 +892,7 @@ function renderGamesList(){
         <select class="link-select" onchange="quickSetGameStatus(${g.id},this.value)" title="Мітка на картці (текстовий бейдж)">
           <option value="published" ${g.status==='published'?'selected':''}>Мітка: Анонс</option>
           <option value="preorder" ${g.status==='preorder'?'selected':''}>Мітка: Передзамовлення</option>
+          <option value="production" ${g.status==='production'?'selected':''}>Мітка: Виробництво</option>
           <option value="onsale" ${g.status==='onsale'?'selected':''}>Мітка: У продажі</option>
           <option value="draft" ${g.status==='draft'?'selected':''}>Прибрати з сайту (чернетка)</option>
           <option value="archived" ${g.status==='archived'?'selected':''}>Прибрати з сайту (архів)</option>
@@ -1057,6 +1058,7 @@ function renderGameEditor(){
               <optgroup label="Показується в каталозі">
                 <option value="published" ${(g.status||'published')==='published'?'selected':''}>Анонс</option>
                 <option value="preorder" ${g.status==='preorder'?'selected':''}>Передзамовлення</option>
+                <option value="production" ${g.status==='production'?'selected':''}>Виробництво</option>
                 <option value="onsale" ${g.status==='onsale'?'selected':''}>У продажі</option>
               </optgroup>
               <optgroup label="Прибрати з сайту">
@@ -1103,6 +1105,19 @@ function renderGameEditor(){
             <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_hero_bg',updatePreview)">📁</button>
           </div>
           <div class="field-help">Велике зображення (арт, персонаж, розкладка) напівпрозоро на фоні заголовка — як у «Тримайся». Необов'язково.</div></div>
+      </div>
+
+      <div class="ged-section">
+        <h4>Етапи запуску (як у «Тримайся»)</h4>
+        <div class="field-help" style="margin-bottom:14px">Опціонально. Заповніть хоч одне поле — і на сторінці гри з'явиться трекер прогресу з 4 етапів. Порожньо — трекера не буде, сторінка лишиться простою.</div>
+        <div class="field"><label class="flbl">Анонс</label>
+          <textarea id="g_stage_published" style="min-height:52px" placeholder="Напр.: Ми раді представити нову гру!">${esc(g.stage_notes?.published)}</textarea></div>
+        <div class="field"><label class="flbl">Передзамовлення</label>
+          <textarea id="g_stage_preorder" style="min-height:52px" placeholder="Що відбувається на цьому етапі">${esc(g.stage_notes?.preorder)}</textarea></div>
+        <div class="field"><label class="flbl">Виробництво</label>
+          <textarea id="g_stage_production" style="min-height:52px" placeholder="Що відбувається на цьому етапі">${esc(g.stage_notes?.production)}</textarea></div>
+        <div class="field"><label class="flbl">У продажі</label>
+          <textarea id="g_stage_onsale" style="min-height:52px" placeholder="Що відбувається на цьому етапі">${esc(g.stage_notes?.onsale)}</textarea></div>
       </div>
 
       <div class="ged-section">
@@ -1419,6 +1434,12 @@ async function saveGame(mode='exit'){
       always_visible:!!$('#g_always_visible')?.checked,
       accent_color:$('#g_accent_color')?.value?.trim()||'',
       hero_bg_url:$('#g_hero_bg')?.value?.trim()||'',
+      stage_notes:{
+        published:$('#g_stage_published')?.value?.trim()||'',
+        preorder:$('#g_stage_preorder')?.value?.trim()||'',
+        production:$('#g_stage_production')?.value?.trim()||'',
+        onsale:$('#g_stage_onsale')?.value?.trim()||'',
+      },
       sort_order:+$('#g_sort')?.value||0};
     const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');

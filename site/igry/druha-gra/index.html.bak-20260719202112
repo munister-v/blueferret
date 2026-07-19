@@ -3,21 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Третя гра | Blue Ferret</title>
-<meta name="description" content="Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети.">
-<link rel="canonical" href="https://blueferret.com.ua/igry/tretya-gra/">
-<meta property="og:title" content="Третя гра | Blue Ferret">
-<meta property="og:description" content="Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети.">
-<meta property="og:url" content="https://blueferret.com.ua/igry/tretya-gra/">
+<title>Друга гра | Blue Ferret</title>
+<meta name="description" content="Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.">
+<link rel="canonical" href="https://blueferret.com.ua/igry/druha-gra/">
+<meta property="og:title" content="Друга гра | Blue Ferret">
+<meta property="og:description" content="Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.">
+<meta property="og:url" content="https://blueferret.com.ua/igry/druha-gra/">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://blueferret.com.ua/images/placeholder-game.svg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Третя гра | Blue Ferret">
+<meta name="twitter:title" content="Друга гра | Blue Ferret">
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="stylesheet" href="/_next/static/css/a80874b32dc71380.css">
 <link rel="stylesheet" href="/bf.css?v=8">
 <style>
-:root{--bfg-accent:#009fe3}
+:root{--bfg-accent:#e0468f}
 body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-serif}
 .bfg-wrap{min-height:100vh;background:radial-gradient(ellipse 100% 70% at 50% -10%,color-mix(in srgb,var(--bfg-accent) 18%,transparent),transparent 60%),linear-gradient(135deg,#f6fbff,#fff,#eefaf3)}
 
@@ -111,10 +111,10 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
   </header>
   <section class="bfg-shell">
     <div class="bfg-copy">
-      <span class="bfg-kicker">Анонс</span>
-      <h1 class="bfg-title">Третя гра</h1>
-      <p class="bfg-sub">Обʼєднайся з друзями</p>
-      <div class="bfg-desc"><p>Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети.</p></div>
+      <span class="bfg-kicker">Виробництво</span>
+      <h1 class="bfg-title">Друга гра</h1>
+      <p class="bfg-sub">Кожен хід - нова історія</p>
+      <div class="bfg-desc"><p>Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.</p></div>
       <div class="bfg-actions">
         
         
@@ -122,11 +122,45 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       </div>
     </div>
     <figure class="bfg-cover">
-      <img src="/images/placeholder-game.svg" alt="Третя гра" loading="eager">
+      <img src="/images/placeholder-game.svg" alt="Друга гра" loading="eager">
     </figure>
   </section>
-  
-  
+  <section class="bfg-passport"><div class="bfg-passport-inner">
+    <p class="bfg-eyebrow">Про гру</p>
+    <h2 class="bfg-section-title light">Паспорт гри</h2>
+    <div class="bfg-passport-grid">
+      <div class="bfg-pp-card">
+        <div class="bfg-pp-ico">👥</div>
+        <p class="bfg-pp-label">ГРАВЦІ</p>
+        <p class="bfg-pp-value">2-4</p>
+      </div><div class="bfg-pp-card">
+        <div class="bfg-pp-ico">🎂</div>
+        <p class="bfg-pp-label">ВІК</p>
+        <p class="bfg-pp-value">8+</p>
+      </div><div class="bfg-pp-card">
+        <div class="bfg-pp-ico">⏱</div>
+        <p class="bfg-pp-label">ТРИВАЛІСТЬ</p>
+        <p class="bfg-pp-value">30-45 хв</p>
+      </div>
+    </div>
+  </div></section>
+  <section class="bfg-stages"><div class="bfg-stages-inner">
+    <p class="bfg-eyebrow">Прогрес</p>
+    <h2 class="bfg-section-title light">Етапи запуску</h2>
+    <div class="bfg-stage-list"><article class="bfg-stage done">
+      <div class="bfg-stage-head"><span class="bfg-stage-ico">✓</span><h3>Анонс</h3></div>
+      <p class="bfg-stage-note">Анонсували гру в липні 2026.</p>
+    </article><article class="bfg-stage done">
+      <div class="bfg-stage-head"><span class="bfg-stage-ico">✓</span><h3>Передзамовлення</h3></div>
+      
+    </article><article class="bfg-stage active">
+      <div class="bfg-stage-head"><span class="bfg-stage-ico">🔓</span><h3>Виробництво</h3></div>
+      <p class="bfg-stage-note">Друкуємо перший тираж карток.</p>
+    </article><article class="bfg-stage upcoming">
+      <div class="bfg-stage-head"><span class="bfg-stage-ico">🔒</span><h3>У продажі</h3></div>
+      
+    </article></div>
+  </div></section>
   
   
   <footer class="bfg-footer">
