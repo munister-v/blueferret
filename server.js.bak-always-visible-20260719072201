@@ -71,7 +71,6 @@ db.exec(`
   add('designer', "designer TEXT DEFAULT ''");
   add('components', "components TEXT DEFAULT ''");
   add('links', "links TEXT DEFAULT '[]'");
-  add('always_visible', "always_visible INTEGER DEFAULT 0");
 })();
 
 const getRow  = db.prepare('SELECT value FROM settings WHERE key=?');
@@ -277,7 +276,7 @@ app.get('/api/admin/stats', requireAuth, (_req, res) => {
 
 // ---------- games CRUD ----------
 function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
-function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), links: parseLinks(r.links), always_visible: !!r.always_visible } : null; }
+function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), links: parseLinks(r.links) } : null; }
 function isPublicGameStatus(status) {
   return !['draft', 'archived'].includes(String(status || 'published'));
 }
@@ -556,49 +555,16 @@ function removeGeneratedGamePage(slug) {
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
 function syncPublicGames() {
   const rows = gAll.all();
   for (const row of rows) writeGeneratedGamePage(row);
   regenGamesCatalog();
-  syncGamesChunkVisibility();
   try { execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); } catch {}
-}
-
-// The /igry catalog's own React chunk decides which games show as real
-// clickable cards vs. locked "coming soon" placeholders via a slug check
-// baked into the component's JS source (originally hardcoded to a single
-// slug: "trymaysia"!==e.slug). We keep it baked into the SOURCE, as a slug
-// whitelist array literal, rather than adding a field to the baked JSON
-// props — the props blob is validated client-side by a strict Zod schema
-// (chunk 1930) that rejects any unrecognized key and crashes the whole
-// site (all pages share that schema chunk). A source-code array literal
-// never touches that schema, so it's safe to update on every game save.
-function syncGamesChunkVisibility() {
-  const igryHtmlPath = path.join(PAGES_ROOT, 'igry', 'index.html');
-  if (!fs.existsSync(igryHtmlPath)) return;
-  let pageHtml; try { pageHtml = fs.readFileSync(igryHtmlPath, 'utf8'); } catch { return; }
-  const visibleSlugs = gAll.all().filter(r => r.always_visible).map(r => r.slug);
-  const arrLiteral = JSON.stringify(visibleSlugs);
-  // Matches the condition regardless of which prior form it's in
-  // (hardcoded single-slug, a stray e.alwaysVisible reference, or an
-  // already-migrated array literal) — always rewritten to the current list.
-  const condRe = /let l=!(?:"trymaysia"!==e\.slug|e\.alwaysVisible|\[[^\]]*\]\.includes\(e\.slug\))&&"announcement"===e\.status/;
-  for (const ref of findPageOwnChunks(pageHtml)) {
-    const chunkFull = path.join(SITE_ROOT, ref);
-    if (!chunkFull.startsWith(SITE_ROOT) || !fs.existsSync(chunkFull)) continue;
-    const dir = path.dirname(chunkFull), oldName = path.basename(chunkFull);
-    let content; try { content = fs.readFileSync(chunkFull, 'utf8'); } catch { continue; }
-    if (!condRe.test(content)) continue;
-    const newCond = `let l=!${arrLiteral}.includes(e.slug)&&"announcement"===e.status`;
-    if (content.match(condRe)[0] === newCond) continue;
-    content = content.replace(condRe, newCond);
-    rehashChunkAndRelink(dir, oldName, content);
-  }
 }
 
 function parseLinks(v) {
@@ -618,7 +584,6 @@ function gameBody(b, ex={}) {
     age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:cleanText(b.buy_url??ex.buy_url??''),
     designer:cleanText(b.designer??ex.designer??''), components:cleanText(b.components??ex.components??''),
     links:JSON.stringify(links),
-    always_visible:(b.always_visible!==undefined?!!b.always_visible:!!ex.always_visible)?1:0,
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 

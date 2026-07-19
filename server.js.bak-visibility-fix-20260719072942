@@ -569,35 +569,47 @@ function syncPublicGames() {
   try { execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); } catch {}
 }
 
-// The /igry catalog's own React chunk decides which games show as real
-// clickable cards vs. locked "coming soon" placeholders via a slug check
-// baked into the component's JS source (originally hardcoded to a single
-// slug: "trymaysia"!==e.slug). We keep it baked into the SOURCE, as a slug
-// whitelist array literal, rather than adding a field to the baked JSON
-// props — the props blob is validated client-side by a strict Zod schema
-// (chunk 1930) that rejects any unrecognized key and crashes the whole
-// site (all pages share that schema chunk). A source-code array literal
-// never touches that schema, so it's safe to update on every game save.
+// The /igry catalog's own React chunk bakes a `games` array (with an
+// `alwaysVisible` flag) used to decide which games show as real clickable
+// cards vs. locked "coming soon" placeholders. That flag used to be a
+// hardcoded slug check ("trymaysia"!==e.slug) baked in at build time —
+// this keeps it in sync with the DB's `always_visible` column instead, so
+// the admin checkbox actually controls live behavior.
 function syncGamesChunkVisibility() {
   const igryHtmlPath = path.join(PAGES_ROOT, 'igry', 'index.html');
   if (!fs.existsSync(igryHtmlPath)) return;
   let pageHtml; try { pageHtml = fs.readFileSync(igryHtmlPath, 'utf8'); } catch { return; }
-  const visibleSlugs = gAll.all().filter(r => r.always_visible).map(r => r.slug);
-  const arrLiteral = JSON.stringify(visibleSlugs);
-  // Matches the condition regardless of which prior form it's in
-  // (hardcoded single-slug, a stray e.alwaysVisible reference, or an
-  // already-migrated array literal) — always rewritten to the current list.
-  const condRe = /let l=!(?:"trymaysia"!==e\.slug|e\.alwaysVisible|\[[^\]]*\]\.includes\(e\.slug\))&&"announcement"===e\.status/;
+  const visBySlug = new Map(gAll.all().map(r => [r.slug, !!r.always_visible]));
   for (const ref of findPageOwnChunks(pageHtml)) {
     const chunkFull = path.join(SITE_ROOT, ref);
     if (!chunkFull.startsWith(SITE_ROOT) || !fs.existsSync(chunkFull)) continue;
     const dir = path.dirname(chunkFull), oldName = path.basename(chunkFull);
     let content; try { content = fs.readFileSync(chunkFull, 'utf8'); } catch { continue; }
-    if (!condRe.test(content)) continue;
-    const newCond = `let l=!${arrLiteral}.includes(e.slug)&&"announcement"===e.status`;
-    if (content.match(condRe)[0] === newCond) continue;
-    content = content.replace(condRe, newCond);
-    rehashChunkAndRelink(dir, oldName, content);
+    let changed = false;
+    // One-time migration from the old hardcoded slug exception to the
+    // data-driven flag; harmless no-op once already migrated.
+    if (content.includes('"trymaysia"!==e.slug')) {
+      content = content.split('"trymaysia"!==e.slug').join('!e.alwaysVisible');
+      changed = true;
+    }
+    const blobs = findAllJsonParseBlobs(content);
+    for (let bi = blobs.length - 1; bi >= 0; bi--) {
+      const blob = blobs[bi];
+      if (!Array.isArray(blob.obj)) continue;
+      let blobChanged = false;
+      for (const entry of blob.obj) {
+        if (entry && typeof entry === 'object' && entry.slug && visBySlug.has(entry.slug)) {
+          const want = visBySlug.get(entry.slug);
+          if (!!entry.alwaysVisible !== want) { entry.alwaysVisible = want; blobChanged = true; }
+        }
+      }
+      if (blobChanged) {
+        const newBlob = JSON.stringify(blob.obj).replace(/'/g, "\\'");
+        content = content.slice(0, blob.start) + newBlob + content.slice(blob.end);
+        changed = true;
+      }
+    }
+    if (changed) rehashChunkAndRelink(dir, oldName, content);
   }
 }
 

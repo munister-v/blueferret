@@ -1033,12 +1033,6 @@ function renderGameEditor(){
               <option value="onsale" ${g.status==='onsale'?'selected':''}>🛒 onsale</option>
             </select></div>
         </div>
-        <div class="field">
-          <label class="flbl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="g_always_visible" ${g.always_visible?'checked':''} onchange="updatePreview()" style="width:auto">
-            Показувати як активну картку в каталозі
-          </label>
-          <div class="field-help">Якщо вимкнено — на сторінці «Наші ігри» гра показується заблокованою карткою «скоро» замість клікабельної.</div></div>
         <div class="field"><label class="flbl">Підзаголовок</label>
           <input type="text" id="g_subtitle" value="${esc(g.subtitle)}" placeholder="Короткий опис" oninput="updatePreview()"></div>
         <div class="field"><label class="flbl">Опис</label>
@@ -1364,7 +1358,6 @@ async function saveGame(mode='exit'){
       players:$('#g_players')?.value,age:$('#g_age')?.value,duration:$('#g_duration')?.value,
       buy_url:$('#g_buy')?.value,designer:$('#g_designer')?.value,components:$('#g_components')?.value,
       links:gameLinks.filter(l=>l.label?.trim()&&l.url?.trim()),
-      always_visible:!!$('#g_always_visible')?.checked,
       sort_order:+$('#g_sort')?.value||0};
     const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
