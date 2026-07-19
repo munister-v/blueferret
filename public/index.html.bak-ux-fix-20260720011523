@@ -660,9 +660,9 @@ const NAV=[
   {g:'Огляд',items:[{id:'dashboard',ico:'📊',l:'Дашборд'}]},
   {g:'Контент',items:[
     {id:'games',ico:'🎲',l:'Ігри'},
-    {id:'kik',ico:'🚀',l:'Краудфандинг (КІК)'},
+    {id:'kik',ico:'🚀',l:'КІК-проекти'},
     {id:'pages',ico:'📄',l:'Сторінки'},
-    {id:'sitetext',ico:'🌐',l:'Тексти (навігація, футер)'},
+    {id:'sitetext',ico:'🌐',l:'Тексти сайту'},
     {id:'media',ico:'🖼',l:'Медіа'},
   ]},
   {g:'Налаштування',items:[
@@ -878,39 +878,24 @@ function renderGamesList(){
   const pub=games.filter(g=>g.status==='published').length;
   const dft=games.filter(g=>g.status==='draft').length;
   const arc=games.filter(g=>g.status==='archived').length;
-  // Unified status label for the list — combines status + always_visible into one clear state
-  function gameStatusLabel(g){
-    if(g.status==='draft')   return {cls:'b-r', ico:'📝', txt:'Чернетка', sub:'не показується на сайті'};
-    if(g.status==='archived')return {cls:'b-s', ico:'📦', txt:'Архів',    sub:'не показується на сайті'};
-    const labelMap={published:'Анонс',preorder:'Передзамовлення',production:'Виробництво',onsale:'У продажі'};
-    const label=labelMap[g.status]||g.status;
-    if(g.always_visible) return {cls:'b-g', ico:'🔓', txt:label,           sub:'на сайті · клікабельна'};
-    return                       {cls:'b-s', ico:'🔒', txt:label+' · «скоро»', sub:'на сайті · заблокована'};
-  }
-  const rows=filtered.length?filtered.map(g=>{
-    const sl=gameStatusLabel(g);
-    const isLive=g.status!=='draft'&&g.status!=='archived';
-    return `<tr>
+  const rows=filtered.length?filtered.map(g=>`<tr>
     <td style="width:54px">${g.cover_url?`<img class="thumb" src="${esc(g.cover_url)}" onerror="this.outerHTML='<span class=&quot;thumb-empty&quot;>?</span>'">`:`<span class="thumb-empty">🎲</span>`}</td>
     <td><div style="font-weight:700">${esc(g.title)}</div><span class="url-pill"><code>${esc(publicGameUrl(g))}</code></span></td>
     <td>
-      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
-        <span class="badge ${sl.cls}" style="font-size:11.5px">${sl.ico} ${esc(sl.txt)}</span>
-        <span style="font-size:10.5px;color:var(--txt-s)">${esc(sl.sub)}</span>
-        <select class="link-select" onchange="quickSetStatusAndVisible(${g.id},this.value)" title="Змінити статус гри" style="margin-top:2px">
-          <optgroup label="На сайті (показується в каталозі)">
-            <option value="published_locked"  ${isLive&&g.status==='published' &&!g.always_visible?'selected':''}>Анонс — «скоро» (заблокована)</option>
-            <option value="published_open"    ${isLive&&g.status==='published' && g.always_visible?'selected':''}>Анонс — клікабельна</option>
-            <option value="preorder_locked"   ${isLive&&g.status==='preorder'  &&!g.always_visible?'selected':''}>Передзамовлення — «скоро»</option>
-            <option value="preorder_open"     ${isLive&&g.status==='preorder'  && g.always_visible?'selected':''}>Передзамовлення — клікабельна</option>
-            <option value="production_locked" ${isLive&&g.status==='production'&&!g.always_visible?'selected':''}>Виробництво — «скоро»</option>
-            <option value="production_open"   ${isLive&&g.status==='production'&& g.always_visible?'selected':''}>Виробництво — клікабельна</option>
-            <option value="onsale_open"       ${isLive&&g.status==='onsale'?'selected':''}>У продажі — клікабельна</option>
-          </optgroup>
-          <optgroup label="Прихована (не показується)">
-            <option value="draft_hidden"    ${g.status==='draft'   ?'selected':''}>📝 Чернетка</option>
-            <option value="archived_hidden" ${g.status==='archived'?'selected':''}>📦 Архів</option>
-          </optgroup>
+      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start">
+        ${(g.status==='draft'||g.status==='archived')
+          ?`<span class="badge ${g.status==='draft'?'b-r':'b-s'}" title="Не показується в каталозі /igry/ взагалі">${g.status==='draft'?'📝 Чернетка':'📦 Архів'} · поза сайтом</span>`
+          :`<button class="badge ${g.always_visible?'b-g':'b-s'}" style="cursor:pointer;border:none;font:inherit" onclick="quickToggleVisible(${g.id},${g.always_visible?'false':'true'})"
+              title="${g.always_visible?'Клік — заблокувати картку (стане «скоро»)':'Клік — зробити картку активною й клікабельною на сайті'}">
+              ${g.always_visible?'🔓 На сайті — клікабельна':'🔒 На сайті — заблокована («скоро»)'}
+            </button>`}
+        <select class="link-select" onchange="quickSetGameStatus(${g.id},this.value)" title="Мітка на картці (текстовий бейдж)">
+          <option value="published" ${g.status==='published'?'selected':''}>Мітка: Анонс</option>
+          <option value="preorder" ${g.status==='preorder'?'selected':''}>Мітка: Передзамовлення</option>
+          <option value="production" ${g.status==='production'?'selected':''}>Мітка: Виробництво</option>
+          <option value="onsale" ${g.status==='onsale'?'selected':''}>Мітка: У продажі</option>
+          <option value="draft" ${g.status==='draft'?'selected':''}>Прибрати з сайту (чернетка)</option>
+          <option value="archived" ${g.status==='archived'?'selected':''}>Прибрати з сайту (архів)</option>
         </select>
       </div>
     </td>
@@ -921,8 +906,7 @@ function renderGamesList(){
       <button class="btn btn-g btn-sm" onclick="duplicateGame(${g.id})">⎘ Дубль</button>
       <button class="btn btn-g btn-sm" onclick="openGameEditor(${g.id})">✏️ Редагувати</button>
     </td>
-  </tr>`;
-  }).join(''):`<tr><td colspan="5" style="text-align:center;padding:36px;color:var(--txt-m)">${gameFilter==='all'?'Ігор ще немає — додайте першу!':'Немає ігор з таким статусом'}</td></tr>`;
+  </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;padding:36px;color:var(--txt-m)">${gameFilter==='all'?'Ігор ще немає — додайте першу!':'Немає ігор з таким статусом'}</td></tr>`;
   return `<div class="card">
     <div class="ch">
       <div><div class="ct">🎲 Ігри</div><div class="cs">${games.length} всього · ${filtered.length} показано</div></div>
@@ -939,7 +923,7 @@ function renderGamesList(){
       <button class="ftab${gameFilter==='draft'?' on':''}" onclick="gameFilter='draft';render()">📝 Чернетки<span class="cnt">${dft}</span></button>
       ${arc?`<button class="ftab${gameFilter==='archived'?' on':''}" onclick="gameFilter='archived';render()">📦 Архів<span class="cnt">${arc}</span></button>`:''}
     </div>
-    <table class="tbl"><thead><tr><th></th><th>Назва</th><th>Статус на сайті</th><th>Характеристики</th><th></th></tr></thead>
+    <table class="tbl"><thead><tr><th></th><th>Назва</th><th>Статус <span style="font-weight:400;opacity:.5">(клікніть)</span></th><th>Характеристики</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 
@@ -952,24 +936,6 @@ async function quickToggleStatus(type,id,current){
   }catch(e){toast(e.message,'er');}
 }
 window.quickToggleStatus=quickToggleStatus;
-// Unified handler: value format is "status_visibility" e.g. "published_open", "draft_hidden"
-async function quickSetStatusAndVisible(id,combined){
-  try{
-    const parts=combined.split('_');
-    // last segment is 'open'/'locked'/'hidden'; everything before is the status
-    const vis=parts[parts.length-1];
-    const status=parts.slice(0,-1).join('_');
-    const always_visible = vis==='open';
-    await api('PUT',`/api/admin/games/${id}`,{status, always_visible});
-    games=await api('GET','/api/admin/games');
-    const labels={published:'Анонс',preorder:'Передзамовлення',production:'Виробництво',onsale:'У продажі',draft:'Чернетка',archived:'Архів'};
-    const visLabel=vis==='open'?' · клікабельна':vis==='locked'?' · «скоро»':'';
-    toast(`${labels[status]||status}${visLabel} ✓`,'ok');
-    render();
-  }catch(e){toast(e.message,'er');}
-}
-window.quickSetStatusAndVisible=quickSetStatusAndVisible;
-// keep for backward compat with any inline calls that may still exist
 async function quickSetGameStatus(id,status){
   try{
     await api('PUT',`/api/admin/games/${id}`,{status});
@@ -1087,27 +1053,26 @@ function renderGameEditor(){
             <input type="text" id="g_slug" value="${esc(g.slug)}" placeholder="nazva-gry">
             <div class="field-help">Публічна адреса: <span id="g_public_url">${esc(publicGameUrl(g))}</span></div>
             <div id="g_slug_err" class="field-error">Slug може містити тільки літери, цифри та дефіси.</div></div>
-          <div class="field"><label class="flbl">Статус на сайті</label>
-            <select id="g_combined_status" onchange="onCombinedStatusChange()" style="font-size:13px">
-              <optgroup label="На сайті (показується в каталозі)">
-                <option value="published_locked"  ${(g.status||'published')==='published'&&!g.always_visible?'selected':''}>Анонс — картка «скоро» (заблокована)</option>
-                <option value="published_open"    ${(g.status||'published')==='published'&& g.always_visible?'selected':''}>Анонс — картка клікабельна ✓</option>
-                <option value="preorder_locked"   ${g.status==='preorder' &&!g.always_visible?'selected':''}>Передзамовлення — «скоро»</option>
-                <option value="preorder_open"     ${g.status==='preorder' && g.always_visible?'selected':''}>Передзамовлення — клікабельна ✓</option>
-                <option value="production_locked" ${g.status==='production'&&!g.always_visible?'selected':''}>Виробництво — «скоро»</option>
-                <option value="production_open"   ${g.status==='production'&& g.always_visible?'selected':''}>Виробництво — клікабельна ✓</option>
-                <option value="onsale_open"       ${g.status==='onsale'?'selected':''}>У продажі — клікабельна ✓</option>
+          <div class="field"><label class="flbl">Мітка на картці</label>
+            <select id="g_status" onchange="updatePreview()">
+              <optgroup label="Показується в каталозі">
+                <option value="published" ${(g.status||'published')==='published'?'selected':''}>Анонс</option>
+                <option value="preorder" ${g.status==='preorder'?'selected':''}>Передзамовлення</option>
+                <option value="production" ${g.status==='production'?'selected':''}>Виробництво</option>
+                <option value="onsale" ${g.status==='onsale'?'selected':''}>У продажі</option>
               </optgroup>
-              <optgroup label="Прихована (не показується на сайті)">
-                <option value="draft_hidden"    ${g.status==='draft'   ?'selected':''}>📝 Чернетка — не показувати</option>
-                <option value="archived_hidden" ${g.status==='archived'?'selected':''}>📦 Архів — не показувати</option>
+              <optgroup label="Прибрати з сайту">
+                <option value="draft" ${g.status==='draft'?'selected':''}>Чернетка (не показувати)</option>
+                <option value="archived" ${g.status==='archived'?'selected':''}>Архів (не показувати)</option>
               </optgroup>
-            </select>
-            <div class="field-help" id="g_status_hint" style="margin-top:6px"></div>
-            <input type="hidden" id="g_status" value="${esc(g.status||'published')}">
-            <input type="hidden" id="g_always_visible" value="${g.always_visible?'1':'0'}">
-          </div>
+            </select></div>
         </div>
+        <div class="field visibility-toggle">
+          <label class="flbl" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0">
+            <input type="checkbox" id="g_always_visible" ${g.always_visible?'checked':''} onchange="updatePreview()" style="width:auto">
+            Картка клікабельна (веде на сторінку гри)
+          </label>
+          <div class="field-help">Вимкнено — картка на «Наші ігри» показана, але заблокована написом «скоро». Це той самий перемикач, що й у списку ігор.</div></div>
         <div class="field"><label class="flbl">Підзаголовок</label>
           <input type="text" id="g_subtitle" value="${esc(g.subtitle)}" placeholder="Короткий опис" oninput="updatePreview()"></div>
         <div class="field"><label class="flbl">Опис</label>
@@ -1196,11 +1161,12 @@ function renderGameEditor(){
       </div>
 
       <div class="ged-actions">
-        ${editingGame?`<button class="btn btn-d btn-sm" onclick="deleteGame(${editingGame.id})" title="Видалити гру">🗑</button>`:''}
-        ${editingGame?`<button class="btn btn-g btn-sm" onclick="openPublicGame(${editingGame.id})">↗ На сайт</button>`:''}
-        <button class="btn btn-g btn-sm" onclick="backToGames()">← Скасувати</button>
-        <button class="btn btn-g btn-sm" onclick="saveGame('open')">💾 Зберегти і відкрити ↗</button>
-        <button class="btn btn-p" onclick="saveGame('exit')">💾 Зберегти</button>
+        ${editingGame?`<button class="btn btn-d btn-sm" onclick="deleteGame(${editingGame.id})">🗑 Видалити</button>`:''}
+        ${editingGame?`<button class="btn btn-g btn-sm" onclick="copyGameUrl(${editingGame.id})">⧉ URL</button><button class="btn btn-g btn-sm" onclick="openPublicGame(${editingGame.id})">↗ Сайт</button>`:''}
+        <button class="btn btn-g btn-sm" onclick="backToGames()">Скасувати</button>
+        <button class="btn btn-g btn-sm" onclick="saveGame('stay')">💾 Зберегти і лишитись</button>
+        <button class="btn btn-g btn-sm" onclick="saveGame('open')">↗ Зберегти і відкрити</button>
+        <button class="btn btn-p" onclick="saveGame('exit')">💾 Зберегти гру</button>
       </div>
     </div>
 
@@ -1345,31 +1311,6 @@ function setGamePvMode(mode){
 }
 window.setGamePvMode=setGamePvMode;
 
-// Sync hidden g_status / g_always_visible from the unified combined select
-function onCombinedStatusChange(){
-  const sel=$('#g_combined_status'); if(!sel)return;
-  const val=sel.value; // e.g. "published_open", "draft_hidden"
-  const parts=val.split('_');
-  const vis=parts[parts.length-1];
-  const status=parts.slice(0,-1).join('_');
-  const stEl=$('#g_status'), avEl=$('#g_always_visible');
-  if(stEl) stEl.value=status;
-  if(avEl) avEl.value=(vis==='open')?'1':'0';
-  // update hint
-  const hint=$('#g_status_hint');
-  if(hint){
-    const hintMap={
-      'open':   '\u2705 \u041a\u0430\u0440\u0442\u043a\u0430 \u043f\u043e\u043a\u0430\u0437\u0443\u0454\u0442\u044c\u0441\u044f \u0432 \u043a\u0430\u0442\u0430\u043b\u043e\u0437\u0456 \u0456 \u0432\u0435\u0434\u0435 \u043d\u0430 \u0441\u0442\u043e\u0440\u0456\u043d\u043a\u0443 \u0433\u0440\u0438.',
-      'locked': '\ud83d\udd12 \u041a\u0430\u0440\u0442\u043a\u0430 \u043f\u043e\u043a\u0430\u0437\u0443\u0454\u0442\u044c\u0441\u044f, \u0430\u043b\u0435 \u0437\u0430\u0431\u043b\u043e\u043a\u043e\u0432\u0430\u043d\u0430 \u043d\u0430\u043f\u0438\u0441\u043e\u043c \u00ab\u0441\u043a\u043e\u0440\u043e\u00bb \u2014 \u043d\u0435 \u043a\u043b\u0456\u043a\u0430\u0431\u0435\u043b\u044c\u043d\u0430.',
-      'hidden': '\u{1f5c1}\ufe0f \u041d\u0435 \u043f\u043e\u043a\u0430\u0437\u0443\u0454\u0442\u044c\u0441\u044f \u043d\u0430 \u0441\u0430\u0439\u0442\u0456 \u0432\u0437\u0430\u0433\u0430\u043b\u0456.',
-    };
-    hint.textContent=hintMap[vis]||'';
-  }
-  updatePreview();
-  setEditorDirty(true);
-}
-window.onCombinedStatusChange=onCombinedStatusChange;
-
 function updatePreview(){
   const title=$('#g_title')?.value||'Назва гри';
   const sub=$('#g_subtitle')?.value||'';
@@ -1490,7 +1431,7 @@ async function saveGame(mode='exit'){
       players:$('#g_players')?.value,age:$('#g_age')?.value,duration:$('#g_duration')?.value,
       buy_url:$('#g_buy')?.value,designer:$('#g_designer')?.value,components:$('#g_components')?.value,
       links:gameLinks.filter(l=>l.label?.trim()&&l.url?.trim()),
-      always_visible:$('#g_always_visible')?.value==='1',
+      always_visible:!!$('#g_always_visible')?.checked,
       accent_color:$('#g_accent_color')?.value?.trim()||'',
       hero_bg_url:$('#g_hero_bg')?.value?.trim()||'',
       stage_notes:{
