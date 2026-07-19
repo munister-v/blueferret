@@ -10,7 +10,11 @@
 </div>
 <div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full">
 <h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800">Тримайся</h2>
-<p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6">Динамічна командна гра на реакцію та спритність — хапайся за мотузку і тримайся до кінця! Для всіх, хто любить активний відпочинок, сміх і азарт. Ви — команда моряків у розпалі шторму! Корабель хитає на хвилях, снасті розхитуються, а на кону — і товари, і ваші життя. Разом ви маєте встигати зав&#x27;язувати морські вузли під дедлайном таймера. Але буря не проста — карти умов ускладнять завдання: вузол доведеться в&#x27;язати на одній нозі, із заплющеним оком чи навіть чужим тросом! Виживете ви чи потонете — залежить від злагодженості вашої команди. </p>
+<p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6">Динамічна командна гра на реакцію та спритність — хапайся за мотузку і тримайся до кінця! Для всіх, хто любить активний відпочинок, сміх і азарт.
+
+Ви — команда моряків у розпалі шторму! Корабель хитає на хвилях, снасті розхитуються, а на кону — і товари, і ваші життя. Разом ви маєте встигати зав&#x27;язувати морські вузли під дедлайном таймера. Але буря не проста — карти умов ускладнять завдання: вузол доведеться в&#x27;язати на одній нозі, із заплющеним оком чи навіть чужим тросом!
+
+Виживете ви чи потонете — залежить від злагодженості вашої команди.</p>
 <span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span>
 </div>
 </a><a href="/igry/druha-gra/" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]">
