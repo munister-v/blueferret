@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Test Game | Blue Ferret</title>
-<meta name="description" content="This is a very long description for the test game. It needs to be long enough to pass the SEO check in the CMS. We want to make sure all checks are green s">
+<meta name="description" content="This is a great new board game for testing purposes.">
 <link rel="canonical" href="https://blueferret.com.ua/igry/test-game/">
 <meta property="og:title" content="Test Game | Blue Ferret">
-<meta property="og:description" content="This is a very long description for the test game. It needs to be long enough to pass the SEO check in the CMS. We want to make sure all checks are green s">
+<meta property="og:description" content="This is a great new board game for testing purposes.">
 <meta property="og:url" content="https://blueferret.com.ua/igry/test-game/">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://blueferret.com.ua/images/trymaysia/box-front-v6.png">
@@ -114,7 +114,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       <span class="bfg-kicker">Анонс</span>
       <h1 class="bfg-title">Test Game</h1>
       <p class="bfg-sub">This is a subtitle</p>
-      <div class="bfg-desc"><p>This is a very long description for the test game. It needs to be long enough to pass the SEO check in the CMS. We want to make sure all checks are green so that the game can be published and displayed in the catalog.</p></div>
+      <div class="bfg-desc"><p>This is a great new board game for testing purposes.</p></div>
       <div class="bfg-actions">
         
         
