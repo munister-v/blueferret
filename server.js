@@ -73,6 +73,8 @@ db.exec(`
   add('components', "components TEXT DEFAULT ''");
   add('links', "links TEXT DEFAULT '[]'");
   add('always_visible', "always_visible INTEGER DEFAULT 0");
+  add('accent_color', "accent_color TEXT DEFAULT ''");
+  add('hero_bg_url', "hero_bg_url TEXT DEFAULT ''");
 })();
 
 const getRow  = db.prepare('SELECT value FROM settings WHERE key=?');
@@ -405,6 +407,12 @@ function generatedGameHtml(g) {
   const extraLinks = (Array.isArray(g.links) ? g.links : parseLinks(g.links))
     .map(l => `<a class="bfg-btn secondary" href="${escapeHtml(l.url)}">${escapeHtml(l.label)}</a>`).join('');
   const metaDesc = escapeHtml(String(g.description || '').split(/\n\s*\n/)[0] || 'Опис гри скоро з\'явиться.').replace(/^- /, '');
+  // Customization: per-game accent color (falls back to brand blue) and an
+  // optional full-bleed hero backdrop image, so games can each get their own
+  // "packaging" feel (à la trymaysia's illustrated hero) without hand-coding
+  // a bespoke page per game — same template, different theming inputs.
+  const accent = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(g.accent_color || '') ? g.accent_color : '#009fe3';
+  const heroBg = g.hero_bg_url ? escapeHtml(g.hero_bg_url) : '';
   return `<!doctype html>
 <html lang="uk">
 <head>
@@ -424,8 +432,13 @@ function generatedGameHtml(g) {
 <link rel="stylesheet" href="/_next/static/css/a80874b32dc71380.css">
 <link rel="stylesheet" href="/bf.css?v=8">
 <style>
+:root{--bfg-accent:${accent}}
 body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-serif}
-.bfg-wrap{min-height:100vh;background:radial-gradient(ellipse 100% 70% at 50% -10%,rgba(0,159,227,.18),transparent 60%),linear-gradient(135deg,#f6fbff,#fff,#eefaf3)}
+.bfg-wrap{min-height:100vh;background:radial-gradient(ellipse 100% 70% at 50% -10%,color-mix(in srgb,var(--bfg-accent) 18%,transparent),transparent 60%),linear-gradient(135deg,#f6fbff,#fff,#eefaf3)}
+${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
+.bfg-hero-bg::before{content:'';position:absolute;inset:0;background:url('${heroBg}') center/cover no-repeat;opacity:.16;pointer-events:none}
+.bfg-hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(248,251,255,.9) 85%);pointer-events:none}
+.bfg-hero-bg .bfg-shell{position:relative;z-index:1}`:''}
 .bfg-header{background:#0a0f1a/98;backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.05);position:sticky;top:0;z-index:50}
 .bfg-nav{max-width:1120px;margin:0 auto;padding:0 18px;display:flex;justify-content:space-between;align-items:center;height:64px}
 .bfg-logo{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff}
@@ -439,7 +452,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
 .bfg-nav-links a.active{color:#fff;background:rgba(255,255,255,.12)}
 .bfg-shell{max-width:1120px;margin:0 auto;padding:56px 18px 100px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:48px;align-items:center}
 .bfg-copy{padding:24px 0}
-.bfg-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(0,159,227,.25);background:rgba(0,159,227,.08);border-radius:999px;padding:8px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#0369a1;margin-bottom:20px}
+.bfg-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--bfg-accent) 25%,transparent);background:color-mix(in srgb,var(--bfg-accent) 8%,transparent);border-radius:999px;padding:8px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--bfg-accent);margin-bottom:20px}
 .bfg-title{font-size:clamp(40px,7vw,88px);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;font-weight:900;color:#0f172a}
 .bfg-sub{font-size:clamp(17px,2.2vw,24px);line-height:1.35;color:#334155;margin:0 0 18px;max-width:620px}
 .bfg-desc{font-size:16px;line-height:1.8;color:#475569;max-width:660px}
@@ -462,21 +475,21 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
 .bfg-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #dbeafe;background:#fff;border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600;color:#1e3a8a;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .bfg-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
 .bfg-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:14px;text-decoration:none;font-weight:700;font-size:15px;transition:all .2s}
-.bfg-btn.primary{background:#009fe3;color:#fff;box-shadow:0 12px 30px -12px rgba(0,159,227,.7)}
-.bfg-btn.primary:hover{background:#0088c4;transform:translateY(-1px)}
+.bfg-btn.primary{background:var(--bfg-accent);color:#fff;box-shadow:0 12px 30px -12px color-mix(in srgb,var(--bfg-accent) 70%,transparent)}
+.bfg-btn.primary:hover{filter:brightness(.92);transform:translateY(-1px)}
 .bfg-btn.secondary{background:#fff;color:#0f172a;border:1px solid #cbd5e1}
-.bfg-btn.secondary:hover{border-color:#009fe3;color:#009fe3}
+.bfg-btn.secondary:hover{border-color:var(--bfg-accent);color:var(--bfg-accent)}
 .bfg-cover{background:#0f172a;border-radius:24px;box-shadow:0 30px 70px -30px rgba(15,23,42,.6);overflow:hidden;aspect-ratio:4/3;position:relative}
 .bfg-cover img{width:100%;height:100%;object-fit:cover;display:block}
 .bfg-footer{background:linear-gradient(to bottom,#0f172a,#0a0f1a);padding:60px 18px 40px;text-align:center;margin-top:80px}
 .bfg-footer-inner{max-width:600px;margin:0 auto}
 .bfg-footer p{color:#64748b;font-size:14px;margin:0}
-.bfg-footer a{color:#009fe3;text-decoration:none}
+.bfg-footer a{color:var(--bfg-accent);text-decoration:none}
 @media(max-width:800px){.bfg-shell{grid-template-columns:1fr;padding-top:28px;gap:32px}.bfg-cover{order:-1;border-radius:18px}.bfg-title{font-size:clamp(36px,10vw,60px)}.bfg-nav-links{display:none}}
 </style>
 </head>
 <body>
-<div class="bfg-wrap" data-bf-generated-game="true">
+<div class="bfg-wrap${heroBg?' bfg-hero-bg':''}" data-bf-generated-game="true">
   <header class="bfg-header">
     <nav class="bfg-nav">
       <a class="bfg-logo" href="/">
@@ -557,9 +570,9 @@ function removeGeneratedGamePage(slug) {
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,accent_color,hero_bg_url,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@accent_color,@hero_bg_url,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,accent_color=@accent_color,hero_bg_url=@hero_bg_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
 function syncPublicGames() {
@@ -620,6 +633,8 @@ function gameBody(b, ex={}) {
     designer:cleanText(b.designer??ex.designer??''), components:cleanText(b.components??ex.components??''),
     links:JSON.stringify(links),
     always_visible:(b.always_visible!==undefined?!!b.always_visible:!!ex.always_visible)?1:0,
+    accent_color:cleanText(b.accent_color??ex.accent_color??''),
+    hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 

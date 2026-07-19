@@ -1092,6 +1092,20 @@ function renderGameEditor(){
       </div>
 
       <div class="ged-section">
+        <h4>Оформлення сторінки гри</h4>
+        <div class="field"><label class="flbl">Акцентний колір</label>
+          <div class="cp"><input type="color" id="g_accent_picker" value="${g.accent_color||'#009fe3'}" oninput="document.getElementById('g_accent_color').value=this.value;updatePreview()">
+          <input type="text" id="g_accent_color" value="${esc(g.accent_color)}" placeholder="#009fe3" style="max-width:110px" oninput="document.getElementById('g_accent_picker').value=this.value||'#009fe3';updatePreview()"></div>
+          <div class="field-help">Колір кнопки «Придбати», бейджа статусу й посилань на сторінці саме цієї гри. Порожнє — фірмовий синій.</div></div>
+        <div class="field"><label class="flbl">Фонова ілюстрація хіро-блоку</label>
+          <div class="img-pick">
+            <input type="url" id="g_hero_bg" value="${esc(g.hero_bg_url)}" placeholder="https://... (необов'язково)" oninput="updatePreview()">
+            <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_hero_bg',updatePreview)">📁</button>
+          </div>
+          <div class="field-help">Велике зображення (арт, персонаж, розкладка) напівпрозоро на фоні заголовка — як у «Тримайся». Необов'язково.</div></div>
+      </div>
+
+      <div class="ged-section">
         <h4>Галерея</h4>
         <div class="gal-grid" id="galGrid"></div>
         <button type="button" class="btn btn-g btn-sm" style="margin-top:10px;width:100%" onclick="openPickerFor(null,addToGallery)">+ Додати зображення</button>
@@ -1187,7 +1201,7 @@ function renderGameEditor(){
         <!-- DETAIL MODE -->
         <div id="pvModeDetail" style="display:none">
           <div class="pv-label">Сторінка гри (спрощено)</div>
-          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden">
+          <div id="pv_detail_wrap" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;transition:background-image .2s">
             <div id="pv_detail_img" style="width:100%;height:160px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:40px">🎲</div>
             <div style="padding:18px">
               <div id="pv_detail_title" style="font-size:22px;font-weight:700;color:#fff;margin-bottom:6px">Назва гри</div>
@@ -1293,6 +1307,8 @@ function updatePreview(){
   const buy=$('#g_buy')?.value||'';
   const slug=$('#g_slug')?.value||slugifyClient(title)||'slug';
   const status=$('#g_status')?.value||'published';
+  const accent=/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test($('#g_accent_color')?.value||'')?$('#g_accent_color').value:'#009fe3';
+  const heroBg=$('#g_hero_bg')?.value||'';
   const urlEl=$('#g_public_url'); if(urlEl)urlEl.textContent=`/igry/${slug}/`;
   const tags=[players&&`👥 ${players}`,age&&`🎂 ${age}`,dur&&`⏱ ${dur}`].filter(Boolean);
   const tagHtml=tags.map(t=>`<span class="gc-tag">${esc(t)}</span>`).join('');
@@ -1319,14 +1335,18 @@ function updatePreview(){
   if(seoT)seoT.textContent=`${title} · Blue Ferret`;
   if(seoD)seoD.textContent=desc?desc.slice(0,155)+'…':'Опис гри…';
 
-  // Detail mode
-  const di=$('#pv_detail_img'),dt=$('#pv_detail_title'),ds=$('#pv_detail_sub'),dtg=$('#pv_detail_tags'),dd=$('#pv_detail_desc'),db=$('#pv_detail_btn');
+  // Detail mode — closest stand-in for the actual generated game page, so
+  // this is where accent color / hero backdrop customization shows live.
+  const di=$('#pv_detail_img'),dt=$('#pv_detail_title'),ds=$('#pv_detail_sub'),dtg=$('#pv_detail_tags'),dd=$('#pv_detail_desc'),db=$('#pv_detail_btn'),dwrap=$('#pv_detail_wrap');
   if(di)di.innerHTML=cover?`<img src="${esc(cover)}" style="width:100%;height:100%;object-fit:cover">`:'🎲';
   if(dt)dt.textContent=title;
   if(ds)ds.textContent=sub;
   if(dtg)dtg.innerHTML=tagHtml;
   if(dd)dd.textContent=desc?desc.slice(0,300)+(desc.length>300?'…':''):'';
-  if(db){db.style.display=buy?'block':'none';}
+  if(db){db.style.display=buy?'block':'none';db.style.background=accent;}
+  if(dwrap)dwrap.style.backgroundImage=heroBg?`linear-gradient(rgba(10,15,26,.55),rgba(10,15,26,.85)),url('${heroBg.replace(/'/g,"\\'")}')`:'';
+  if(dwrap)dwrap.style.backgroundSize='cover';
+  if(dwrap)dwrap.style.backgroundPosition='center';
 
   // Mobile mode
   const mi=$('#pv_mob_img'),mtt=$('#pv_mob_title'),mtg=$('#pv_mob_tags'),mb=$('#pv_mob_btn');
@@ -1397,6 +1417,8 @@ async function saveGame(mode='exit'){
       buy_url:$('#g_buy')?.value,designer:$('#g_designer')?.value,components:$('#g_components')?.value,
       links:gameLinks.filter(l=>l.label?.trim()&&l.url?.trim()),
       always_visible:!!$('#g_always_visible')?.checked,
+      accent_color:$('#g_accent_color')?.value?.trim()||'',
+      hero_bg_url:$('#g_hero_bg')?.value?.trim()||'',
       sort_order:+$('#g_sort')?.value||0};
     const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
@@ -1974,8 +1996,6 @@ function buildBlocksHtml(blocks, tabFilter, search){
         <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
         <div class="blk-actions">
           ${(b.type==='p'||b.type==='span'||b.type==='li')?`
-            <button class="reset-btn" onclick="wrapSelectionInField('${esc(b.id)}','<strong>','</strong>')" title="Жирний (виділіть текст, або Ctrl+B)"><b>Ж</b></button>
-            <button class="reset-btn" onclick="wrapSelectionInField('${esc(b.id)}','<em>','</em>')" title="Курсив (виділіть текст, або Ctrl+I)"><i>К</i></button>
             <button class="reset-btn" onclick="insertLinkInField('${esc(b.id)}')" title="Вставити посилання у виділений текст">🔗</button>
           `:''}
           ${pcGroup?`
@@ -1990,9 +2010,9 @@ function buildBlocksHtml(blocks, tabFilter, search){
           <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
         </div>
       </div>
-      ${(()=>{const fmtKb=(b.type==='p'||b.type==='span'||b.type==='li')?` onkeydown="handleFormatShortcut(event,'${esc(b.id)}')"`:'';return isLong
-        ?`<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')"${fmtKb} style="min-height:${b.type==='p'?80:52}px;padding:4px 0">${esc(curVal)}</textarea>`
-        :`<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')"${fmtKb} value="${esc(curVal)}">`;})()}
+      ${isLong
+        ?`<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:${b.type==='p'?80:52}px;padding:4px 0">${esc(curVal)}</textarea>`
+        :`<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`}
       ${(b.type==='p'||b.type==='span'||b.type==='li')?`<div class="inline-preview" id="prev_${esc(b.id)}" style="margin-top:6px;padding:8px 10px;font-size:12.5px;line-height:1.5;color:var(--txt-s);background:rgba(255,255,255,.03);border-radius:8px;border:1px solid var(--glass-border);${hasInlineFormatting(curVal)?'':'display:none'}">${sanitizePreviewHtml(curVal)}</div>`:''}
       ${b.type==='a'?`<input type="text" data-blkhref="${esc(b.id)}" oninput="markHrefEdited('${esc(b.id)}')" value="${esc(curHref)}" placeholder="Куди веде посилання (href)" style="margin-top:6px;font-size:12px;opacity:.85">`:''}
       ${maxLen?`<div class="char-bar">
@@ -2709,20 +2729,34 @@ window.onPvLoad=onPvLoad;
 function mapBlocksToDom(doc){
   blockElMap={};
   const usedEls=new Set();
-  const candidates=[...doc.querySelectorAll('h1,h2,h3,p,a,span,img,li')];
+  // Server-side extraction assigns each block a domIndex = "the Nth <tag> in
+  // document order, after stripping <header>/<nav>/<footer>". Matching by
+  // TEXT alone (the old approach) breaks whenever two blocks share the same
+  // wording — the first same-tag element with matching text wins, so typing
+  // into one field could silently live-sync a *different* paragraph in the
+  // preview. Position first, text as a sanity check, text-only as last resort.
+  const isChrome=el=>!!el.closest('header, nav, footer, #mobile-site-nav');
+  const byTag={};
+  for(const el of doc.querySelectorAll('h1,h2,h3,p,a,span,img,li')){
+    if(isChrome(el)) continue;
+    const tag=el.tagName.toLowerCase();
+    (byTag[tag]=byTag[tag]||[]).push(el);
+  }
   for(const b of pageBlocks){
     if(b.type==='seo'){
       if(b.id==='title'){ blockElMap[b.id]={set:v=>{doc.title=v;}}; }
       continue;
     }
-    const tag=b.type; // h1/h2/h3/p/a/span/img/li
-    const want=normTxt(b.value);
-    const el=candidates.find(e=>{
-      if(usedEls.has(e)) return false;
-      if(e.tagName.toLowerCase()!==tag) return false;
-      if(tag==='img'){ return (e.getAttribute('src')||'').trim() === b.value.trim(); }
-      return normTxt(e.textContent)===want;
-    });
+    const tag=b.type, list=byTag[tag]||[];
+    let el=(b.domIndex!=null && list[b.domIndex] && !usedEls.has(list[b.domIndex])) ? list[b.domIndex] : null;
+    if(el && tag!=='img' && normTxt(el.textContent)!==normTxt(b.value)) el=null; // position drifted — don't trust it blind
+    if(!el){
+      el=list.find(e=>{
+        if(usedEls.has(e)) return false;
+        if(tag==='img') return (e.getAttribute('src')||'').trim()===b.value.trim();
+        return normTxt(e.textContent)===normTxt(b.value);
+      })||null;
+    }
     if(el){usedEls.add(el);el.__bf=b.id;blockElMap[b.id]=el;}
   }
 }
