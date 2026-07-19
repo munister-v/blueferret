@@ -92,7 +92,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       <h1 class="bfg-title">Друга гра</h1>
       <p class="bfg-sub">Кожен хід - нова історія</p>
       <div class="bfg-desc"><p>Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.</p></div>
-      <div class="bfg-chips"><span class="bf-chip">👥 2-4 гравці</span></div>
+      <div class="bfg-chips"><span class="bf-chip">👥 2-4 гравці  </span></div>
       <div class="bfg-actions">
         
         

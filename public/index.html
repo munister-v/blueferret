@@ -203,6 +203,9 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .b-g{background:rgba(75,178,114,.15);color:#4ade80;border:1px solid rgba(75,178,114,.25)}
 .b-r{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25)}
 .b-s{background:rgba(255,255,255,.08);color:var(--txt-m);border:1px solid rgba(255,255,255,.12)}
+.link-select{border:none;background:transparent;color:var(--txt-s);font-size:10.5px;cursor:pointer;padding:0;max-width:150px}
+.link-select:hover{color:var(--txt-m)}
+.link-select:focus{outline:none;color:var(--bf)}
 .pg-w{min-width:100px}.pg{height:5px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:4px}
 .pg span{display:block;height:100%;background:linear-gradient(90deg,var(--bf),#22c55e);border-radius:99px}
 
@@ -853,7 +856,6 @@ async function renderDash(){
       <button class="btn btn-g" onclick="activeTab='media';saveTab('media');render()">🖼 Завантажити фото</button>
       <button class="btn btn-g" onclick="activeTab='pages';saveTab('pages');render()">📄 Редагувати сторінки</button>
       <button class="btn btn-g" onclick="activeTab='general';saveTab('general');render()">⚙️ Налаштування</button>
-      <button class="btn btn-p" onclick="syncPublicSite()">🔄 Синхронізувати сайт</button>
     </div>
   </div>`;
 }
@@ -870,16 +872,21 @@ function renderGamesList(){
     <td style="width:54px">${g.cover_url?`<img class="thumb" src="${esc(g.cover_url)}" onerror="this.outerHTML='<span class=&quot;thumb-empty&quot;>?</span>'">`:`<span class="thumb-empty">🎲</span>`}</td>
     <td><div style="font-weight:700">${esc(g.title)}</div><span class="url-pill"><code>${esc(publicGameUrl(g))}</code></span></td>
     <td>
-      <select class="badge ${g.status==='published'?'b-g':g.status==='draft'?'b-r':'b-s'}" style="cursor:pointer;border:none" onchange="quickSetGameStatus(${g.id},this.value)" title="Змінити статус">
-        <option value="published" ${g.status==='published'?'selected':''}>✅ published</option>
-        <option value="draft" ${g.status==='draft'?'selected':''}>📝 draft</option>
-        <option value="archived" ${g.status==='archived'?'selected':''}>📦 archived</option>
-        <option value="preorder" ${g.status==='preorder'?'selected':''}>⏳ preorder</option>
-        <option value="onsale" ${g.status==='onsale'?'selected':''}>🛒 onsale</option>
-      </select>
-      ${(g.status==='draft'||g.status==='archived')?'':(g.always_visible
-        ?`<span class="badge b-g" style="margin-top:4px;display:inline-block" title="Показується як активна клікабельна картка в каталозі">🔓 активна картка</span>`
-        :`<span class="badge b-s" style="margin-top:4px;display:inline-block" title="На /igry/ показується заблокованою карткою «скоро» — редагуйте у формі гри, чекбокс «Показувати як активну картку»">🔒 скоро (заблокована)</span>`)}
+      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start">
+        ${(g.status==='draft'||g.status==='archived')
+          ?`<span class="badge ${g.status==='draft'?'b-r':'b-s'}" title="Не показується в каталозі /igry/ взагалі">${g.status==='draft'?'📝 Чернетка':'📦 Архів'} · поза сайтом</span>`
+          :`<button class="badge ${g.always_visible?'b-g':'b-s'}" style="cursor:pointer;border:none;font:inherit" onclick="quickToggleVisible(${g.id},${g.always_visible?'false':'true'})"
+              title="${g.always_visible?'Клік — заблокувати картку (стане «скоро»)':'Клік — зробити картку активною й клікабельною на сайті'}">
+              ${g.always_visible?'🔓 На сайті — клікабельна':'🔒 На сайті — заблокована («скоро»)'}
+            </button>`}
+        <select class="link-select" onchange="quickSetGameStatus(${g.id},this.value)" title="Мітка на картці (текстовий бейдж)">
+          <option value="published" ${g.status==='published'?'selected':''}>Мітка: Анонс</option>
+          <option value="preorder" ${g.status==='preorder'?'selected':''}>Мітка: Передзамовлення</option>
+          <option value="onsale" ${g.status==='onsale'?'selected':''}>Мітка: У продажі</option>
+          <option value="draft" ${g.status==='draft'?'selected':''}>Прибрати з сайту (чернетка)</option>
+          <option value="archived" ${g.status==='archived'?'selected':''}>Прибрати з сайту (архів)</option>
+        </select>
+      </div>
     </td>
     <td style="color:var(--txt-m);font-size:12px">${[g.players,g.age,g.duration].filter(Boolean).join(' · ')||'—'}</td>
     <td class="row-actions">
@@ -893,7 +900,6 @@ function renderGamesList(){
     <div class="ch">
       <div><div class="ct">🎲 Ігри</div><div class="cs">${games.length} всього · ${filtered.length} показано</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-g btn-sm" onclick="syncPublicSite()">🔄 Sync</button>
         <button class="btn btn-p btn-sm" onclick="openGameEditor(null)">+ Нова гра</button>
       </div>
     </div>
@@ -927,6 +933,15 @@ async function quickSetGameStatus(id,status){
   }catch(e){toast(e.message,'er');}
 }
 window.quickSetGameStatus=quickSetGameStatus;
+async function quickToggleVisible(id,nextVisible){
+  try{
+    await api('PUT',`/api/admin/games/${id}`,{always_visible:nextVisible});
+    games=await api('GET','/api/admin/games');
+    toast(nextVisible?'Картка активна на сайті ✓':'Картку заблоковано («скоро») ✓','ok');
+    render();
+  }catch(e){toast(e.message,'er');}
+}
+window.quickToggleVisible=quickToggleVisible;
 
 function findGame(id){return games.find(g=>Number(g.id)===Number(id));}
 function openPublicGame(id){
@@ -1027,21 +1042,25 @@ function renderGameEditor(){
             <input type="text" id="g_slug" value="${esc(g.slug)}" placeholder="nazva-gry">
             <div class="field-help">Публічна адреса: <span id="g_public_url">${esc(publicGameUrl(g))}</span></div>
             <div id="g_slug_err" class="field-error">Slug може містити тільки літери, цифри та дефіси.</div></div>
-          <div class="field"><label class="flbl">Статус</label>
+          <div class="field"><label class="flbl">Мітка на картці</label>
             <select id="g_status" onchange="updatePreview()">
-              <option value="published" ${(g.status||'published')==='published'?'selected':''}>✅ published</option>
-              <option value="draft" ${g.status==='draft'?'selected':''}>📝 draft</option>
-              <option value="archived" ${g.status==='archived'?'selected':''}>📦 archived</option>
-              <option value="preorder" ${g.status==='preorder'?'selected':''}>⏳ preorder</option>
-              <option value="onsale" ${g.status==='onsale'?'selected':''}>🛒 onsale</option>
+              <optgroup label="Показується в каталозі">
+                <option value="published" ${(g.status||'published')==='published'?'selected':''}>Анонс</option>
+                <option value="preorder" ${g.status==='preorder'?'selected':''}>Передзамовлення</option>
+                <option value="onsale" ${g.status==='onsale'?'selected':''}>У продажі</option>
+              </optgroup>
+              <optgroup label="Прибрати з сайту">
+                <option value="draft" ${g.status==='draft'?'selected':''}>Чернетка (не показувати)</option>
+                <option value="archived" ${g.status==='archived'?'selected':''}>Архів (не показувати)</option>
+              </optgroup>
             </select></div>
         </div>
-        <div class="field">
-          <label class="flbl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <div class="field visibility-toggle">
+          <label class="flbl" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0">
             <input type="checkbox" id="g_always_visible" ${g.always_visible?'checked':''} onchange="updatePreview()" style="width:auto">
-            Показувати як активну картку в каталозі
+            Картка клікабельна (веде на сторінку гри)
           </label>
-          <div class="field-help">Якщо вимкнено — на сторінці «Наші ігри» гра показується заблокованою карткою «скоро» замість клікабельної.</div></div>
+          <div class="field-help">Вимкнено — картка на «Наші ігри» показана, але заблокована написом «скоро». Це той самий перемикач, що й у списку ігор.</div></div>
         <div class="field"><label class="flbl">Підзаголовок</label>
           <input type="text" id="g_subtitle" value="${esc(g.subtitle)}" placeholder="Короткий опис" oninput="updatePreview()"></div>
         <div class="field"><label class="flbl">Опис</label>
@@ -1994,6 +2013,30 @@ function updateTabBadges(){
   const badge=$('#unsaved-badge');if(badge){badge.textContent=total+' змін';badge.classList.toggle('show',total>0);}
 }
 
+// One-time explanation of where text actually lives — shown until dismissed.
+// Three tiers, three places to edit, and people keep guessing wrong:
+//   1. Сторінки  → text baked straight into that page's HTML file
+//   2. Тексти сайту → shared strings used by every catalog/card (one edit, many pages)
+//   3. Ігри/КІК → structured records (title, price, cover…), not free text
+function renderEditingModelHint(){
+  if(localStorage.getItem('bf_hint_editing_model')==='1') return '';
+  return `<div class="ped-hint" style="margin:0 0 12px;align-items:flex-start">
+    <span style="font-size:15px;flex-shrink:0">💡</span>
+    <div style="flex:1">
+      <div style="font-weight:700;color:var(--txt);margin-bottom:4px">Де що редагувати</div>
+      <div><b>📄 Сторінки</b> — текст конкретної сторінки (HTML-файл).</div>
+      <div><b>🌐 Тексти сайту</b> — спільні написи каталогів/карток, які повторюються на кількох сторінках.</div>
+      <div><b>🎲 Ігри / 🚀 КІК</b> — окремі картки (назва, ціна, фото) — редагуються у своїх розділах, не як текст.</div>
+    </div>
+    <button onclick="dismissEditingHint()" style="background:none;border:none;color:var(--txt-s);cursor:pointer;font-size:13px;padding:2px;flex-shrink:0" title="Зрозуміло, більше не показувати">✕</button>
+  </div>`;
+}
+function dismissEditingHint(){
+  localStorage.setItem('bf_hint_editing_model','1');
+  renderPages();
+}
+window.dismissEditingHint=dismissEditingHint;
+
 async function renderPages(){
   pages=await api('GET','/api/admin/pages');
   const gr=gPages(pages);
@@ -2022,26 +2065,26 @@ async function renderPages(){
   let edHtml='', pvSrc='';
   if(activePage && pageBlocks.length){
     const seoCount=countTab('seo'), hCount=countTab('headings'), tCount=countTab('texts'), iCount=countTab('images'), cCount=countTab('content');
+    // Only show tabs that actually have something to edit — an empty tab is just
+    // a dead end that makes people hunt. If a tab was somehow left selected while
+    // empty (e.g. after switching pages), fall back to the first non-empty one.
+    const tabDefs=[
+      {id:'seo',      label:'🔍 SEO',        count:seoCount},
+      {id:'headings', label:'H Заголовки',   count:hCount},
+      {id:'texts',    label:'¶ Тексти',      count:tCount},
+      {id:'images',   label:'🖼 Зображення', count:iCount},
+      {id:'content',  label:'⚙️ Контент',    count:cCount,
+        title:"Текст, запечений у код сторінки на етапі збірки (напр. блоки 'Атмосфера'/'Хто ми')"},
+    ].filter(t=>t.count>0);
+    if(tabDefs.length && !tabDefs.some(t=>t.id===pedTab)) pedTab=tabDefs[0].id;
     const editorContent=`
-      <div class="ped-tabs">
-        <button class="ped-tab${pedTab==='seo'?' on':''}" data-tab="seo" onclick="switchPedTab('seo')">
-          🔍 SEO<span class="tab-cnt">${seoCount}</span><span class="tab-dot"></span>
-        </button>
-        <button class="ped-tab${pedTab==='headings'?' on':''}" data-tab="headings" onclick="switchPedTab('headings')">
-          H Заголовки<span class="tab-cnt">${hCount}</span><span class="tab-dot"></span>
-        </button>
-        <button class="ped-tab${pedTab==='texts'?' on':''}" data-tab="texts" onclick="switchPedTab('texts')">
-          ¶ Тексти<span class="tab-cnt">${tCount}</span><span class="tab-dot"></span>
-        </button>
-        <button class="ped-tab${pedTab==='images'?' on':''}" data-tab="images" onclick="switchPedTab('images')">
-          🖼 Зображення<span class="tab-cnt">${iCount}</span><span class="tab-dot"></span>
-        </button>
-        <button class="ped-tab${pedTab==='content'?' on':''}" data-tab="content" onclick="switchPedTab('content')" title="Текст, запечений у код сторінки на етапі збірки (напр. блоки 'Атмосфера'/'Хто ми') — не в HTML і не в загальному словнику">
-          ⚙️ Контент<span class="tab-cnt">${cCount}</span><span class="tab-dot"></span>
-        </button>
-      </div>
-      ${(hCount===0&&tCount===0&&iCount===0&&cCount===0)?`<div class="ped-hint" style="margin:14px 16px 0;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#92400e">
-        ⚡ Ця сторінка генерується динамічно — її заголовки й тексти редагуються в розділі
+      ${tabDefs.length?`<div class="ped-tabs">
+        ${tabDefs.map(t=>`<button class="ped-tab${pedTab===t.id?' on':''}" data-tab="${t.id}" onclick="switchPedTab('${t.id}')" ${t.title?`title="${esc(t.title)}"`:''}>
+          ${t.label}<span class="tab-cnt">${t.count}</span><span class="tab-dot"></span>
+        </button>`).join('')}
+      </div>`:''}
+      ${tabDefs.length===0?`<div class="ped-hint" style="margin:14px 16px 0;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#92400e">
+        ⚡ Текст цієї сторінки не лежить у файлі — він спільний для всього каталогу і редагується в розділі
         <button onclick="activeTab='sitetext';saveTab('sitetext');render()" style="background:none;border:none;color:var(--bf);font:700 12px inherit;cursor:pointer;text-decoration:underline;padding:0">🌐 Тексти сайту</button>
       </div>`:''}
       <div class="ped-body" id="ped-tab-body">
@@ -2056,6 +2099,7 @@ async function renderPages(){
   $('#mainContent').innerHTML=`<div class="pages-shell" style="height:calc(100vh - 56px)">
     <!-- nav -->
     <div class="pages-nav">
+      ${activePage?'':renderEditingModelHint()}
       <div class="pg-list-header">
         <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em">Сторінки <span style="opacity:.7">${pages.length}</span></div>
         <button class="btn btn-sm" onclick="openPgDialog()"
@@ -2434,6 +2478,10 @@ async function selectPage(file){
   await flushAutosave();
   activePage=file; pageBlocks=[]; pageManagedSkipped=0; pageEdited={}; pageEditedHref={}; pageEditedAlt={};
   try{ ({blocks:pageBlocks, managedSkipped:pageManagedSkipped}=await loadPageBlocks(file)); }catch{}
+  // land on the first tab that actually has content, not always SEO
+  const order=['seo','headings','texts','images','content'];
+  const firstNonEmpty=order.find(t=>countTab(t)>0);
+  pedTab = firstNonEmpty || 'seo';
   await renderPages();
 }
 window.selectPage=selectPage;
