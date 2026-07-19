@@ -1025,17 +1025,13 @@ function extractBlocks(html, managedValues){
   }
 
   const blocks=[], seenText=new Set();
-  let managedSkipped=0;
   const add=(id,type,label,icon,value,orig,origVal,idx,extra)=>{
     const v=(value||'').trim();
     if(!v) return;
     // Text also present in site-content.json is live-hydrated from there and
     // overwritten on every page load — editing the static HTML copy here
-    // would silently do nothing, so skip it in favor of "Тексти сайту". Track
-    // how many so the admin UI can say WHY a tab looks empty instead of just
-    // showing "Немає блоків" with no explanation (this used to look like a
-    // bug — the content genuinely is editable, just from a different tab).
-    if(type!=='seo' && managedValues && managedValues.has(v)) { managedSkipped++; return; }
+    // would silently do nothing, so skip it in favor of "Тексти сайту".
+    if(type!=='seo' && managedValues && managedValues.has(v)) return;
     if((type==='p'||type==='h1'||type==='h2'||type==='h3') && driftedFromManaged(v)) return;
     if(type==='h3' && ORPHANED_TEXT.has(v)) return;
     // Links with identical visible text but different hrefs must stay distinct
@@ -1157,7 +1153,7 @@ function extractBlocks(html, managedValues){
     li++;
   }
 
-  return { blocks, managedSkipped };
+  return blocks;
 }
 
 app.get('/api/admin/pages', requireAuth, (_req, res) => res.json(listPages()));
@@ -1908,8 +1904,7 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
     const html = fs.readFileSync(full, 'utf8');
     const sc = readSiteContent();
     const managedValues = sc ? flattenSiteContentValues(sc.obj) : null;
-    const { blocks, managedSkipped } = extractBlocks(html, managedValues);
-    res.json({ blocks, managedSkipped });
+    res.json({ blocks: extractBlocks(html, managedValues) });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 

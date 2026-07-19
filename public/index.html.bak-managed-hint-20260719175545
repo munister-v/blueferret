@@ -1692,7 +1692,7 @@ async function saveSettings(){
 }
 
 // ── PAGES ──
-let activePage=null, pageBlocks=[], pageManagedSkipped=0, pageEdited={}, pageEditedHref={}, pageEditedAlt={};
+let activePage=null, pageBlocks=[], pageEdited={}, pageEditedHref={}, pageEditedAlt={};
 const PICO={'/':{i:'🏠'},igry:{i:'🎲'},kik:{i:'🚀'},kontakty:{i:'📬'}};
 function pIco(p){const s=p==='/'?'/':p.split('/')[0];return(PICO[s]||{i:'📄'}).i;}
 function gPages(ps){const g={};for(const p of ps){const s=p.path==='/'?'__root__':p.path.split('/')[0];const l=s==='__root__'?'Головна':s==='igry'?'🎲 Ігри':s==='kik'?'🚀 КІК':s==='kontakty'?'📬 Контакти':s;if(!g[s])g[s]={l,items:[]};g[s].items.push(p);}return g;}
@@ -1780,8 +1780,8 @@ async function execPgAction(){
     }
     pages=await api('GET','/api/admin/pages');
     closePgDialog();
-    activePage=res.file; pageBlocks=[]; pageManagedSkipped=0; pageEdited={}; pageEditedHref={}; pageEditedAlt={};
-    ({blocks:pageBlocks, managedSkipped:pageManagedSkipped}=await loadPageBlocks(res.file));
+    activePage=res.file; pageBlocks=[]; pageEdited={}; pageEditedHref={}; pageEditedAlt={};
+    pageBlocks=await loadPageBlocks(res.file);
     toast(`Сторінку /${res.slug}/ створено ✓`,'ok');
     await renderPages();
   }catch(e){ if(e.message!=='unauth') toast('Помилка: '+e.message,'er'); }
@@ -1807,8 +1807,8 @@ async function duplicatePage(file){
   try{
     const res=await api('POST','/api/admin/pages/duplicate',{from:file,slug:slug.trim()});
     pages=await api('GET','/api/admin/pages');
-    activePage=res.file; pageBlocks=[];pageManagedSkipped=0;pageEdited={};pageEditedHref={};pageEditedAlt={};
-    ({blocks:pageBlocks, managedSkipped:pageManagedSkipped}=await loadPageBlocks(res.file));
+    activePage=res.file; pageBlocks=[];pageEdited={};pageEditedHref={};pageEditedAlt={};
+    pageBlocks=await loadPageBlocks(res.file);
     toast(`Дублікат /${res.slug}/ створено ✓`,'ok');
     await renderPages();
   }catch(e){ if(e.message!=='unauth') toast('Помилка: '+e.message,'er'); }
@@ -1853,17 +1853,6 @@ function buildBlocksHtml(blocks, tabFilter, search){
   let filtered=blocks.filter(b=>(typeToTab[b.type]||'texts')===tabFilter);
   if(q) filtered=filtered.filter(b=>b.value.toLowerCase().includes(q)||b.label.toLowerCase().includes(q));
   if(!filtered.length){
-    // Headings/texts can look "unfixably empty" when every candidate on this
-    // page turned out to be managed by the global site-content dictionary
-    // (see extractBlocks' managedSkipped) — that's not a bug, but a bare
-    // "Немає блоків" here used to read exactly like one.
-    if(!q && (tabFilter==='headings'||tabFilter==='texts') && pageManagedSkipped>0){
-      return`<div class="tab-empty" style="max-width:320px;margin:0 auto">
-        ⚡ ${pageManagedSkipped} текстов${pageManagedSkipped===1?'ий блок':pageManagedSkipped<5?'их блоки':'их блоків'} на цій сторінці керуються через
-        <button onclick="activeTab='sitetext';saveTab('sitetext');render()" style="background:none;border:none;color:var(--bf);font:700 13px inherit;cursor:pointer;text-decoration:underline;padding:0">🌐 Тексти сайту</button>
-        — редагуйте їх там, тут вони недоступні навмисно (щоб зміна тут не губилась при кожному завантаженні сторінки).
-      </div>`;
-    }
     if(!q) return`<div class="tab-empty">Немає блоків</div>`;
     // Search matched nothing in this tab — check other tabs so "nothing found"
     // doesn't look like a broken search when the match is just one tab over.
@@ -2423,14 +2412,14 @@ async function loadPageBlocks(file){
       chunk:f.chunk, blobIndex:f.blobIndex, jsPath:f.path, domIndex:i,
     };
   });
-  return { blocks: htmlBlocks.concat(pcBlocks), managedSkipped: extr.managedSkipped||0 };
+  return htmlBlocks.concat(pcBlocks);
 }
 
 async function selectPage(file){
   if(activePage===file) return;
   await flushAutosave();
-  activePage=file; pageBlocks=[]; pageManagedSkipped=0; pageEdited={}; pageEditedHref={}; pageEditedAlt={};
-  try{ ({blocks:pageBlocks, managedSkipped:pageManagedSkipped}=await loadPageBlocks(file)); }catch{}
+  activePage=file; pageBlocks=[]; pageEdited={}; pageEditedHref={}; pageEditedAlt={};
+  try{ pageBlocks=await loadPageBlocks(file); }catch{}
   await renderPages();
 }
 window.selectPage=selectPage;
@@ -2439,8 +2428,7 @@ function hasUnsavedPageEdits(){
   return Object.keys(pageEdited).length||Object.keys(pageEditedHref).length||Object.keys(pageEditedAlt).length;
 }
 async function afterPcStructuralOp(){
-  const r=await loadPageBlocks(activePage).catch(()=>null);
-  if(r){ pageBlocks=r.blocks; pageManagedSkipped=r.managedSkipped; }
+  pageBlocks=await loadPageBlocks(activePage).catch(()=>pageBlocks);
   pageEdited={}; pageEditedHref={}; pageEditedAlt={};
   refreshPreview();
   renderPages();
@@ -2551,7 +2539,7 @@ async function savePatchedPage(auto){
     }
     if(!auto) toast(`Збережено (${changed} змін) ✓`,'ok');
     // Re-read blocks from the saved file(s) so the next edit uses fresh orig/origVal contexts.
-    {const r=await loadPageBlocks(activePage).catch(()=>null); if(r){ pageBlocks=r.blocks; pageManagedSkipped=r.managedSkipped; }}
+    pageBlocks=await loadPageBlocks(activePage).catch(()=>pageBlocks);
     pageEdited={};
     pageEditedHref={};
     pageEditedAlt={};
