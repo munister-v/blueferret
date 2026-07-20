@@ -76,6 +76,7 @@ db.exec(`
   add('accent_color', "accent_color TEXT DEFAULT ''");
   add('hero_bg_url', "hero_bg_url TEXT DEFAULT ''");
   add('stage_notes', "stage_notes TEXT DEFAULT '{}'");
+  add('blocks', "blocks TEXT DEFAULT '[]'");
 })();
 
 // The four launch stages shown as a progress tracker (à la trymaysia's
@@ -293,7 +294,7 @@ app.get('/api/admin/stats', requireAuth, (_req, res) => {
 
 // ---------- games CRUD ----------
 function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
-function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), links: parseLinks(r.links), always_visible: !!r.always_visible, stage_notes: parseStageNotes(r.stage_notes) } : null; }
+function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), links: parseLinks(r.links), always_visible: !!r.always_visible, stage_notes: parseStageNotes(r.stage_notes), blocks: (() => { try { return Array.isArray(JSON.parse(r.blocks)) ? JSON.parse(r.blocks) : []; } catch { return []; } })() } : null; }
 function isPublicGameStatus(status) {
   return !['draft', 'archived'].includes(String(status || 'published'));
 }
@@ -474,7 +475,60 @@ function generatedGameHtml(g) {
   const heroBg = g.hero_bg_url ? escapeHtml(g.hero_bg_url) : '';
   const stageNotes = parseStageNotes(g.stage_notes);
   const passportHtml = renderPassportSection(players, age, duration, designer);
-  const stagesHtml = renderStagesSection(statusRaw, stageNotes);
+  const blocks = (Array.isArray(g.blocks) && g.blocks.length > 0) ? g.blocks : (() => {
+    const fb = [];
+    if (g.stage_notes && Object.values(g.stage_notes).some(Boolean)) {
+      const curIdx = STAGE_ORDER.indexOf(statusRaw);
+      fb.push({
+        type: 'stages',
+        items: STAGE_ORDER.map((k, i) => ({
+          label: STAGE_LABELS[k],
+          note: g.stage_notes[k] || '',
+          state: curIdx < 0 ? 'upcoming' : (i < curIdx ? 'done' : i === curIdx ? 'active' : 'upcoming')
+        })).filter(x => x.note)
+      });
+    }
+    if (g.components) fb.push({ type: 'components', content: g.components });
+    if (g.gallery && g.gallery.length) fb.push({ type: 'gallery', images: g.gallery });
+    return fb;
+  })();
+
+  const blocksHtml = blocks.map(b => {
+    if (b.type === 'text') {
+      return `<section class="bfg-components"><div class="bfg-components-inner"><div class="bfg-desc">${renderDescriptionBlocks(b.content||'')}</div></div></section>`;
+    }
+    if (b.type === 'stages') {
+      const items = Array.isArray(b.items) ? b.items : [];
+      if (!items.length) return '';
+      const cards = items.map(item => {
+        const state = item.state || 'upcoming';
+        const ico = state === 'done' ? '✓' : state === 'active' ? '🔓' : '🔒';
+        return `<article class="bfg-stage ${state}">
+          <div class="bfg-stage-head"><span class="bfg-stage-ico">${ico}</span><h3>${escapeHtml(item.label||'')}</h3></div>
+          ${item.note ? `<p class="bfg-stage-note">${escapeHtml(item.note)}</p>` : ''}
+        </article>`;
+      }).join('');
+      return `<section class="bfg-stages"><div class="bfg-stages-inner">
+        <p class="bfg-eyebrow">Прогрес</p>
+        <h2 class="bfg-section-title light">${escapeHtml(b.title || 'Етапи запуску')}</h2>
+        <div class="bfg-stage-list">${cards}</div>
+      </div></section>`;
+    }
+    if (b.type === 'components') {
+      return renderComponentsSection(b.content);
+    }
+    if (b.type === 'gallery') {
+      return renderGallerySection(b.images, title);
+    }
+    if (b.type === 'video') {
+      const match = (b.url||'').match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      const vid = match ? match[1] : '';
+      if (!vid) return '';
+      return `<section class="bfg-components"><div class="bfg-components-inner"><div style="aspect-ratio:16/9;border-radius:24px;overflow:hidden;background:#0f172a;box-shadow:0 30px 70px -30px rgba(15,23,42,.6);"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${vid}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div></section>`;
+    }
+    return '';
+  }).join('');
+
   return `<!doctype html>
 <html lang="uk">
 <head>
@@ -606,9 +660,7 @@ ${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
     </figure>
   </section>
   ${passportHtml}
-  ${stagesHtml}
-  ${renderComponentsSection(g.components)}
-  ${renderGallerySection(g.gallery, title)}
+  ${blocksHtml}
   <footer class="bfg-footer">
     <div class="bfg-footer-inner">
       <p>© 2026 <a href="/">Blue Ferret</a> – Незалежне видавництво настільних ігор</p>
@@ -654,9 +706,9 @@ function removeGeneratedGamePage(slug) {
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,accent_color,hero_bg_url,stage_notes,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@accent_color,@hero_bg_url,@stage_notes,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,accent_color=@accent_color,hero_bg_url=@hero_bg_url,stage_notes=@stage_notes,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,accent_color,hero_bg_url,stage_notes,blocks,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@accent_color,@hero_bg_url,@stage_notes,@blocks,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,accent_color=@accent_color,hero_bg_url=@hero_bg_url,stage_notes=@stage_notes,blocks=@blocks,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
 function syncPublicGames() {
@@ -720,6 +772,7 @@ function gameBody(b, ex={}) {
     accent_color:cleanText(b.accent_color??ex.accent_color??''),
     hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''),
     stage_notes:JSON.stringify(parseStageNotes(b.stage_notes!==undefined?b.stage_notes:ex.stage_notes)),
+    blocks:JSON.stringify(Array.isArray(b.blocks)?b.blocks:(() => { try { return Array.isArray(JSON.parse(ex.blocks))?JSON.parse(ex.blocks):[]; } catch { return []; } })()),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 
