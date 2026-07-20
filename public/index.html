@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Blue Ferret · CMS</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 <style>
 :root{
   --bf:#009fe3;--bf-h:#0077b3;--bf-m:rgba(0,159,227,.15);--bf-glow:rgba(0,159,227,.3);
@@ -943,6 +944,15 @@ function renderGamesList(){
     <tbody>${rows}</tbody></table></div>`;
 }
 
+function openPublicGame(id){
+  const g=games.find(x=>x.id===id);
+  if(g)window.open(`/igry/${g.slug}/`,'_blank');
+}
+function copyPreviewLink(slug){
+  const url = window.location.origin + '/api/preview/' + slug;
+  navigator.clipboard.writeText(url).then(()=>toast('Секретне посилання скопійовано!','ok'));
+}
+
 async function quickToggleStatus(type,id,current){
   const next={published:'draft',draft:'published',archived:'published'}[current]||'published';
   try{
@@ -1007,7 +1017,7 @@ async function duplicateGame(id){
     openGameEditor(copy.id);
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
 }
-window.openPublicGame=openPublicGame;window.copyGameUrl=copyGameUrl;window.duplicateGame=duplicateGame;
+window.openPublicGame=openPublicGame;window.copyGameUrl=copyGameUrl;window.duplicateGame=duplicateGame;window.copyPreviewLink=copyPreviewLink;
 
 // ── GAME EDITOR (full-page with preview) ──
 function wrapMdSelection(id,marker){
@@ -1156,7 +1166,7 @@ function renderBlocksList(){
   box.innerHTML = gameBlocks.map((b,i)=>{
     let contentHtml='';
     if(b.type==='text'){
-      contentHtml=`<div class="field" style="margin:0"><label class="flbl">Текст (Markdown підтримується)</label><textarea style="min-height:90px" oninput="updateBlock(${i},'content',this.value)">${esc(b.content||'')}</textarea></div>`;
+      contentHtml=`<div class="field" style="margin:0"><label class="flbl">Текст</label><div id="quill_block_${i}" style="background:#fff;color:#000;min-height:150px"></div><input type="hidden" id="val_block_${i}" value="${esc(b.content||'')}"></div>`;
     }else if(b.type==='gallery'){
       const imgs = (b.images||[]).map((img,ii)=>`<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#0f172a"><img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover"><button type="button" class="btn btn-d btn-sm" style="position:absolute;top:4px;right:4px;padding:2px 6px;min-height:0" onclick="removeImgFromBlock(${i},${ii})">✕</button></div>`).join('');
       contentHtml=`<div class="field" style="margin:0"><label class="flbl">Зображення</label><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:8px">${imgs}</div><button type="button" class="btn btn-g btn-sm" onclick="addImgToBlock(${i})">+ Додати фото</button></div>`;
@@ -1192,6 +1202,35 @@ function renderBlocksList(){
       ${contentHtml}
     </div>`;
   }).join('');
+  setTimeout(initQuillEditors, 0);
+}
+
+function initQuillEditors() {
+  const toolbarOptions = [
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'header': 1 }, { 'header': 2 }],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    ['link', 'clean']
+  ];
+  
+  if ($('#g_desc_quill') && !$('#g_desc_quill').classList.contains('ql-container')) {
+    const q = new Quill('#g_desc_quill', { theme: 'snow', modules: { toolbar: toolbarOptions } });
+    q.root.innerHTML = $('#g_desc').value;
+    q.on('text-change', () => { $('#g_desc').value = q.root.innerHTML; updatePreview(); });
+  }
+
+  $$('[id^="quill_block_"]').forEach(el => {
+    if(!el.classList.contains('ql-container')){
+      const idx = el.id.split('_')[2];
+      const hidden = $('#val_block_'+idx);
+      const q = new Quill(el, { theme: 'snow', modules: { toolbar: toolbarOptions } });
+      q.root.innerHTML = hidden.value;
+      q.on('text-change', () => { 
+        hidden.value = q.root.innerHTML; 
+        updateBlock(idx, 'content', q.root.innerHTML); 
+      });
+    }
+  });
 }
 
 function renderGameEditor(){
@@ -1240,12 +1279,9 @@ function renderGameEditor(){
         <div class="field"><label class="flbl">Підзаголовок</label>
           <input type="text" id="g_subtitle" value="${esc(g.subtitle)}" placeholder="Короткий опис" oninput="updatePreview()"></div>
         <div class="field"><label class="flbl">Опис</label>
-          <div class="md-toolbar">
-            <button type="button" class="md-btn" onclick="wrapMdSelection('g_desc','**')" title="Жирний"><b>B</b></button>
-            <button type="button" class="md-btn" onclick="wrapMdSelection('g_desc','_')" title="Курсив"><i>I</i></button>
-            <span class="field-help" style="margin:0">**жирний**, _курсив_</span>
-          </div>
-          <textarea id="g_desc" style="min-height:110px" placeholder="Розповідь про гру…" oninput="updatePreview()">${esc(g.description)}</textarea></div>
+          <div id="g_desc_quill" style="background:#fff;color:#000;min-height:150px"></div>
+          <input type="hidden" id="g_desc" value="${esc(g.description)}">
+        </div>
       </div>
 
       <div class="ged-section">
@@ -1307,6 +1343,15 @@ function renderGameEditor(){
       </div>
 
       <div class="ged-section">
+        <h4>SEO (для пошукових систем)</h4>
+        <div class="field"><label class="flbl">SEO Title</label>
+          <input type="text" id="g_seo_title" value="${esc(g.seo_title)}" placeholder="Напр. Назва гри | Blue Ferret" oninput="updatePreview()"></div>
+        <div class="field"><label class="flbl">SEO Description</label>
+          <textarea id="g_seo_desc" style="min-height:50px" placeholder="Короткий опис для Google..." oninput="updatePreview()">${esc(g.seo_description)}</textarea></div>
+        <div class="field-help">Якщо порожньо, будуть використані стандартна Назва та Опис гри.</div>
+      </div>
+
+      <div class="ged-section">
         <h4>Додаткові посилання / кнопки</h4>
         <div id="linksList"></div>
         <button type="button" class="btn btn-g btn-sm" style="margin-top:6px;width:100%" onclick="addGameLink()">+ Додати посилання</button>
@@ -1315,6 +1360,7 @@ function renderGameEditor(){
 
       <div class="ged-actions">
         ${editingGame?`<button class="btn btn-d btn-sm" onclick="deleteGame(${editingGame.id})" title="Видалити гру">🗑</button>`:''}
+        ${editingGame?`<button class="btn btn-g btn-sm" onclick="copyPreviewLink('${editingGame.slug}')" title="Секретне посилання">🔗 Прев'ю</button>`:''}
         ${editingGame?`<button class="btn btn-g btn-sm" onclick="openPublicGame(${editingGame.id})">↗ На сайт</button>`:''}
         <button class="btn btn-g btn-sm" onclick="backToGames()">← Скасувати</button>
         <button class="btn btn-g btn-sm" onclick="saveGame('open')">💾 Зберегти і відкрити ↗</button>
@@ -1401,7 +1447,7 @@ function renderGameEditor(){
   </div>`;
   el.style.padding='0';
   renderGallery();
-  renderBlocksList();
+  renderBlocksList(); // This will also call initQuillEditors via setTimeout
   renderLinksList();
   updatePreview();
   bindGameEditorQuality();
@@ -1525,8 +1571,10 @@ function updatePreview(){
   if(bg){bg.textContent=status;bg.style.background=status==='published'?'rgba(75,178,114,.15)':'rgba(239,68,68,.1)';bg.style.color=status==='published'?'#4bb272':'#ef4444';}
   if(th)th.innerHTML=cover?`<img src="${esc(cover)}" style="width:100%;height:100%;object-fit:cover">`:`<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.3);font-size:22px">🎲</div>`;
   const seoT=$('#pv_seo_title'),seoD=$('#pv_seo_desc');
-  if(seoT)seoT.textContent=`${title} · Blue Ferret`;
-  if(seoD)seoD.textContent=desc?desc.slice(0,155)+'…':'Опис гри…';
+  const customSeoT=$('#g_seo_title')?.value;
+  const customSeoD=$('#g_seo_desc')?.value;
+  if(seoT)seoT.textContent=customSeoT ? customSeoT : `${title} · Blue Ferret`;
+  if(seoD)seoD.textContent=customSeoD ? customSeoD : (desc?desc.slice(0,155)+'…':'Опис гри…');
 
   // Detail mode — closest stand-in for the actual generated game page, so
   // this is where accent color / hero backdrop customization shows live.
@@ -1612,6 +1660,8 @@ async function saveGame(mode='exit'){
       always_visible:$('#g_always_visible')?.value==='1',
       accent_color:$('#g_accent_color')?.value?.trim()||'',
       hero_bg_url:$('#g_hero_bg')?.value?.trim()||'',
+      seo_title:$('#g_seo_title')?.value?.trim()||'',
+      seo_description:$('#g_seo_desc')?.value?.trim()||'',
       blocks:gameBlocks,
       sort_order:+$('#g_sort')?.value||0};
     const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
@@ -3454,5 +3504,6 @@ async function boot(){
 }
 boot();
 </script>
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
 </body>
 </html>

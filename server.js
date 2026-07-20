@@ -77,6 +77,8 @@ db.exec(`
   add('hero_bg_url', "hero_bg_url TEXT DEFAULT ''");
   add('stage_notes', "stage_notes TEXT DEFAULT '{}'");
   add('blocks', "blocks TEXT DEFAULT '[]'");
+  add('seo_title', "seo_title TEXT DEFAULT ''");
+  add('seo_description', "seo_description TEXT DEFAULT ''");
 })();
 
 // The four launch stages shown as a progress tracker (à la trymaysia's
@@ -454,6 +456,7 @@ function renderStagesSection(status, stageNotes){
   </div></section>`;
 }
 function generatedGameHtml(g) {
+  const seoTitle = escapeHtml(g.seo_title || g.title || g.slug);
   const title = escapeHtml(g.title || g.slug);
   const subtitle = escapeHtml(g.subtitle || g.players || 'Настільна гра Blue Ferret');
   const cover = escapeHtml(g.cover_url || '/images/placeholder-game.svg');
@@ -466,7 +469,7 @@ function generatedGameHtml(g) {
   const designer = escapeHtml(g.designer || '');
   const extraLinks = (Array.isArray(g.links) ? g.links : parseLinks(g.links))
     .map(l => `<a class="bfg-btn secondary" href="${escapeHtml(l.url)}">${escapeHtml(l.label)}</a>`).join('');
-  const metaDesc = escapeHtml(String(g.description || '').split(/\n\s*\n/)[0] || 'Опис гри скоро з\'явиться.').replace(/^- /, '');
+  const metaDesc = escapeHtml(g.seo_description || String(g.description || '').split(/\n\s*\n/)[0] || 'Опис гри скоро з\'явиться.').replace(/^- /, '');
   // Customization: per-game accent color (falls back to brand blue) and an
   // optional full-bleed hero backdrop image, so games can each get their own
   // "packaging" feel (à la trymaysia's illustrated hero) without hand-coding
@@ -533,17 +536,17 @@ function generatedGameHtml(g) {
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>${title} | Blue Ferret</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>${seoTitle} | Blue Ferret</title>
 <meta name="description" content="${metaDesc.slice(0, 155)}">
 <link rel="canonical" href="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
-<meta property="og:title" content="${title} | Blue Ferret">
+<meta property="og:title" content="${seoTitle} | Blue Ferret">
 <meta property="og:description" content="${metaDesc.slice(0, 155)}">
 <meta property="og:url" content="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
 <meta property="og:type" content="website">
 <meta property="og:image" content="${cover.startsWith('http') ? cover : 'https://blueferret.com.ua' + cover}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${title} | Blue Ferret">
+<meta name="twitter:title" content="${seoTitle} | Blue Ferret">
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="stylesheet" href="/_next/static/css/a80874b32dc71380.css">
 <link rel="stylesheet" href="/bf.css?v=8">
@@ -706,9 +709,9 @@ function removeGeneratedGamePage(slug) {
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,accent_color,hero_bg_url,stage_notes,blocks,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@accent_color,@hero_bg_url,@stage_notes,@blocks,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,accent_color=@accent_color,hero_bg_url=@hero_bg_url,stage_notes=@stage_notes,blocks=@blocks,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,accent_color,hero_bg_url,stage_notes,blocks,seo_title,seo_description,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@accent_color,@hero_bg_url,@stage_notes,@blocks,@seo_title,@seo_description,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,accent_color=@accent_color,hero_bg_url=@hero_bg_url,stage_notes=@stage_notes,blocks=@blocks,seo_title=@seo_title,seo_description=@seo_description,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
 function syncPublicGames() {
@@ -773,12 +776,19 @@ function gameBody(b, ex={}) {
     hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''),
     stage_notes:JSON.stringify(parseStageNotes(b.stage_notes!==undefined?b.stage_notes:ex.stage_notes)),
     blocks:JSON.stringify(Array.isArray(b.blocks)?b.blocks:(() => { try { return Array.isArray(JSON.parse(ex.blocks))?JSON.parse(ex.blocks):[]; } catch { return []; } })()),
+    seo_title:cleanText(b.seo_title??ex.seo_title??''),
+    seo_description:cleanText(b.seo_description??ex.seo_description??''),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 
 app.get('/api/admin/games', requireAuth, (_r, res) => res.json(gAll.all().map(gameRow)));
 app.get('/api/admin/games/:id', requireAuth, (req, res) => {
   const r = gOne.get(+req.params.id); if (!r) return res.status(404).json({error:'not_found'}); res.json(gameRow(r));
+});
+app.get('/api/preview/:slug', (req, res) => {
+  const g = gSlug.get(req.params.slug);
+  if(!g) return res.status(404).send('Not found');
+  res.send(generatedGameHtml(gameRow(g)));
 });
 app.post('/api/admin/games', requireAuth, (req, res) => {
   const b = req.body||{};
@@ -1026,6 +1036,8 @@ app.post('/api/admin/upload', requireAuth, (req, res, next) => {
   audit(req.ip,'upload',{url});
   res.json({ ok:true, url, filename:req.file.filename, size:req.file.size });
 });
+
+
 
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif|svg|avif)$/i;
 // Walks SITE_ROOT/images (game art, characters, etc. — assets that were

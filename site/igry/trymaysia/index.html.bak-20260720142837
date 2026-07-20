@@ -2,17 +2,17 @@
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<title>Третя гра | Blue Ferret</title>
-<meta name="description" content="Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети.">
-<link rel="canonical" href="https://blueferret.com.ua/igry/tretya-gra/">
-<meta property="og:title" content="Третя гра | Blue Ferret">
-<meta property="og:description" content="Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети.">
-<meta property="og:url" content="https://blueferret.com.ua/igry/tretya-gra/">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Тримайся | Blue Ferret</title>
+<meta name="description" content="Динамічна командна гра на реакцію та спритність – хапайся за мотузку і тримайся до кінця! Для всіх, хто любить активний відпочинок, сміх і азарт.">
+<link rel="canonical" href="https://blueferret.com.ua/igry/trymaysia/">
+<meta property="og:title" content="Тримайся | Blue Ferret">
+<meta property="og:description" content="Динамічна командна гра на реакцію та спритність – хапайся за мотузку і тримайся до кінця! Для всіх, хто любить активний відпочинок, сміх і азарт.">
+<meta property="og:url" content="https://blueferret.com.ua/igry/trymaysia/">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://blueferret.com.ua/images/placeholder-game.svg">
+<meta property="og:image" content="https://blueferret.com.ua/images/trymaysia/box-front-v6.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Третя гра | Blue Ferret">
+<meta name="twitter:title" content="Тримайся | Blue Ferret">
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="stylesheet" href="/_next/static/css/a80874b32dc71380.css">
 <link rel="stylesheet" href="/bf.css?v=8">
@@ -112,9 +112,9 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
   <section class="bfg-shell">
     <div class="bfg-copy">
       <span class="bfg-kicker">Анонс</span>
-      <h1 class="bfg-title">Третя гра</h1>
-      <p class="bfg-sub">Обʼєднайся з друзями</p>
-      <div class="bfg-desc"><p>Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети.</p></div>
+      <h1 class="bfg-title">Тримайся</h1>
+      <p class="bfg-sub">За все, що можеш!</p>
+      <div class="bfg-desc"><p>Динамічна командна гра на реакцію та спритність – хапайся за мотузку і тримайся до кінця! Для всіх, хто любить активний відпочинок, сміх і азарт.</p><p>Ви – команда моряків у розпалі шторму! Корабель хитає на хвилях, снасті розхитуються, а на кону – і товари, і ваші життя. Разом ви маєте встигати зав&#x27;язувати морські вузли під дедлайном таймера. Але буря не проста – карти умов ускладнять завдання: вузол доведеться в&#x27;язати на одній нозі, із заплющеним оком чи навіть чужим тросом!</p><p>Виживете ви чи потонете – залежить від злагодженості вашої команди.</p></div>
       <div class="bfg-actions">
         
         
@@ -122,27 +122,33 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       </div>
     </div>
     <figure class="bfg-cover">
-      <img src="/images/placeholder-game.svg" alt="Третя гра" loading="eager">
+      <img src="/images/trymaysia/box-front-v6.png" alt="Тримайся" loading="eager">
     </figure>
   </section>
-  
-  <section class="bfg-components"><div class="bfg-components-inner"><div class="bfg-desc"><p>Опис гри скоро з'явиться.</p></div></div></section><section class="bfg-stages"><div class="bfg-stages-inner">
-        <p class="bfg-eyebrow">Прогрес</p>
-        <h2 class="bfg-section-title light">Етапи запуску</h2>
-        <div class="bfg-stage-list"><article class="bfg-stage done">
-          <div class="bfg-stage-head"><span class="bfg-stage-ico">✓</span><h3>Анонс</h3></div>
-          
-        </article><article class="bfg-stage active">
-          <div class="bfg-stage-head"><span class="bfg-stage-ico">🔓</span><h3>Передзамовлення</h3></div>
-          
-        </article><article class="bfg-stage upcoming">
-          <div class="bfg-stage-head"><span class="bfg-stage-ico">🔒</span><h3>Виробництво</h3></div>
-          
-        </article><article class="bfg-stage upcoming">
-          <div class="bfg-stage-head"><span class="bfg-stage-ico">🔒</span><h3>У продажі</h3></div>
-          
-        </article></div>
-      </div></section>
+  <section class="bfg-passport"><div class="bfg-passport-inner">
+    <p class="bfg-eyebrow">Про гру</p>
+    <h2 class="bfg-section-title light">Паспорт гри</h2>
+    <div class="bfg-passport-grid">
+      <div class="bfg-pp-card">
+        <div class="bfg-pp-ico">👥</div>
+        <p class="bfg-pp-label">ГРАВЦІ</p>
+        <p class="bfg-pp-value">2-5 гравців</p>
+      </div><div class="bfg-pp-card">
+        <div class="bfg-pp-ico">🎂</div>
+        <p class="bfg-pp-label">ВІК</p>
+        <p class="bfg-pp-value">Від 6+</p>
+      </div><div class="bfg-pp-card">
+        <div class="bfg-pp-ico">⏱</div>
+        <p class="bfg-pp-label">ТРИВАЛІСТЬ</p>
+        <p class="bfg-pp-value">~15 хв</p>
+      </div><div class="bfg-pp-card">
+        <div class="bfg-pp-ico">✏️</div>
+        <p class="bfg-pp-label">АВТОР</p>
+        <p class="bfg-pp-value">Рогачова Вероніка</p>
+      </div>
+    </div>
+  </div></section>
+  <section class="bfg-components"><div class="bfg-components-inner"><h2 class="bfg-section-title">У коробці</h2><ul class="bfg-list"><li>30 карт вузлів</li><li>25 карт умов</li><li>Лічильник міцності корабля</li><li>5 паличок</li><li>10 шнурів</li><li>5 металевих кілець</li></ul></div></section><section class="bfg-gallery"><div class="bfg-gallery-inner"><h2 class="bfg-section-title">Галерея</h2><div class="bfg-gallery-grid"><div class="bfg-gallery-item"><img src="/images/trymaysia/box-front-center-v11.jpg" alt="Тримайся" loading="lazy"></div><div class="bfg-gallery-item"><img src="/images/trymaysia/box-back-center-v11.jpg" alt="Тримайся" loading="lazy"></div><div class="bfg-gallery-item"><img src="/images/trymaysia/characters/char-2.png" alt="Тримайся" loading="lazy"></div><div class="bfg-gallery-item"><img src="/images/trymaysia/characters/char-4.png" alt="Тримайся" loading="lazy"></div></div></div></section>
   <footer class="bfg-footer">
     <div class="bfg-footer-inner">
       <p>© 2026 <a href="/">Blue Ferret</a> – Незалежне видавництво настільних ігор</p>
