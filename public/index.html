@@ -1034,8 +1034,35 @@ function openGameEditor(id){
   editingGame=id?games.find(x=>x.id===id)||null:null;
   gameGallery=editingGame?parseGalleryValue(editingGame.gallery):[];
   gameLinks=editingGame?parseLinksValue(editingGame.links):[];
+  
+  // Fallback blocks for old games
+  gameBlocks=[];
+  if(editingGame) {
+    gameBlocks = parseBlocksValue(editingGame.blocks);
+    if (!gameBlocks.length) {
+      if(editingGame.stage_notes && Object.values(editingGame.stage_notes).some(Boolean)){
+        const sn = typeof editingGame.stage_notes==='string'?JSON.parse(editingGame.stage_notes||'{}'):editingGame.stage_notes;
+        gameBlocks.push({type:'stages', items:[
+          {label:'Анонс', note:sn.published||''},
+          {label:'Передзамовлення', note:sn.preorder||''},
+          {label:'Виробництво', note:sn.production||''},
+          {label:'У продажі', note:sn.onsale||''}
+        ]});
+      }
+      if(editingGame.components) gameBlocks.push({type:'components', content:editingGame.components});
+      if(gameGallery.length) gameBlocks.push({type:'gallery', images:[...gameGallery]});
+    }
+  }
+
   editorDirty=false;
   activeTab='game-editor'; render();
+}
+function parseBlocksValue(value){
+  if(Array.isArray(value))return value;
+  if(typeof value==='string'){
+    try{const parsed=JSON.parse(value||'[]');return Array.isArray(parsed)?parsed:[];}catch{return [];}
+  }
+  return [];
 }
 function parseGalleryValue(value){
   if(Array.isArray(value))return value.filter(Boolean);
@@ -1064,6 +1091,108 @@ function renderLinksList(){
 window.addGameLink=function(){gameLinks.push({label:'',url:''});renderLinksList();setEditorDirty(true);}
 window.removeGameLink=function(i){gameLinks.splice(i,1);renderLinksList();setEditorDirty(true);}
 window.updateGameLink=function(i,key,val){if(gameLinks[i]){gameLinks[i][key]=val;setEditorDirty(true);}}
+
+window.addGameBlock=function(type){
+  const b = {type};
+  if(type==='text') b.content='';
+  else if(type==='gallery') b.images=[];
+  else if(type==='components') b.content='';
+  else if(type==='stages') b.items=[{label:'',note:'',state:'upcoming'}];
+  else if(type==='video') b.url='';
+  gameBlocks.push(b);
+  renderBlocksList();
+  setEditorDirty(true);
+}
+window.removeGameBlock=function(i){gameBlocks.splice(i,1);renderBlocksList();setEditorDirty(true);}
+window.moveGameBlock=function(i,dir){
+  if(i+dir<0 || i+dir>=gameBlocks.length) return;
+  const temp = gameBlocks[i];
+  gameBlocks[i] = gameBlocks[i+dir];
+  gameBlocks[i+dir] = temp;
+  renderBlocksList();
+  setEditorDirty(true);
+}
+window.updateBlock=function(i,k,v){if(gameBlocks[i])gameBlocks[i][k]=v;setEditorDirty(true);}
+window.updateStageBlock=function(bi,si,k,v){
+  if(gameBlocks[bi] && gameBlocks[bi].items && gameBlocks[bi].items[si]){
+    gameBlocks[bi].items[si][k]=v;
+    setEditorDirty(true);
+  }
+}
+window.addStageToBlock=function(bi){
+  if(gameBlocks[bi] && gameBlocks[bi].items){
+    gameBlocks[bi].items.push({label:'',note:'',state:'upcoming'});
+    renderBlocksList();
+    setEditorDirty(true);
+  }
+}
+window.removeStageFromBlock=function(bi,si){
+  if(gameBlocks[bi] && gameBlocks[bi].items){
+    gameBlocks[bi].items.splice(si,1);
+    renderBlocksList();
+    setEditorDirty(true);
+  }
+}
+window.addImgToBlock=function(bi){
+  openPickerFor(null, (url)=>{
+    if(url && gameBlocks[bi]){
+      gameBlocks[bi].images.push(url);
+      renderBlocksList();
+      setEditorDirty(true);
+    }
+  });
+}
+window.removeImgFromBlock=function(bi,imgIdx){
+  if(gameBlocks[bi] && gameBlocks[bi].images){
+    gameBlocks[bi].images.splice(imgIdx,1);
+    renderBlocksList();
+    setEditorDirty(true);
+  }
+}
+
+function renderBlocksList(){
+  const box=$('#blocksList'); if(!box)return;
+  if(!gameBlocks.length){ box.innerHTML='<div class="field-help">Немає жодного блоку. Додайте перший!</div>'; return; }
+  box.innerHTML = gameBlocks.map((b,i)=>{
+    let contentHtml='';
+    if(b.type==='text'){
+      contentHtml=`<div class="field" style="margin:0"><label class="flbl">Текст (Markdown підтримується)</label><textarea style="min-height:90px" oninput="updateBlock(${i},'content',this.value)">${esc(b.content||'')}</textarea></div>`;
+    }else if(b.type==='gallery'){
+      const imgs = (b.images||[]).map((img,ii)=>`<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#0f172a"><img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover"><button type="button" class="btn btn-d btn-sm" style="position:absolute;top:4px;right:4px;padding:2px 6px;min-height:0" onclick="removeImgFromBlock(${i},${ii})">✕</button></div>`).join('');
+      contentHtml=`<div class="field" style="margin:0"><label class="flbl">Зображення</label><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:8px">${imgs}</div><button type="button" class="btn btn-g btn-sm" onclick="addImgToBlock(${i})">+ Додати фото</button></div>`;
+    }else if(b.type==='components'){
+      contentHtml=`<div class="field" style="margin:0"><label class="flbl">Список компонентів (по одному на рядок)</label><textarea style="min-height:90px" oninput="updateBlock(${i},'content',this.value)">${esc(b.content||'')}</textarea></div>`;
+    }else if(b.type==='video'){
+      contentHtml=`<div class="field" style="margin:0"><label class="flbl">Посилання на YouTube</label><input type="url" value="${esc(b.url||'')}" oninput="updateBlock(${i},'url',this.value)" placeholder="https://youtube.com/watch?v=..."></div>`;
+    }else if(b.type==='stages'){
+      const items = (b.items||[]).map((item,si)=>`<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start">
+        <select onchange="updateStageBlock(${i},${si},'state',this.value)" style="width:120px;font-size:12px;padding:6px">
+          <option value="upcoming" ${item.state==='upcoming'?'selected':''}>🔒 В майбутньому</option>
+          <option value="active" ${item.state==='active'?'selected':''}>🔓 Активний (зараз)</option>
+          <option value="done" ${item.state==='done'?'selected':''}>✓ Завершений</option>
+        </select>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <input type="text" placeholder="Назва етапу (напр. Передзамовлення)" value="${esc(item.label||'')}" oninput="updateStageBlock(${i},${si},'label',this.value)" style="font-size:13px;padding:6px">
+          <textarea placeholder="Опис етапу..." style="min-height:40px;font-size:13px;padding:6px" oninput="updateStageBlock(${i},${si},'note',this.value)">${esc(item.note||'')}</textarea>
+        </div>
+        <button type="button" class="btn btn-d btn-sm" onclick="removeStageFromBlock(${i},${si})">✕</button>
+      </div>`).join('');
+      contentHtml=`<div class="field" style="margin:0"><label class="flbl">Етапи прогресу</label><div class="field" style="margin-bottom:8px"><input type="text" placeholder="Заголовок блоку (за замовчуванням: Етапи запуску)" value="${esc(b.title||'')}" oninput="updateBlock(${i},'title',this.value)"></div>${items}<button type="button" class="btn btn-g btn-sm" onclick="addStageToBlock(${i})">+ Додати етап</button></div>`;
+    }
+    
+    return `<div style="background:#0f1620;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:8px">
+        <div style="font-weight:700;font-size:13px;color:var(--bf-accent);text-transform:uppercase;letter-spacing:0.05em">Блок: ${b.type}</div>
+        <div style="display:flex;gap:4px">
+          <button type="button" class="btn btn-g btn-sm" onclick="moveGameBlock(${i},-1)" ${i===0?'disabled':''}>↑</button>
+          <button type="button" class="btn btn-g btn-sm" onclick="moveGameBlock(${i},1)" ${i===gameBlocks.length-1?'disabled':''}>↓</button>
+          <button type="button" class="btn btn-d btn-sm" onclick="removeGameBlock(${i})" style="margin-left:8px">✕ Видалити</button>
+        </div>
+      </div>
+      ${contentHtml}
+    </div>`;
+  }).join('');
+}
 
 function renderGameEditor(){
   const g=editingGame||{};
@@ -1143,25 +1272,6 @@ function renderGameEditor(){
       </div>
 
       <div class="ged-section">
-        <h4>Етапи запуску (як у «Тримайся»)</h4>
-        <div class="field-help" style="margin-bottom:14px">Опціонально. Заповніть хоч одне поле — і на сторінці гри з'явиться трекер прогресу з 4 етапів. Порожньо — трекера не буде, сторінка лишиться простою.</div>
-        <div class="field"><label class="flbl">Анонс</label>
-          <textarea id="g_stage_published" style="min-height:52px" placeholder="Напр.: Ми раді представити нову гру!">${esc(g.stage_notes?.published)}</textarea></div>
-        <div class="field"><label class="flbl">Передзамовлення</label>
-          <textarea id="g_stage_preorder" style="min-height:52px" placeholder="Що відбувається на цьому етапі">${esc(g.stage_notes?.preorder)}</textarea></div>
-        <div class="field"><label class="flbl">Виробництво</label>
-          <textarea id="g_stage_production" style="min-height:52px" placeholder="Що відбувається на цьому етапі">${esc(g.stage_notes?.production)}</textarea></div>
-        <div class="field"><label class="flbl">У продажі</label>
-          <textarea id="g_stage_onsale" style="min-height:52px" placeholder="Що відбувається на цьому етапі">${esc(g.stage_notes?.onsale)}</textarea></div>
-      </div>
-
-      <div class="ged-section">
-        <h4>Галерея</h4>
-        <div class="gal-grid" id="galGrid"></div>
-        <button type="button" class="btn btn-g btn-sm" style="margin-top:10px;width:100%" onclick="openPickerFor(null,addToGallery)">+ Додати зображення</button>
-      </div>
-
-      <div class="ged-section">
         <h4>Характеристики</h4>
         <div class="row3">
           <div class="field"><label class="flbl">Гравці</label>
@@ -1179,13 +1289,21 @@ function renderGameEditor(){
         </div>
         <div class="field"><label class="flbl">Дизайнер / авторка гри</label>
           <input type="text" id="g_designer" value="${esc(g.designer)}" placeholder="Ім'я та прізвище" oninput="updatePreview()"></div>
-        <div class="field"><label class="flbl">Що в коробці</label>
-          <div class="md-toolbar">
-            <button type="button" class="md-btn" onclick="wrapMdSelection('g_components','**')" title="Жирний"><b>B</b></button>
-            <button type="button" class="md-btn" onclick="wrapMdSelection('g_components','_')" title="Курсив"><i>I</i></button>
-          </div>
-          <textarea id="g_components" style="min-height:90px" placeholder="Один компонент на рядок, напр.:&#10;30 карт вузлів&#10;5 паличок">${esc(g.components)}</textarea>
-          <div class="field-help">По одному пункту на рядок — виведеться списком на сторінці гри. Можна виділити текст і натиснути B/I для **жирного**/_курсиву_.</div></div>
+      </div>
+
+      <div class="ged-section" id="gedBlocksContainer" style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h4 style="margin:0">Блоки сторінки</h4>
+          <select id="addBlockSelect" onchange="if(this.value){addGameBlock(this.value);this.value='';}" style="width:auto;font-size:13px;padding:4px 28px 4px 12px;min-height:32px;background:var(--bf);color:#fff;border:none">
+            <option value="">➕ Додати блок...</option>
+            <option value="text">📝 Текст / Опис</option>
+            <option value="gallery">🖼 Галерея</option>
+            <option value="components">📦 Що в коробці</option>
+            <option value="stages">🚀 Етапи запуску</option>
+            <option value="video">🎥 Відео (YouTube)</option>
+          </select>
+        </div>
+        <div id="blocksList" class="blocks-list" style="display:flex;flex-direction:column;gap:12px"></div>
       </div>
 
       <div class="ged-section">
@@ -1283,6 +1401,7 @@ function renderGameEditor(){
   </div>`;
   el.style.padding='0';
   renderGallery();
+  renderBlocksList();
   renderLinksList();
   updatePreview();
   bindGameEditorQuality();
@@ -1486,19 +1605,14 @@ async function saveGame(mode='exit'){
   try{
     const body={title,slug:$('#g_slug')?.value,subtitle:$('#g_subtitle')?.value,
       description:$('#g_desc')?.value,status:$('#g_status')?.value,
-      cover_url:$('#g_cover')?.value,gallery:gameGallery,
+      cover_url:$('#g_cover')?.value,
       players:$('#g_players')?.value,age:$('#g_age')?.value,duration:$('#g_duration')?.value,
-      buy_url:$('#g_buy')?.value,designer:$('#g_designer')?.value,components:$('#g_components')?.value,
+      buy_url:$('#g_buy')?.value,designer:$('#g_designer')?.value,
       links:gameLinks.filter(l=>l.label?.trim()&&l.url?.trim()),
       always_visible:$('#g_always_visible')?.value==='1',
       accent_color:$('#g_accent_color')?.value?.trim()||'',
       hero_bg_url:$('#g_hero_bg')?.value?.trim()||'',
-      stage_notes:{
-        published:$('#g_stage_published')?.value?.trim()||'',
-        preorder:$('#g_stage_preorder')?.value?.trim()||'',
-        production:$('#g_stage_production')?.value?.trim()||'',
-        onsale:$('#g_stage_onsale')?.value?.trim()||'',
-      },
+      blocks:gameBlocks,
       sort_order:+$('#g_sort')?.value||0};
     const saved=editingGame?await api('PUT',`/api/admin/games/${editingGame.id}`,body):await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
@@ -1509,7 +1623,7 @@ async function saveGame(mode='exit'){
     if(mode==='open'&&saved?.slug)window.open(absUrl(publicUrl),'_blank','noopener');
     if(mode==='stay'){
       editingGame=saved;
-      gameGallery=parseGalleryValue(saved.gallery);
+      gameBlocks=parseBlocksValue(saved.blocks);
       gameLinks=parseLinksValue(saved.links);
       renderGameEditor();
     }else{
