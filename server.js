@@ -1314,7 +1314,7 @@ app.delete('/api/admin/pages/delete', requireAuth, (req,res)=>{
   if(!fs.existsSync(dir)) return res.status(404).json({error:'not_found'});
   // safety: only delete if it contains only index.html (+ .bak)
   const contents = fs.readdirSync(dir).filter(f=>!f.startsWith('.'));
-  const safe = contents.every(f=>f==='index.html'||f.endsWith('.bak')||f.endsWith('.html'));
+  const safe = contents.every(f => f === 'index.html' || /\.html(\.bak(-\S+)?)?$/.test(f));
   if(!safe) return res.status(400).json({error:'directory has unexpected files, delete manually'});
   contents.forEach(f=>fs.unlinkSync(path.join(dir,f)));
   fs.rmdirSync(dir);
