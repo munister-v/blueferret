@@ -496,10 +496,10 @@ function generatedGameHtml(g) {
 <style>
 :root{--bfg-accent:${accent}}
 body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-serif}
-.bfg-wrap{min-height:100vh;background:#09111c;color:#f1f5f9}
+.bfg-wrap{min-height:100vh;background:radial-gradient(ellipse 100% 70% at 50% -10%,color-mix(in srgb,var(--bfg-accent) 18%,transparent),transparent 60%),linear-gradient(135deg,#f6fbff,#fff,#eefaf3)}
 ${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
-.bfg-hero-bg::before{content:'';position:absolute;inset:0;background:url('${heroBg}') center/cover no-repeat;opacity:.28;pointer-events:none}
-.bfg-hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,#09111c 100%);pointer-events:none}
+.bfg-hero-bg::before{content:'';position:absolute;inset:0;background:url('${heroBg}') center/cover no-repeat;opacity:.16;pointer-events:none}
+.bfg-hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(248,251,255,.9) 85%);pointer-events:none}
 .bfg-hero-bg .bfg-shell{position:relative;z-index:1}`:''}
 .bfg-header{background:#0a0f1a/98;backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.05);position:sticky;top:0;z-index:50}
 .bfg-nav{max-width:1120px;margin:0 auto;padding:0 18px;display:flex;justify-content:space-between;align-items:center;height:64px}
@@ -515,21 +515,21 @@ ${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
 .bfg-shell{max-width:1120px;margin:0 auto;padding:56px 18px 100px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:48px;align-items:center}
 .bfg-copy{padding:24px 0}
 .bfg-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--bfg-accent) 25%,transparent);background:color-mix(in srgb,var(--bfg-accent) 8%,transparent);border-radius:999px;padding:8px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--bfg-accent);margin-bottom:20px}
-.bfg-title{font-size:clamp(40px,7vw,88px);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;font-weight:900;color:#ffffff}
-.bfg-sub{font-size:clamp(17px,2.2vw,24px);line-height:1.35;color:rgba(255,255,255,.65);margin:0 0 18px;max-width:620px}
-.bfg-desc{font-size:16px;line-height:1.8;color:rgba(255,255,255,.55);max-width:660px}
+.bfg-title{font-size:clamp(40px,7vw,88px);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;font-weight:900;color:#0f172a}
+.bfg-sub{font-size:clamp(17px,2.2vw,24px);line-height:1.35;color:#334155;margin:0 0 18px;max-width:620px}
+.bfg-desc{font-size:16px;line-height:1.8;color:#475569;max-width:660px}
 .bfg-desc p{margin:0 0 14px}
 .bfg-desc p:last-child{margin-bottom:0}
 .bfg-list{margin:0 0 14px;padding-left:20px}
 .bfg-list li{margin-bottom:4px}
-.bfg-components{padding:56px 18px;background:#0b0f16}
+.bfg-components{padding:10px 18px 20px}
 .bfg-components-inner{max-width:1120px;margin:0 auto}
-.bfg-components-inner .bfg-list{columns:2;column-gap:32px;font-size:16px;color:rgba(255,255,255,.65)}
+.bfg-components-inner .bfg-list{columns:2;column-gap:32px;font-size:16px;color:#334155}
 .bfg-components-inner .bfg-list li{break-inside:avoid;margin-bottom:8px}
 @media(max-width:640px){.bfg-components-inner .bfg-list{columns:1}}
-.bfg-gallery{padding:56px 18px 100px;background:#070a0f}
+.bfg-gallery{padding:10px 18px 100px}
 .bfg-gallery-inner{max-width:1120px;margin:0 auto}
-.bfg-section-title{font-size:clamp(24px,3.5vw,34px);font-weight:900;color:rgba(255,255,255,.9);margin:0 0 24px;letter-spacing:-.03em}
+.bfg-section-title{font-size:clamp(24px,3.5vw,34px);font-weight:900;color:#0f172a;margin:0 0 24px;letter-spacing:-.03em}
 .bfg-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
 .bfg-gallery-item{border-radius:16px;overflow:hidden;background:#0f172a;box-shadow:0 14px 34px -18px rgba(15,23,42,.35)}
 .bfg-gallery-item img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
@@ -560,8 +560,8 @@ ${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
 .bfg-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:14px;text-decoration:none;font-weight:700;font-size:15px;transition:all .2s}
 .bfg-btn.primary{background:var(--bfg-accent);color:#fff;box-shadow:0 12px 30px -12px color-mix(in srgb,var(--bfg-accent) 70%,transparent)}
 .bfg-btn.primary:hover{filter:brightness(.92);transform:translateY(-1px)}
-.bfg-btn.secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.15)}
-.bfg-btn.secondary:hover{border-color:var(--bfg-accent);color:var(--bfg-accent);background:rgba(255,255,255,.12)}
+.bfg-btn.secondary{background:#fff;color:#0f172a;border:1px solid #cbd5e1}
+.bfg-btn.secondary:hover{border-color:var(--bfg-accent);color:var(--bfg-accent)}
 .bfg-cover{background:#0f172a;border-radius:24px;box-shadow:0 30px 70px -30px rgba(15,23,42,.6);overflow:hidden;aspect-ratio:4/3;position:relative}
 .bfg-cover img{width:100%;height:100%;object-fit:cover;display:block}
 .bfg-footer{background:linear-gradient(to bottom,#0f172a,#0a0f1a);padding:60px 18px 40px;text-align:center;margin-top:80px}
@@ -1181,17 +1181,15 @@ function extractBlocks(html, managedValues){
   // swallowed span, silently deleting the other elements caught in it —
   // this is the "several text blocks disappeared after editing one" bug.
   const pr=/<p(?=[\s>])[^>]*>([\s\S]*?)<\/p>/gi; let pi=0, kept=0;
-  while((m=pr.exec(safe))!==null && kept<80){
+  while((m=pr.exec(safe))!==null && kept<150){
     const inner=m[1];
     const t=cleanInner(inner);
     // Allow paragraphs with simple inline tags (strong, em, a, etc.). Tag-based
     // concatenation garbage (nav/footer link lists jammed together) is already
-    // excluded above/here via inlineOk — a bare lowercase→Uppercase heuristic
-    // was tried here previously but rejected genuinely edited paragraphs
-    // outright (e.g. a proper noun typed without a leading space), making the
-    // whole block silently vanish from the editor on next load.
+    // excluded above/here via inlineOk. We allow short texts (like '2-4')
+    // so they can be edited in structural blocks like the game Passport.
     const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
-    if(t && inlineOk && t.includes(' ') && t.length>=20 && t.length<=900){
+    if(t && inlineOk && t.length>=2 && t.length<=900){
       add(`p_${pi}`,'p','Абзац тексту','¶',t,m[0],inner,pi);
       kept++;
     }
@@ -1314,11 +1312,9 @@ app.delete('/api/admin/pages/delete', requireAuth, (req,res)=>{
   const dir = path.join(PAGES_ROOT, path.dirname(rel));
   if(!dir.startsWith(PAGES_ROOT)||dir===PAGES_ROOT) return res.status(403).json({error:'forbidden'});
   if(!fs.existsSync(dir)) return res.status(404).json({error:'not_found'});
-  // safety: only delete if it contains only index.html (+ backup copies created
-  // by writeBackup: pattern is index.html.bak-TIMESTAMP or any *.html)
+  // safety: only delete if it contains only index.html (+ .bak)
   const contents = fs.readdirSync(dir).filter(f=>!f.startsWith('.'));
-  const safeFile = f => f === 'index.html' || /\.html(\.bak(-\S+)?)?$/.test(f);
-  const safe = contents.every(safeFile);
+  const safe = contents.every(f=>f==='index.html'||f.endsWith('.bak')||f.endsWith('.html'));
   if(!safe) return res.status(400).json({error:'directory has unexpected files, delete manually'});
   contents.forEach(f=>fs.unlinkSync(path.join(dir,f)));
   fs.rmdirSync(dir);
