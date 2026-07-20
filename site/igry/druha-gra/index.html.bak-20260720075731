@@ -125,25 +125,7 @@ body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-
       <img src="/images/placeholder-game.svg" alt="Друга гра" loading="eager">
     </figure>
   </section>
-  <section class="bfg-passport"><div class="bfg-passport-inner">
-    <p class="bfg-eyebrow">Про гру</p>
-    <h2 class="bfg-section-title light">Паспорт гри</h2>
-    <div class="bfg-passport-grid">
-      <div class="bfg-pp-card">
-        <div class="bfg-pp-ico">👥</div>
-        <p class="bfg-pp-label">ГРАВЦІ</p>
-        <p class="bfg-pp-value">2-4</p>
-      </div><div class="bfg-pp-card">
-        <div class="bfg-pp-ico">🎂</div>
-        <p class="bfg-pp-label">ВІК</p>
-        <p class="bfg-pp-value">8+</p>
-      </div><div class="bfg-pp-card">
-        <div class="bfg-pp-ico">⏱</div>
-        <p class="bfg-pp-label">ТРИВАЛІСТЬ</p>
-        <p class="bfg-pp-value">30-45</p>
-      </div>
-    </div>
-  </div></section>
+  
   
   
   
