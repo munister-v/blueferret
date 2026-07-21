@@ -64,7 +64,13 @@ db.exec(`
 );
 `);
 
-try { db.exec("ALTER TABLE games ADD COLUMN stages TEXT DEFAULT '[]'"); } catch(e) {}
+try { db.exec("ALTER TABLE games ADD COLUMN gallery TEXT DEFAULT '[]'"); } catch(e){}
+try { db.exec("ALTER TABLE games ADD COLUMN stages TEXT DEFAULT '[]'"); } catch(e){}
+try { db.exec("ALTER TABLE games ADD COLUMN author TEXT DEFAULT ''"); } catch(e){}
+try { db.exec("ALTER TABLE games ADD COLUMN bg_color TEXT DEFAULT ''"); } catch(e){}
+try { db.exec("ALTER TABLE games ADD COLUMN accent_color TEXT DEFAULT ''"); } catch(e){}
+try { db.exec("ALTER TABLE games ADD COLUMN hero_bg_url TEXT DEFAULT ''"); } catch(e){}
+try { db.exec("ALTER TABLE games ADD COLUMN hero_logo_url TEXT DEFAULT ''"); } catch(e){}
 
 const getRow  = db.prepare('SELECT value FROM settings WHERE key=?');
 const upsert  = db.prepare(`INSERT INTO settings(key,value,updated_at) VALUES(?,?,?)
@@ -321,7 +327,7 @@ function regenGamesCatalog() {
   const template = aMatch[0];
   
   function getStatusName(s) { return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс'; }
-  const games = gAll.all().filter(g => g.status !== 'archived').map(gameRow);
+  const games = gAll.all().filter(g => !['archived', 'hidden', 'draft'].includes(g.status)).map(gameRow);
 
   // Extract the first card's title and description text for replacement
   // In minified HTML, text may sit directly in divs without h2/p wrappers
@@ -386,17 +392,27 @@ function generatedGameHtml(g) {
   const players = escapeHtml(g.players || '');
   const age = escapeHtml(g.age || '');
   const duration = escapeHtml(g.duration || '');
+  const author = escapeHtml(g.author || '');
   const buy = escapeHtml(g.buy_url || '');
+  
+  const bgColor = escapeHtml(g.bg_color || '#070b10');
+  const accentColor = escapeHtml(g.accent_color || '#009fe3');
+  const heroBg = escapeHtml(g.hero_bg_url || coverAbs);
+  const isVideoBg = heroBg.endsWith('.mp4') || heroBg.endsWith('.webm');
+  const heroLogo = escapeHtml(g.hero_logo_url || '');
+
   const rawDesc = (g.description || '').trim() || 'Опис гри скоро з\'явиться.';
   const metaDesc = escapeHtml(rawDesc.replace(/\n/g,' ').slice(0, 155));
   const descHtml = rawDesc.split('\n').filter(p => p.trim()).map(p => `<p>${escapeHtml(p)}</p>`).join('');
   const year = new Date().getFullYear();
+
   const passportCards = [
-    players && `<div class="pp-card"><div class="pp-ico">👥</div><div class="pp-label">Гравці</div><div class="pp-val">${players}</div></div>`,
-    duration && `<div class="pp-card"><div class="pp-ico">⏱</div><div class="pp-label">Тривалість</div><div class="pp-val">${duration}</div></div>`,
-    age && `<div class="pp-card"><div class="pp-ico">🎂</div><div class="pp-label">Від якого віку</div><div class="pp-val">${age}</div></div>`,
-    `<div class="pp-card"><div class="pp-ico">🎲</div><div class="pp-label">Видавець</div><div class="pp-val">Blue Ferret</div></div>`,
+    players && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></div><div class="pp-label">ГРАВЦІ</div><div class="pp-val">${players}</div></div>`,
+    duration && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div class="pp-label">ТРИВАЛІСТЬ</div><div class="pp-val">${duration}</div></div>`,
+    age && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-baby"><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M15 12h.01"/><path d="M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/><path d="M9 12h.01"/></svg></div><div class="pp-label">ВІК</div><div class="pp-val">${age}</div></div>`,
+    author && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-building"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg></div><div class="pp-label">ВИДАВЕЦЬ</div><div class="pp-val">${author}</div></div>`,
   ].filter(Boolean).join('');
+
   return `<!doctype html>
 <html lang="uk" data-bf-generated-game="true">
 <head>
@@ -416,13 +432,17 @@ function generatedGameHtml(g) {
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap">
-<link rel="stylesheet" href="/bf.css?v=8">
+<link rel="stylesheet" href="/bf.css?v=9">
 <style>
+:root {
+  --bg-main: ${bgColor};
+  --accent: ${accentColor};
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{font-family:'Inter',system-ui,sans-serif;background:rgb(7,11,16);color:#fff;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#fff;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 /* ── HEADER ── */
-.gp-header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:100;background:rgba(10,15,26,.96);border-bottom:1px solid rgba(255,255,255,.05);backdrop-filter:blur(14px)}
+.gp-header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:100;background:rgba(0,0,0,.6);border-bottom:1px solid rgba(255,255,255,.05);backdrop-filter:blur(14px)}
 .gp-logo{display:flex;align-items:center;gap:12px;text-decoration:none}
 .gp-logo img{width:40px;height:40px;object-fit:contain}
 .gp-logo-name{font-weight:800;font-size:15px;color:#fff;letter-spacing:-.01em}
@@ -435,68 +455,66 @@ body{font-family:'Inter',system-ui,sans-serif;background:rgb(7,11,16);color:#fff
 /* ── HERO ── */
 .gp-hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
 .gp-hero-bg{position:absolute;inset:0}
-.gp-hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center top}
-.gp-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,11,16,.5) 0%,rgba(7,11,16,.05) 35%,rgba(7,11,16,.82) 100%)}
-.gp-hero-body{position:relative;z-index:10;text-align:center;padding:40px 24px;max-width:820px}
-.gp-kicker{display:inline-flex;align-items:center;gap:8px;background:rgba(0,159,227,.12);border:1px solid rgba(0,159,227,.3);border-radius:99px;padding:8px 20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#6ed0f7;margin-bottom:24px}
+.gp-hero-bg img, .gp-hero-bg video{width:100%;height:100%;object-fit:cover;object-position:center top}
+.gp-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,var(--bg-main) 0%, transparent 46%, var(--bg-main) 100%), rgba(0,0,0,0.3)}
+.gp-hero-body{position:relative;z-index:10;text-align:center;padding:40px 24px;max-width:820px;display:flex;flex-direction:column;align-items:center}
+.gp-kicker{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:99px;padding:8px 20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:var(--accent);margin-bottom:24px;backdrop-filter:blur(10px)}
+.gp-hero-logo{width:88vw;max-width:600px;height:auto;filter:drop-shadow(0 20px 40px rgba(0,0,0,0.5));animation:float 6s ease-in-out infinite}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
 .gp-hero-title{font-size:clamp(52px,10vw,110px);font-weight:900;line-height:.88;letter-spacing:-.04em;color:#fff;text-shadow:0 4px 48px rgba(0,0,0,.65);margin-bottom:18px}
-.gp-hero-sub{font-size:clamp(16px,2.5vw,21px);color:rgba(255,255,255,.65);max-width:560px;margin:0 auto 32px;line-height:1.5}
-.gp-hero-scroll{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(255,255,255,.35);font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;animation:gpBounce 2.2s ease-in-out infinite}
-.gp-hero-scroll::after{content:'';width:1px;height:38px;background:linear-gradient(to bottom,rgba(255,255,255,.28),transparent)}
-@keyframes gpBounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-9px)}}
+.gp-hero-sub{font-size:clamp(16px,2.5vw,21px);color:rgba(255,255,255,.65);max-width:560px;margin:24px auto 32px;line-height:1.5;text-shadow:0 2px 10px rgba(0,0,0,.5)}
+.gp-hero-scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,.5);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;cursor:pointer}
+.gp-hero-scroll svg{width:24px;height:24px;animation:gpBounce 2.2s ease-in-out infinite}
+@keyframes gpBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
 /* ── BUTTONS ── */
-.gp-btn-p{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 28px;border-radius:14px;background:#009fe3;color:#fff;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 10px 28px -10px rgba(0,159,227,.65);transition:all .2s}
-.gp-btn-p:hover{background:#0088c4;transform:translateY(-2px);box-shadow:0 16px 36px -10px rgba(0,159,227,.8)}
+.gp-btn-p{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 28px;border-radius:14px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 10px 28px -10px var(--accent);transition:all .2s;text-transform:uppercase;letter-spacing:.05em}
+.gp-btn-p:hover{filter:brightness(1.1);transform:translateY(-2px);box-shadow:0 16px 36px -10px var(--accent)}
 .gp-btn-s{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 24px;border-radius:14px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);font-weight:600;font-size:15px;text-decoration:none;border:1px solid rgba(255,255,255,.1);transition:all .2s}
 .gp-btn-s:hover{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2)}
 .gp-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+/* ── SECTIONS ── */
+.gp-section{padding:80px 24px;position:relative}
+.gp-inner{max-width:1024px;margin:0 auto}
+.gp-eyebrow{font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:16px}
+.gp-stitle{font-size:clamp(30px,4vw,48px);font-weight:800;color:rgba(255,255,255,.9);margin-bottom:16px;letter-spacing:-.02em}
 /* ── PASSPORT ── */
-.gp-section{padding:72px 24px}
-.gp-inner{max-width:960px;margin:0 auto}
-.gp-eyebrow{font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:12px}
-.gp-stitle{font-size:clamp(24px,4vw,36px);font-weight:900;color:rgba(255,255,255,.9);margin-bottom:36px;letter-spacing:-.025em}
-.pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-bottom:32px}
-.pp-card{background:rgb(11,17,24);border:1px solid rgb(16,24,35);border-radius:16px;padding:22px;transition:border-color .25s}
-.pp-card:hover{border-color:rgba(0,159,227,.22)}
-.pp-ico{font-size:20px;margin-bottom:10px}
-.pp-label{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px}
-.pp-val{font-size:15px;font-weight:600;color:rgba(255,255,255,.85)}
-.gp-status{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(0,159,227,.1);border:1px solid rgba(0,159,227,.28);color:#6ed0f7}
-.gp-status-dot{width:7px;height:7px;border-radius:50%;background:#009fe3;box-shadow:0 0 10px #009fe3;flex-shrink:0}
-/* ── ABOUT ── */
-.gp-about{padding:72px 24px;background:rgb(9,13,19)}
-.gp-about-inner{max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1.15fr;gap:52px;align-items:center}
-.gp-cover{border-radius:24px;overflow:hidden;box-shadow:0 40px 80px -24px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.06);aspect-ratio:3/4;background:rgb(11,17,24)}
-.gp-cover img{width:100%;height:100%;object-fit:cover;display:block}
-.gp-about-body h2{font-size:clamp(22px,3vw,30px);font-weight:900;color:rgba(255,255,255,.9);margin-bottom:6px;letter-spacing:-.02em}
-.gp-divider{width:100%;height:1px;background:rgba(255,255,255,.07);margin:20px 0}
-.gp-desc{font-size:15.5px;line-height:1.85;color:rgba(255,255,255,.58)}
-.gp-desc p{margin-bottom:14px}
+.pp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px}
+.pp-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:16px;padding:24px;transition:all .3s ease}
+.pp-card:hover{background:rgba(255,255,255,.06);transform:translateY(-4px);border-color:var(--accent)}
+.pp-ico{margin-bottom:12px;color:var(--accent);opacity:.8}
+.pp-ico svg{width:20px;height:20px}
+.pp-label{font-size:11px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px}
+.pp-val{font-size:16px;font-weight:600;color:rgba(255,255,255,.85)}
+/* ── ABOUT GRID ── */
+.gp-about-grid{display:grid;grid-template-columns:1.05fr 1.1fr;gap:40px;align-items:center;margin-top:40px}
+.gp-about-visual{background:radial-gradient(circle at 50% 20%, rgba(255,255,255,0.05) 0%, transparent 60%), rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;display:flex;align-items:center;justify-content:center;min-height:420px;perspective:1000px}
+.gp-3d-box{width:280px;border-radius:12px;box-shadow:0 30px 60px -20px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.1);transition:transform 0.4s cubic-bezier(0.2,0.8,0.2,1);transform:rotateY(-10deg) rotateX(5deg)}
+.gp-about-visual:hover .gp-3d-box{transform:rotateY(0deg) rotateX(0deg) scale(1.05)}
+.gp-3d-box img{width:100%;height:auto;border-radius:12px;display:block}
+.gp-about-content{background:linear-gradient(180deg, rgba(255,255,255,.03) 0%, transparent 100%);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;box-shadow:0 22px 50px -20px rgba(0,0,0,.5)}
+.gp-desc{font-size:16px;line-height:1.7;color:rgba(255,255,255,.66)}
+.gp-desc p{margin-bottom:16px}
 .gp-desc p:last-child{margin-bottom:0}
 /* ── FOOTER ── */
-.gp-footer{background:linear-gradient(180deg,rgb(9,13,19),rgb(7,11,16));padding:56px 24px 40px;border-top:1px solid rgba(255,255,255,.06)}
-.gp-footer-inner{max-width:960px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
-.gp-footer-logo{display:flex;align-items:center;gap:10px}
-.gp-footer-logo img{width:30px;height:30px;object-fit:contain;opacity:.65}
-.gp-footer-brand{font-weight:800;font-size:14px;color:rgba(255,255,255,.45)}
-.gp-footer-desc{color:rgba(255,255,255,.25);font-size:13px}
-.gp-footer-copy{color:rgba(255,255,255,.2);font-size:12px}
-.gp-footer-copy a{color:rgba(0,159,227,.6);text-decoration:none}
-.gp-footer-copy a:hover{color:#009fe3}
-/* ── SCROLL REVEAL ── */
-.rv{opacity:0;transform:translateY(26px);transition:opacity .6s ease,transform .6s ease}
-.rv.vis{opacity:1;transform:none}
-.rv-l{opacity:0;transform:translateX(-28px);transition:opacity .65s ease,transform .65s ease}
-.rv-l.vis{opacity:1;transform:none}
-.rv-r{opacity:0;transform:translateX(28px);transition:opacity .65s ease,transform .65s ease}
-.rv-r.vis{opacity:1;transform:none}
+.gp-footer{background:linear-gradient(180deg,transparent,rgba(0,0,0,.5));padding:80px 24px 40px;border-top:1px solid rgba(255,255,255,.05);position:relative;overflow:hidden}
+.gp-footer::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5}
+.gp-footer-inner{max-width:1024px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.gp-footer-logo{display:flex;align-items:center;gap:12px}
+.gp-footer-logo img{width:36px;height:36px;object-fit:contain;opacity:.8;filter:saturate(0) brightness(2)}
+.gp-footer-brand{font-weight:800;font-size:18px;color:rgba(255,255,255,.9)}
+.gp-footer-desc{color:rgba(255,255,255,.4);font-size:14px;max-width:300px;line-height:1.6}
+.gp-footer-copy{color:rgba(255,255,255,.3);font-size:13px;margin-top:20px}
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
-  .gp-about-inner{grid-template-columns:1fr;gap:28px}
-  .gp-cover{aspect-ratio:16/9;order:-1}
+  .gp-about-grid{grid-template-columns:1fr;gap:24px}
+  .gp-about-visual{min-height:300px;padding:20px}
+  .gp-3d-box{width:220px}
+  .gp-about-content{padding:24px}
   .pp-grid{grid-template-columns:repeat(2,1fr)}
-  .gp-hero-title{letter-spacing:-.03em}
 }
+/* ── SCROLL REVEAL ── */
+.rv{opacity:0;transform:translateY(30px);transition:all .8s cubic-bezier(0.2,0.8,0.2,1)}
+.rv.vis{opacity:1;transform:none}
 </style>
 </head>
 <body>
@@ -519,47 +537,62 @@ body{font-family:'Inter',system-ui,sans-serif;background:rgb(7,11,16);color:#fff
 
 <section class="gp-hero">
   <div class="gp-hero-bg">
-    <img src="${coverAbs}" alt="${title}" loading="eager">
+    ${isVideoBg 
+      ? `<video autoPlay loop muted playsInline preload="metadata" poster="${coverAbs}"><source src="${heroBg}" type="video/webm"><source src="${heroBg}" type="video/mp4"></video>`
+      : `<img src="${heroBg}" alt="${title}" loading="eager">`
+    }
   </div>
   <div class="gp-hero-overlay"></div>
-  <div class="gp-hero-body">
-    <div class="gp-kicker">${statusLabel}</div>
-    <h1 class="gp-hero-title">${title}</h1>
+  
+  <div class="gp-hero-body rv">
+    ${heroLogo 
+      ? `<img class="gp-hero-logo" src="${heroLogo}" alt="${title}">` 
+      : `<div class="gp-kicker">${statusLabel}</div><h1 class="gp-hero-title">${title}</h1>`
+    }
     <p class="gp-hero-sub">${subtitle}</p>
     ${buy
       ? `<a class="gp-btn-p" href="${buy}">Придбати →</a>`
-      : `<a class="gp-btn-s" href="#pro-gru">Дізнатися більше ↓</a>`
+      : `<a class="gp-btn-s" href="#passport">Дізнатися більше ↓</a>`
     }
   </div>
-  <div class="gp-hero-scroll">Scroll</div>
-</section>
 
-<section class="gp-section" id="pro-gru" style="background:rgb(9,13,19)">
-  <div class="gp-inner">
-    <div class="rv">
-      <p class="gp-eyebrow">Про гру</p>
-      <h2 class="gp-stitle">Паспорт гри</h2>
-    </div>
-    <div class="pp-grid">${passportCards}</div>
-    <div class="rv">
-      <span class="gp-status"><span class="gp-status-dot"></span>${statusLabel}</span>
-    </div>
+  <div class="gp-hero-scroll rv" onclick="document.getElementById('passport').scrollIntoView({behavior:'smooth'})">
+    <span>Зануритися</span>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
   </div>
 </section>
 
-<section class="gp-about">
-  <div class="gp-about-inner">
-    <figure class="gp-cover rv-l">
-      <img src="${cover}" alt="${title}" loading="lazy">
-    </figure>
-    <div class="gp-about-body rv-r">
-      <p class="gp-eyebrow">Опис</p>
-      <h2>Що за гра?</h2>
-      <div class="gp-divider"></div>
-      <div class="gp-desc">${descHtml}</div>
-      <div class="gp-actions">
-        ${buy ? `<a class="gp-btn-p" href="${buy}">Придбати →</a>` : ''}
-        <a class="gp-btn-s" href="/igry/">← Усі ігри</a>
+<section class="gp-section" id="passport" style="background:rgba(0,0,0,0.2)">
+  <div class="gp-inner">
+    <div class="rv text-center" style="text-align:center;margin-bottom:40px">
+      <p class="gp-eyebrow">Про гру</p>
+      <h2 class="gp-stitle">Паспорт пригоди</h2>
+      <p style="color:rgba(255,255,255,0.4);max-width:600px;margin:0 auto">Коротко про формат гри, щоб одразу зрозуміти, чого чекати.</p>
+    </div>
+    
+    <div class="pp-grid rv">${passportCards}</div>
+  </div>
+</section>
+
+<section class="gp-section" id="about">
+  <div class="gp-inner">
+    <div class="gp-about-grid">
+      <div class="gp-about-visual rv">
+        <div class="gp-3d-box">
+          <img src="${cover}" alt="${title}" loading="lazy">
+        </div>
+      </div>
+      
+      <div class="gp-about-content rv" style="transition-delay:0.1s">
+        <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6" style="background:rgba(255,255,255,0.05);color:var(--accent);border:1px solid rgba(255,255,255,0.1)">${statusLabel}</span>
+        <h3 class="gp-stitle" style="font-size:28px">Що за гра?</h3>
+        <div style="width:100%;height:1px;background:rgba(255,255,255,0.1);margin-bottom:24px"></div>
+        <div class="gp-desc">${descHtml}</div>
+        
+        <div class="gp-actions">
+          ${buy ? `<a class="gp-btn-p" href="${buy}">Придбати →</a>` : ''}
+          <a class="gp-btn-s" href="/igry/">← Каталог</a>
+        </div>
       </div>
     </div>
   </div>
@@ -568,13 +601,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:rgb(7,11,16);color:#fff
 ${renderGameStagesHtml(g.stages, statusRaw)}
 
 <footer class="gp-footer">
-  <div class="gp-footer-inner">
+  <div class="gp-footer-inner rv">
     <div class="gp-footer-logo">
       <img src="/logo-blue-ferret.png" alt="Blue Ferret">
       <span class="gp-footer-brand">Blue Ferret</span>
     </div>
-    <p class="gp-footer-desc">Незалежне видавництво настільних ігор</p>
-    <p class="gp-footer-copy">© ${year} <a href="/">Blue Ferret</a>. Всі права захищені.</p>
+    <p class="gp-footer-desc">Незалежне видавництво настільних ігор із власною інтонацією.</p>
+    <p class="gp-footer-copy">© ${year} Blue Ferret. Всі права захищені.</p>
   </div>
 </footer>
 
@@ -585,8 +618,8 @@ ${renderGameStagesHtml(g.stages, statusRaw)}
     es.forEach(function(e){
       if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);}
     });
-  },{threshold:.1,rootMargin:'0px 0px -36px 0px'});
-  document.querySelectorAll('.rv,.rv-l,.rv-r').forEach(function(el){io.observe(el);});
+  },{threshold:.15,rootMargin:'0px 0px -50px 0px'});
+  document.querySelectorAll('.rv').forEach(function(el){io.observe(el);});
 })();
 </script>
 <script src="/api/public/runtime.js" defer></script>
@@ -627,9 +660,9 @@ function removeGeneratedGamePage(slug) {
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,stages,players,age,duration,buy_url,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@stages,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,stages=@stages,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,stages,author,bg_color,accent_color,hero_bg_url,hero_logo_url,players,age,duration,buy_url,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@stages,@author,@bg_color,@accent_color,@hero_bg_url,@hero_logo_url,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,stages=@stages,author=@author,bg_color=@bg_color,accent_color=@accent_color,hero_bg_url=@hero_bg_url,hero_logo_url=@hero_logo_url,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
 function gameBody(b, ex={}) {
@@ -639,8 +672,10 @@ function gameBody(b, ex={}) {
   const stages = Array.isArray(b.stages) ? b.stages : parseStages(ex.stages);
   return { slug, title:cleanText(b.title??ex.title), subtitle:cleanText(b.subtitle??ex.subtitle??''), description:cleanText(b.description??ex.description??''),
     status:b.status||ex.status||'published', cover_url:cleanText(b.cover_url??ex.cover_url??''),
-    gallery:JSON.stringify(gallery), stages:JSON.stringify(stages), players:cleanText(b.players??ex.players??''),
-    age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:cleanText(b.buy_url??ex.buy_url??''),
+    gallery:JSON.stringify(gallery), stages:JSON.stringify(stages),
+    author:cleanText(b.author??ex.author??''), bg_color:cleanText(b.bg_color??ex.bg_color??''), accent_color:cleanText(b.accent_color??ex.accent_color??''),
+    hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''), hero_logo_url:cleanText(b.hero_logo_url??ex.hero_logo_url??''),
+    players:cleanText(b.players??ex.players??''), age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:cleanText(b.buy_url??ex.buy_url??''),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 
@@ -898,9 +933,12 @@ function listPages() {
     try { items = fs.readdirSync(dir); } catch { return; }
     for (const f of items) {
       if (f.startsWith('.') || f.startsWith('_next') || f==='uploads' || f==='cdn-cgi') continue;
+      
       const full = path.join(dir,f), r2 = rel ? `${rel}/${f}` : f;
       const stat = fs.statSync(full);
-      if (stat.isDirectory()) walk(full, r2);
+      if (stat.isDirectory()) {
+        walk(full, r2);
+      }
       else if (f==='index.html') pages.push({ path: rel||'/', file: r2, mtime: stat.mtimeMs });
     }
   }
@@ -941,12 +979,12 @@ function extractBlocks(html){
   const headOnly = html.slice(0, html.indexOf('</head>')+7 || 2000);
 
   const blocks=[], seenText=new Set();
-  const add=(id,type,label,icon,value,orig,origVal,idx)=>{
+  const add=(id,type,label,icon,value,orig,origVal,idx,extra={})=>{
     const v=(value||'').trim();
     if(!v) return;
     const key=type+'|'+v;
     if(seenText.has(key)) return; seenText.add(key);
-    blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx});
+    blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx,...extra});
   };
 
   // ── SEO (from <head>) ──
@@ -989,11 +1027,13 @@ function extractBlocks(html){
 
   // ── Links (<a> with meaningful text) ──
   const ar=/<a[^>]*>([\s\S]*?)<\/a>/gi; let ai=0, aKept=0;
-  while((m=ar.exec(safe))!==null && aKept<10){
+  while((m=ar.exec(safe))!==null && aKept<20){
     const inner=m[1];
     const t=cleanInner(inner);
     if(t && t.length>=3 && t.length<=120 && !/<img/i.test(inner)){
-      add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai);
+      const hrefMatch = m[0].match(/href="([^"]*)"/i);
+      const href = hrefMatch ? decodeHtmlEnts(hrefMatch[1]) : '';
+      add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai,{href});
       aKept++;
     }
     ai++;
@@ -1251,16 +1291,31 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   writeBackup(full);
   let changed = 0;
   for (const b of blocks) {
-    if (!b.orig || b.origVal === b.newVal || b.newVal == null) continue;
-    // img blocks: replace src attribute value, not text content
-    if (b.orig.match(/^<img\s/i)) {
-      const newOrig = b.orig.replace(`src="${b.origVal}"`, `src="${encodeHtmlEnts(b.newVal)}"`);
-      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
-    } else {
-      const encoded = encodeHtmlEnts(b.newVal);
-      const newOrig = b.orig.replace(b.origVal, encoded);
-      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
+    if (!b.orig) continue;
+    let newOrig = b.orig;
+    
+    if (b.newHref !== undefined && b.type === 'a') {
+      const hrefMatch = newOrig.match(/href="([^"]*)"/i);
+      if (hrefMatch) {
+        newOrig = newOrig.replace(`href="${hrefMatch[1]}"`, `href="${encodeHtmlEnts(b.newHref)}"`);
+      }
     }
+
+    if (b.newVal != null && b.origVal !== b.newVal) {
+      if (b.orig.match(/^<img\s/i)) {
+        newOrig = newOrig.replace(`src="${b.origVal}"`, `src="${encodeHtmlEnts(b.newVal)}"`);
+      } else {
+        let encoded = encodeHtmlEnts(b.newVal);
+        if (b.orig.match(/^<p[\s>]/i) || b.orig.match(/^<li[\s>]/i)) {
+          encoded = encoded.replace(/&lt;(\/?)(b|i|u|strong|em|br|ul|ol|li)&gt;/gi, '<$1$2>');
+          encoded = encoded.replace(/&lt;a\s+href=&quot;([^&"]+)&quot;&gt;/gi, '<a href="$1">');
+          encoded = encoded.replace(/&lt;\/a&gt;/gi, '</a>');
+        }
+        newOrig = newOrig.replace(b.origVal, encoded);
+      }
+    }
+    
+    if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
   }
   writeAtomic(full, html);
   const publishedAt = bumpPublishedAt();
