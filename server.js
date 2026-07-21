@@ -1,7 +1,6 @@
 'use strict';
 const express = require('express');
 const crypto  = require('crypto');
-const vm      = require('vm');
 const path    = require('path');
 const fs      = require('fs');
 const multer  = require('multer');
@@ -64,34 +63,6 @@ db.exec(`
     updated_at INTEGER
   );
 `);
-// Lightweight column migration: add new game fields to DBs created before
-// this version without needing a manual ALTER TABLE on the server.
-(function migrateGamesColumns(){
-  const cols = db.prepare("PRAGMA table_info(games)").all().map(c => c.name);
-  const add = (name, ddl) => { if (!cols.includes(name)) db.exec(`ALTER TABLE games ADD COLUMN ${ddl}`); };
-  add('designer', "designer TEXT DEFAULT ''");
-  add('components', "components TEXT DEFAULT ''");
-  add('links', "links TEXT DEFAULT '[]'");
-  add('always_visible', "always_visible INTEGER DEFAULT 0");
-  add('accent_color', "accent_color TEXT DEFAULT ''");
-  add('hero_bg_url', "hero_bg_url TEXT DEFAULT ''");
-  add('stage_notes', "stage_notes TEXT DEFAULT '{}'");
-  add('blocks', "blocks TEXT DEFAULT '[]'");
-  add('seo_title', "seo_title TEXT DEFAULT ''");
-  add('seo_description', "seo_description TEXT DEFAULT ''");
-})();
-
-// The four launch stages shown as a progress tracker (à la trymaysia's
-// "Етапи проєкту") — order matters, it's also the funnel order used to
-// figure out which stages are "done" vs "locked" relative to g.status.
-const STAGE_ORDER = ['published', 'preorder', 'production', 'onsale'];
-const STAGE_LABELS = { published: 'Анонс', preorder: 'Передзамовлення', production: 'Виробництво', onsale: 'У продажі' };
-function parseStageNotes(v) {
-  let obj; try { obj = typeof v === 'string' ? JSON.parse(v || '{}') : (v || {}); } catch { obj = {}; }
-  const out = {};
-  for (const k of STAGE_ORDER) out[k] = cleanText(obj[k] || '').slice(0, 400);
-  return out;
-}
 
 const getRow  = db.prepare('SELECT value FROM settings WHERE key=?');
 const upsert  = db.prepare(`INSERT INTO settings(key,value,updated_at) VALUES(?,?,?)
@@ -113,25 +84,10 @@ function writeAtomic(file, content) {
   fs.writeFileSync(tmp, content, 'utf8');
   fs.renameSync(tmp, file);
 }
-const BACKUP_KEEP = 15;
 function writeBackup(file) {
   if (!fs.existsSync(file)) return;
   const ts = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
   fs.copyFileSync(file, `${file}.bak-${ts}`);
-  // Every edit adds a new .bak-<timestamp> and nothing ever removed the old
-  // ones, so they accumulated forever across every page directory — keep
-  // only the most recent BACKUP_KEEP per file.
-  try {
-    const dir = path.dirname(file);
-    const base = path.basename(file);
-    const prefix = `${base}.bak-`;
-    const backups = fs.readdirSync(dir)
-      .filter(f => f.startsWith(prefix))
-      .sort(); // timestamp-suffixed names sort chronologically
-    for (const old of backups.slice(0, -BACKUP_KEEP)) {
-      try { fs.unlinkSync(path.join(dir, old)); } catch {}
-    }
-  } catch {}
 }
 function bumpPublishedAt() {
   const g = Object.assign({}, DEFAULTS.general, getSetting('general', {}));
@@ -296,40 +252,7 @@ app.get('/api/admin/stats', requireAuth, (_req, res) => {
 
 // ---------- games CRUD ----------
 function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
-function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), links: parseLinks(r.links), always_visible: !!r.always_visible, stage_notes: parseStageNotes(r.stage_notes), blocks: (() => { try { return Array.isArray(JSON.parse(r.blocks)) ? JSON.parse(r.blocks) : []; } catch { return []; } })() } : null; }
-function isPublicGameStatus(status) {
-  return !['draft', 'archived'].includes(String(status || 'published'));
-}
-function publicGames() {
-  return gAll.all().filter(g => isPublicGameStatus(g.status)).map(gameRow);
-}
-function statusLabel(s) {
-  return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс';
-}
-function gamePublicUrl(g) {
-  return g.buy_url || `/igry/${g.slug}/`;
-}
-function generatedGameCard(g) {
-  const title = escapeHtml(g.title || g.slug);
-  const desc = escapeHtml(g.description || g.subtitle || '');
-  const href = escapeHtml(gamePublicUrl(g));
-  const cover = escapeHtml(g.cover_url || '/images/placeholder-game.svg');
-  return `<a href="${href}" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]">
-<div class="aspect-[4/3] relative overflow-hidden bg-slate-800">
-<img src="${cover}" alt="${title}" class="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async"/>
-<div class="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent"></div>
-<div class="absolute bottom-3 sm:bottom-5 left-3 sm:left-5 right-3 sm:right-5 flex justify-between items-end gap-2">
-<span class="board-game-badge inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/95 text-slate-700 text-xs sm:text-sm shadow-md backdrop-blur-sm border border-[var(--bf-accent)]/30">${statusLabel(g.status)}</span>
-<span class="p-2.5 sm:p-3 rounded-xl bg-white/95 backdrop-blur-sm border border-white/60 shadow-sm text-bf" aria-hidden="true">→</span>
-</div>
-</div>
-<div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full">
-<h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800">${title}</h2>
-<p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6">${desc}</p>
-<span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span>
-</div>
-</a>`;
-}
+function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery) } : null; }
 
 function regenGamesCatalog() {
   const p = path.join(PAGES_ROOT, 'igry/index.html');
@@ -357,8 +280,48 @@ function regenGamesCatalog() {
   if (gridEnd === -1) return;
   
   const gridOuterHTML = html.slice(divStart, gridEnd);
-  const games = publicGames();
-  const newCards = games.map(generatedGameCard);
+  const aMatch = gridOuterHTML.match(/<a [^>]*href="\/igry\/[^"]+"[^>]*>[\s\S]*?<\/a>/i);
+  if (!aMatch) return;
+  const template = aMatch[0];
+  
+  function getStatusName(s) { return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс'; }
+  const games = gAll.all().filter(g => g.status !== 'archived').map(gameRow);
+
+  // Extract the first card's title and description text for replacement
+  // In minified HTML, text may sit directly in divs without h2/p wrappers
+  const firstGame = games[0] || {};
+  const firstTitle = escapeHtml(firstGame.title || 'Тримайся');
+  const firstDesc = escapeHtml(firstGame.description || firstGame.subtitle || '');
+  
+  const newCards = games.map(g => {
+    let card = template;
+    // Replace href
+    card = card.replace(/href="\/igry\/[^"]+"\/?/, `href="${g.buy_url || '/igry/'+g.slug+'/'}"`);
+    // Replace image src
+    card = card.replace(/src="[^"]+"/, `src="${g.cover_url || '/images/placeholder-game.svg'}"`);
+    // Replace alt
+    card = card.replace(/alt="[^"]*"/, `alt="${escapeHtml(g.title||'')}"`);
+    // Replace title: try h2 first, then find raw text in the card body
+    const h2re = /(<h2[^>]*>)[\s\S]*?(<\/h2>)/i;
+    if (h2re.test(card)) {
+      card = card.replace(h2re, `$1${escapeHtml(g.title||'')}$2`);
+    } else if (firstTitle && card.includes(firstTitle)) {
+      card = card.replace(firstTitle, escapeHtml(g.title||''));
+    }
+    // Replace description: try p first, then find raw text
+    const pre = /(<p[^>]*>)[\s\S]*?(<\/p>)/i;
+    if (pre.test(card)) {
+      card = card.replace(pre, `$1${escapeHtml(g.description||g.subtitle||'')}$2`);
+    } else if (firstDesc && firstDesc.length > 20 && card.includes(firstDesc)) {
+      card = card.replace(firstDesc, escapeHtml(g.description||g.subtitle||''));
+    }
+    // Replace status badge
+    const badgeRe = /(<span[^>]*board-game-badge[^>]*>)[\s\S]*?(<\/span>)/i;
+    if (badgeRe.test(card)) {
+      card = card.replace(badgeRe, `$1${getStatusName(g.status)}$2`);
+    }
+    return card;
+  });
   
   const firstCloseBracket = gridOuterHTML.indexOf('>');
   const newGridHTML = gridOuterHTML.slice(0, firstCloseBracket + 1) + newCards.join('') + '</div>';
@@ -366,310 +329,228 @@ function regenGamesCatalog() {
   let newHtml = html.slice(0, divStart) + newGridHTML + html.slice(gridEnd);
   
   const countRegex = /(<span[^>]*>)\s*\d+\s*(ігри|гра|ігор)\s+в\s+каталозі\s*(<\/span>)/i;
-  const word = games.length === 1 ? 'гра' : (games.length >= 2 && games.length <= 4 ? 'ігри' : 'ігор');
-  newHtml = newHtml.replace(countRegex, `$1${games.length} ${word} в каталозі$3`);
+  newHtml = newHtml.replace(countRegex, `$1${games.length} ${games.length===1?'гра':'ігри'} в каталозі$3`);
   
   newHtml = newHtml.replace(/<script>window\.__BF_IGRY_HTML=[\s\S]*?<\/script>/i, '');
   
-  if (newHtml !== html) writeAtomic(p, newHtml);
+  writeAtomic(p, newHtml);
 }
 
 function cleanText(v) { return String(v ?? '').trim(); }
 function escapeHtml(s) {
   return cleanText(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;'}[c]));
 }
-// Minimal markdown: **bold** and _italic_ only. Always run AFTER escapeHtml
-// so the raw text is already entity-safe before these get turned into tags —
-// authors can't smuggle real markup through this.
-function inlineMd(escaped) {
-  return escaped
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/_(.+?)_/g, '<em>$1</em>');
-}
-function renderDescriptionBlocks(text) {
-  const blocks = String(text || '').split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
-  if (!blocks.length) return '<p>Опис гри скоро з\'явиться.</p>';
-  return blocks.map(block => {
-    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-    if (lines.length > 1 && lines.every(l => l.startsWith('- '))) {
-      return `<ul class="bfg-list">${lines.map(l => `<li>${inlineMd(escapeHtml(l.slice(2)))}</li>`).join('')}</ul>`;
-    }
-    return `<p>${inlineMd(escapeHtml(lines.join(' ')))}</p>`;
-  }).join('');
-}
-function renderGallerySection(gallery, title) {
-  if (!gallery || !gallery.length) return '';
-  const items = gallery.map(url => `<div class="bfg-gallery-item"><img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" loading="lazy"></div>`).join('');
-  return `<section class="bfg-gallery"><div class="bfg-gallery-inner"><h2 class="bfg-section-title">Галерея</h2><div class="bfg-gallery-grid">${items}</div></div></section>`;
-}
-function renderComponentsSection(components){
-  const lines = String(components||'').split('\n').map(l=>l.trim()).filter(Boolean);
-  if(!lines.length) return '';
-  const items = lines.map(l => `<li>${inlineMd(escapeHtml(l.replace(/^- /,'')))}</li>`).join('');
-  return `<section class="bfg-components"><div class="bfg-components-inner"><h2 class="bfg-section-title">У коробці</h2><ul class="bfg-list">${items}</ul></div></section>`;
-}
-// "Паспорт гри" — trymaysia's stat-card treatment, generalized: any subset of
-// players/age/duration/designer that's actually filled in renders as a card;
-// the whole section disappears if none are set (nothing to show beats an
-// empty dark band).
-function renderPassportSection(players, age, duration, designer){
-  const items = [
-    players && {ico:'👥', label:'Гравці', value:players},
-    age && {ico:'🎂', label:'Вік', value:age},
-    duration && {ico:'⏱', label:'Тривалість', value:duration},
-    designer && {ico:'✏️', label:'Автор', value:designer},
-  ].filter(Boolean);
-  if (!items.length) return '';
-  return `<section class="bfg-passport"><div class="bfg-passport-inner">
-    <p class="bfg-eyebrow">Про гру</p>
-    <h2 class="bfg-section-title light">Паспорт гри</h2>
-    <div class="bfg-passport-grid">
-      ${items.map(it => `<div class="bfg-pp-card">
-        <div class="bfg-pp-ico">${it.ico}</div>
-        <p class="bfg-pp-label">${escapeHtml(it.label.toUpperCase())}</p>
-        <p class="bfg-pp-value">${escapeHtml(it.value)}</p>
-      </div>`).join('')}
-    </div>
-  </div></section>`;
-}
-// "Етапи запуску" — the launch-progress tracker from trymaysia (Анонс →
-// Передзамовлення → Виробництво → У продажі). Opt-in by content: it only
-// appears once the author writes at least one stage note, so a plain
-// already-in-the-shop game doesn't get a "campaign" narrative it doesn't need.
-function renderStagesSection(status, stageNotes){
-  const hasAny = STAGE_ORDER.some(k => stageNotes[k]);
-  if (!hasAny) return '';
-  const curIdx = STAGE_ORDER.indexOf(status);
-  const cards = STAGE_ORDER.map((key, i) => {
-    const state = curIdx < 0 ? 'upcoming' : (i < curIdx ? 'done' : i === curIdx ? 'active' : 'upcoming');
-    const ico = state === 'done' ? '✓' : state === 'active' ? '🔓' : '🔒';
-    const note = stageNotes[key];
-    return `<article class="bfg-stage ${state}">
-      <div class="bfg-stage-head"><span class="bfg-stage-ico">${ico}</span><h3>${escapeHtml(STAGE_LABELS[key])}</h3></div>
-      ${note ? `<p class="bfg-stage-note">${escapeHtml(note)}</p>` : ''}
-    </article>`;
-  }).join('');
-  return `<section class="bfg-stages"><div class="bfg-stages-inner">
-    <p class="bfg-eyebrow">Прогрес</p>
-    <h2 class="bfg-section-title light">Етапи запуску</h2>
-    <div class="bfg-stage-list">${cards}</div>
-  </div></section>`;
-}
 function generatedGameHtml(g) {
-  const seoTitle = escapeHtml(g.seo_title || g.title || g.slug);
   const title = escapeHtml(g.title || g.slug);
   const subtitle = escapeHtml(g.subtitle || g.players || 'Настільна гра Blue Ferret');
   const cover = escapeHtml(g.cover_url || '/images/placeholder-game.svg');
+  const coverAbs = cover.startsWith('http') ? cover : 'https://blueferret.com.ua' + cover;
   const statusRaw = (g.status || 'published');
-  const statusLabel = statusRaw === 'draft' ? 'Чернетка' : statusRaw === 'archived' ? 'Архів' : (STAGE_LABELS[statusRaw] || 'Анонс');
+  const statusLabel = {draft:'Чернетка',archived:'Архів',preorder:'Передзамовлення',onsale:'У продажі'}[statusRaw] || 'Анонс';
   const players = escapeHtml(g.players || '');
   const age = escapeHtml(g.age || '');
   const duration = escapeHtml(g.duration || '');
   const buy = escapeHtml(g.buy_url || '');
-  const designer = escapeHtml(g.designer || '');
-  const extraLinks = (Array.isArray(g.links) ? g.links : parseLinks(g.links))
-    .map(l => `<a class="bfg-btn secondary" href="${escapeHtml(l.url)}">${escapeHtml(l.label)}</a>`).join('');
-  const metaDesc = escapeHtml(g.seo_description || String(g.description || '').split(/\n\s*\n/)[0] || 'Опис гри скоро з\'явиться.').replace(/^- /, '');
-  // Customization: per-game accent color (falls back to brand blue) and an
-  // optional full-bleed hero backdrop image, so games can each get their own
-  // "packaging" feel (à la trymaysia's illustrated hero) without hand-coding
-  // a bespoke page per game — same template, different theming inputs.
-  const accent = /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(g.accent_color || '') ? g.accent_color : '#009fe3';
-  const heroBg = g.hero_bg_url ? escapeHtml(g.hero_bg_url) : '';
-  const stageNotes = parseStageNotes(g.stage_notes);
-  const passportHtml = renderPassportSection(players, age, duration, designer);
-  const blocks = (Array.isArray(g.blocks) && g.blocks.length > 0) ? g.blocks : (() => {
-    const fb = [];
-    if (g.stage_notes && Object.values(g.stage_notes).some(Boolean)) {
-      const curIdx = STAGE_ORDER.indexOf(statusRaw);
-      fb.push({
-        type: 'stages',
-        items: STAGE_ORDER.map((k, i) => ({
-          label: STAGE_LABELS[k],
-          note: g.stage_notes[k] || '',
-          state: curIdx < 0 ? 'upcoming' : (i < curIdx ? 'done' : i === curIdx ? 'active' : 'upcoming')
-        })).filter(x => x.note)
-      });
-    }
-    if (g.components) fb.push({ type: 'components', content: g.components });
-    if (g.gallery && g.gallery.length) fb.push({ type: 'gallery', images: g.gallery });
-    return fb;
-  })();
-
-  const blocksHtml = blocks.map(b => {
-    if (b.type === 'text') {
-      return `<section class="bfg-components"><div class="bfg-components-inner"><div class="bfg-desc">${renderDescriptionBlocks(b.content||'')}</div></div></section>`;
-    }
-    if (b.type === 'stages') {
-      const items = Array.isArray(b.items) ? b.items : [];
-      if (!items.length) return '';
-      const cards = items.map(item => {
-        const state = item.state || 'upcoming';
-        const ico = state === 'done' ? '✓' : state === 'active' ? '🔓' : '🔒';
-        return `<article class="bfg-stage ${state}">
-          <div class="bfg-stage-head"><span class="bfg-stage-ico">${ico}</span><h3>${escapeHtml(item.label||'')}</h3></div>
-          ${item.note ? `<p class="bfg-stage-note">${escapeHtml(item.note)}</p>` : ''}
-        </article>`;
-      }).join('');
-      return `<section class="bfg-stages"><div class="bfg-stages-inner">
-        <p class="bfg-eyebrow">Прогрес</p>
-        <h2 class="bfg-section-title light">${escapeHtml(b.title || 'Етапи запуску')}</h2>
-        <div class="bfg-stage-list">${cards}</div>
-      </div></section>`;
-    }
-    if (b.type === 'components') {
-      return renderComponentsSection(b.content);
-    }
-    if (b.type === 'gallery') {
-      return renderGallerySection(b.images, title);
-    }
-    if (b.type === 'video') {
-      const match = (b.url||'').match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-      const vid = match ? match[1] : '';
-      if (!vid) return '';
-      return `<section class="bfg-components"><div class="bfg-components-inner"><div style="aspect-ratio:16/9;border-radius:24px;overflow:hidden;background:#0f172a;box-shadow:0 30px 70px -30px rgba(15,23,42,.6);"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${vid}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div></section>`;
-    }
-    return '';
-  }).join('');
-
+  const rawDesc = (g.description || '').trim() || 'Опис гри скоро з\'явиться.';
+  const metaDesc = escapeHtml(rawDesc.replace(/\n/g,' ').slice(0, 155));
+  const descHtml = rawDesc.split('\n').filter(p => p.trim()).map(p => `<p>${escapeHtml(p)}</p>`).join('');
+  const year = new Date().getFullYear();
+  const passportCards = [
+    players && `<div class="pp-card"><div class="pp-ico">👥</div><div class="pp-label">Гравці</div><div class="pp-val">${players}</div></div>`,
+    duration && `<div class="pp-card"><div class="pp-ico">⏱</div><div class="pp-label">Тривалість</div><div class="pp-val">${duration}</div></div>`,
+    age && `<div class="pp-card"><div class="pp-ico">🎂</div><div class="pp-label">Від якого віку</div><div class="pp-val">${age}</div></div>`,
+    `<div class="pp-card"><div class="pp-ico">🎲</div><div class="pp-label">Видавець</div><div class="pp-val">Blue Ferret</div></div>`,
+  ].filter(Boolean).join('');
   return `<!doctype html>
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<title>${seoTitle} | Blue Ferret</title>
-<meta name="description" content="${metaDesc.slice(0, 155)}">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>${title} | Blue Ferret</title>
+<meta name="description" content="${metaDesc}">
 <link rel="canonical" href="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
-<meta property="og:title" content="${seoTitle} | Blue Ferret">
-<meta property="og:description" content="${metaDesc.slice(0, 155)}">
+<meta property="og:title" content="${title} | Blue Ferret">
+<meta property="og:description" content="${metaDesc}">
 <meta property="og:url" content="https://blueferret.com.ua/igry/${escapeHtml(g.slug)}/">
-<meta property="og:type" content="website">
-<meta property="og:image" content="${cover.startsWith('http') ? cover : 'https://blueferret.com.ua' + cover}">
+<meta property="og:type" content="article">
+<meta property="og:image" content="${coverAbs}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${seoTitle} | Blue Ferret">
+<meta name="twitter:title" content="${title} | Blue Ferret">
+<meta name="twitter:image" content="${coverAbs}">
 <link rel="shortcut icon" href="/favicon.ico">
-<link rel="stylesheet" href="/_next/static/css/a80874b32dc71380.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap">
 <link rel="stylesheet" href="/bf.css?v=8">
 <style>
-:root{--bfg-accent:${accent}}
-body{margin:0;background:#f8fbff;color:#0f172a;font-family:Inter,system-ui,sans-serif}
-.bfg-wrap{min-height:100vh;background:radial-gradient(ellipse 100% 70% at 50% -10%,color-mix(in srgb,var(--bfg-accent) 18%,transparent),transparent 60%),linear-gradient(135deg,#f6fbff,#fff,#eefaf3)}
-${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
-.bfg-hero-bg::before{content:'';position:absolute;inset:0;background:url('${heroBg}') center/cover no-repeat;opacity:.16;pointer-events:none}
-.bfg-hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(248,251,255,.9) 85%);pointer-events:none}
-.bfg-hero-bg .bfg-shell{position:relative;z-index:1}`:''}
-.bfg-header{background:#0a0f1a/98;backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.05);position:sticky;top:0;z-index:50}
-.bfg-nav{max-width:1120px;margin:0 auto;padding:0 18px;display:flex;justify-content:space-between;align-items:center;height:64px}
-.bfg-logo{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff}
-.bfg-logo img{width:40px;height:40px;object-fit:contain}
-.bfg-logo-text{display:flex;flex-direction:column}
-.bfg-logo-name{font-weight:800;font-size:15px;color:#fff;letter-spacing:-.01em}
-.bfg-logo-sub{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:#94a3b8}
-.bfg-nav-links{display:flex;align-items:center;gap:4px}
-.bfg-nav-links a{color:#94a3b8;text-decoration:none;font-weight:500;font-size:14px;padding:8px 14px;border-radius:10px;transition:all .2s}
-.bfg-nav-links a:hover{color:#fff;background:rgba(255,255,255,.1)}
-.bfg-nav-links a.active{color:#fff;background:rgba(255,255,255,.12)}
-.bfg-shell{max-width:1120px;margin:0 auto;padding:56px 18px 100px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:48px;align-items:center}
-.bfg-copy{padding:24px 0}
-.bfg-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--bfg-accent) 25%,transparent);background:color-mix(in srgb,var(--bfg-accent) 8%,transparent);border-radius:999px;padding:8px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--bfg-accent);margin-bottom:20px}
-.bfg-title{font-size:clamp(40px,7vw,88px);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;font-weight:900;color:#0f172a}
-.bfg-sub{font-size:clamp(17px,2.2vw,24px);line-height:1.35;color:#334155;margin:0 0 18px;max-width:620px}
-.bfg-desc{font-size:16px;line-height:1.8;color:#475569;max-width:660px}
-.bfg-desc p{margin:0 0 14px}
-.bfg-desc p:last-child{margin-bottom:0}
-.bfg-list{margin:0 0 14px;padding-left:20px}
-.bfg-list li{margin-bottom:4px}
-.bfg-components{padding:10px 18px 20px}
-.bfg-components-inner{max-width:1120px;margin:0 auto}
-.bfg-components-inner .bfg-list{columns:2;column-gap:32px;font-size:16px;color:#334155}
-.bfg-components-inner .bfg-list li{break-inside:avoid;margin-bottom:8px}
-@media(max-width:640px){.bfg-components-inner .bfg-list{columns:1}}
-.bfg-gallery{padding:10px 18px 100px}
-.bfg-gallery-inner{max-width:1120px;margin:0 auto}
-.bfg-section-title{font-size:clamp(24px,3.5vw,34px);font-weight:900;color:#0f172a;margin:0 0 24px;letter-spacing:-.03em}
-.bfg-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
-.bfg-gallery-item{border-radius:16px;overflow:hidden;background:#0f172a;box-shadow:0 14px 34px -18px rgba(15,23,42,.35)}
-.bfg-gallery-item img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
-.bfg-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
-/* Passport — dark stat-card section right after the hero (players/age/duration/designer) */
-.bfg-passport{background:#0b0f16;padding:56px 18px}
-.bfg-passport-inner{max-width:1120px;margin:0 auto}
-.bfg-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.35);margin:0 0 10px}
-.bfg-section-title.light{color:rgba(255,255,255,.92)}
-.bfg-passport-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:24px}
-.bfg-pp-card{background:#0f1620;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px}
-.bfg-pp-ico{font-size:20px;margin-bottom:10px}
-.bfg-pp-label{font-size:10.5px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.35);margin:0 0 6px}
-.bfg-pp-value{font-size:16px;font-weight:700;color:rgba(255,255,255,.9);margin:0}
-/* Stages — launch progress tracker, only rendered when the author fills at least one note */
-.bfg-stages{background:#070a0f;padding:56px 18px 80px}
-.bfg-stages-inner{max-width:820px;margin:0 auto}
-.bfg-stage-list{display:flex;flex-direction:column;gap:14px;margin-top:24px}
-.bfg-stage{border-radius:18px;padding:20px 24px;border:1px solid rgba(255,255,255,.08);background:#0f1620}
-.bfg-stage.active{background:linear-gradient(135deg,color-mix(in srgb,var(--bfg-accent) 22%,transparent),#0f1620 60%);border-color:color-mix(in srgb,var(--bfg-accent) 55%,transparent);box-shadow:0 20px 40px -28px color-mix(in srgb,var(--bfg-accent) 80%,transparent)}
-.bfg-stage.done{opacity:.7}
-.bfg-stage.upcoming{opacity:.45}
-.bfg-stage-head{display:flex;align-items:center;gap:12px}
-.bfg-stage-ico{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:rgba(255,255,255,.08);flex-shrink:0}
-.bfg-stage.active .bfg-stage-ico{background:color-mix(in srgb,var(--bfg-accent) 30%,transparent)}
-.bfg-stage-head h3{margin:0;font-size:18px;font-weight:700;color:rgba(255,255,255,.92)}
-.bfg-stage-note{margin:10px 0 0 44px;font-size:14px;line-height:1.6;color:rgba(255,255,255,.5)}
-.bfg-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border-radius:14px;text-decoration:none;font-weight:700;font-size:15px;transition:all .2s}
-.bfg-btn.primary{background:var(--bfg-accent);color:#fff;box-shadow:0 12px 30px -12px color-mix(in srgb,var(--bfg-accent) 70%,transparent)}
-.bfg-btn.primary:hover{filter:brightness(.92);transform:translateY(-1px)}
-.bfg-btn.secondary{background:#fff;color:#0f172a;border:1px solid #cbd5e1}
-.bfg-btn.secondary:hover{border-color:var(--bfg-accent);color:var(--bfg-accent)}
-.bfg-cover{background:#0f172a;border-radius:24px;box-shadow:0 30px 70px -30px rgba(15,23,42,.6);overflow:hidden;aspect-ratio:4/3;position:relative}
-.bfg-cover img{width:100%;height:100%;object-fit:cover;display:block}
-.bfg-footer{background:linear-gradient(to bottom,#0f172a,#0a0f1a);padding:60px 18px 40px;text-align:center;margin-top:80px}
-.bfg-footer-inner{max-width:600px;margin:0 auto}
-.bfg-footer p{color:#64748b;font-size:14px;margin:0}
-.bfg-footer a{color:var(--bfg-accent);text-decoration:none}
-@media(max-width:800px){.bfg-shell{grid-template-columns:1fr;padding-top:28px;gap:32px}.bfg-cover{order:-1;border-radius:18px}.bfg-title{font-size:clamp(36px,10vw,60px)}.bfg-nav-links{display:none}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:rgb(7,11,16);color:#fff;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+/* ── HEADER ── */
+.gp-header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:100;background:rgba(10,15,26,.96);border-bottom:1px solid rgba(255,255,255,.05);backdrop-filter:blur(14px)}
+.gp-logo{display:flex;align-items:center;gap:12px;text-decoration:none}
+.gp-logo img{width:40px;height:40px;object-fit:contain}
+.gp-logo-name{font-weight:800;font-size:15px;color:#fff;letter-spacing:-.01em}
+.gp-logo-sub{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:#94a3b8}
+.gp-nav{display:flex;align-items:center;gap:4px}
+.gp-nav a{color:#94a3b8;text-decoration:none;font-weight:500;font-size:14px;padding:8px 14px;border-radius:10px;transition:color .2s,background .2s}
+.gp-nav a:hover{color:#fff;background:rgba(255,255,255,.09)}
+.gp-nav a.active{color:#fff;font-weight:700;background:rgba(255,255,255,.12)}
+@media(max-width:768px){.gp-nav{display:none}}
+/* ── HERO ── */
+.gp-hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.gp-hero-bg{position:absolute;inset:0}
+.gp-hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.gp-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,11,16,.5) 0%,rgba(7,11,16,.05) 35%,rgba(7,11,16,.82) 100%)}
+.gp-hero-body{position:relative;z-index:10;text-align:center;padding:40px 24px;max-width:820px}
+.gp-kicker{display:inline-flex;align-items:center;gap:8px;background:rgba(0,159,227,.12);border:1px solid rgba(0,159,227,.3);border-radius:99px;padding:8px 20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#6ed0f7;margin-bottom:24px}
+.gp-hero-title{font-size:clamp(52px,10vw,110px);font-weight:900;line-height:.88;letter-spacing:-.04em;color:#fff;text-shadow:0 4px 48px rgba(0,0,0,.65);margin-bottom:18px}
+.gp-hero-sub{font-size:clamp(16px,2.5vw,21px);color:rgba(255,255,255,.65);max-width:560px;margin:0 auto 32px;line-height:1.5}
+.gp-hero-scroll{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(255,255,255,.35);font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;animation:gpBounce 2.2s ease-in-out infinite}
+.gp-hero-scroll::after{content:'';width:1px;height:38px;background:linear-gradient(to bottom,rgba(255,255,255,.28),transparent)}
+@keyframes gpBounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-9px)}}
+/* ── BUTTONS ── */
+.gp-btn-p{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 28px;border-radius:14px;background:#009fe3;color:#fff;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 10px 28px -10px rgba(0,159,227,.65);transition:all .2s}
+.gp-btn-p:hover{background:#0088c4;transform:translateY(-2px);box-shadow:0 16px 36px -10px rgba(0,159,227,.8)}
+.gp-btn-s{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 24px;border-radius:14px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);font-weight:600;font-size:15px;text-decoration:none;border:1px solid rgba(255,255,255,.1);transition:all .2s}
+.gp-btn-s:hover{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2)}
+.gp-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+/* ── PASSPORT ── */
+.gp-section{padding:72px 24px}
+.gp-inner{max-width:960px;margin:0 auto}
+.gp-eyebrow{font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:12px}
+.gp-stitle{font-size:clamp(24px,4vw,36px);font-weight:900;color:rgba(255,255,255,.9);margin-bottom:36px;letter-spacing:-.025em}
+.pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-bottom:32px}
+.pp-card{background:rgb(11,17,24);border:1px solid rgb(16,24,35);border-radius:16px;padding:22px;transition:border-color .25s}
+.pp-card:hover{border-color:rgba(0,159,227,.22)}
+.pp-ico{font-size:20px;margin-bottom:10px}
+.pp-label{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px}
+.pp-val{font-size:15px;font-weight:600;color:rgba(255,255,255,.85)}
+.gp-status{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(0,159,227,.1);border:1px solid rgba(0,159,227,.28);color:#6ed0f7}
+.gp-status-dot{width:7px;height:7px;border-radius:50%;background:#009fe3;box-shadow:0 0 10px #009fe3;flex-shrink:0}
+/* ── ABOUT ── */
+.gp-about{padding:72px 24px;background:rgb(9,13,19)}
+.gp-about-inner{max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1.15fr;gap:52px;align-items:center}
+.gp-cover{border-radius:24px;overflow:hidden;box-shadow:0 40px 80px -24px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.06);aspect-ratio:3/4;background:rgb(11,17,24)}
+.gp-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.gp-about-body h2{font-size:clamp(22px,3vw,30px);font-weight:900;color:rgba(255,255,255,.9);margin-bottom:6px;letter-spacing:-.02em}
+.gp-divider{width:100%;height:1px;background:rgba(255,255,255,.07);margin:20px 0}
+.gp-desc{font-size:15.5px;line-height:1.85;color:rgba(255,255,255,.58)}
+.gp-desc p{margin-bottom:14px}
+.gp-desc p:last-child{margin-bottom:0}
+/* ── FOOTER ── */
+.gp-footer{background:linear-gradient(180deg,rgb(9,13,19),rgb(7,11,16));padding:56px 24px 40px;border-top:1px solid rgba(255,255,255,.06)}
+.gp-footer-inner{max-width:960px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.gp-footer-logo{display:flex;align-items:center;gap:10px}
+.gp-footer-logo img{width:30px;height:30px;object-fit:contain;opacity:.65}
+.gp-footer-brand{font-weight:800;font-size:14px;color:rgba(255,255,255,.45)}
+.gp-footer-desc{color:rgba(255,255,255,.25);font-size:13px}
+.gp-footer-copy{color:rgba(255,255,255,.2);font-size:12px}
+.gp-footer-copy a{color:rgba(0,159,227,.6);text-decoration:none}
+.gp-footer-copy a:hover{color:#009fe3}
+/* ── SCROLL REVEAL ── */
+.rv{opacity:0;transform:translateY(26px);transition:opacity .6s ease,transform .6s ease}
+.rv.vis{opacity:1;transform:none}
+.rv-l{opacity:0;transform:translateX(-28px);transition:opacity .65s ease,transform .65s ease}
+.rv-l.vis{opacity:1;transform:none}
+.rv-r{opacity:0;transform:translateX(28px);transition:opacity .65s ease,transform .65s ease}
+.rv-r.vis{opacity:1;transform:none}
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .gp-about-inner{grid-template-columns:1fr;gap:28px}
+  .gp-cover{aspect-ratio:16/9;order:-1}
+  .pp-grid{grid-template-columns:repeat(2,1fr)}
+  .gp-hero-title{letter-spacing:-.03em}
+}
 </style>
 </head>
 <body>
-<div class="bfg-wrap${heroBg?' bfg-hero-bg':''}" data-bf-generated-game="true">
-  <header class="bfg-header">
-    <nav class="bfg-nav">
-      <a class="bfg-logo" href="/">
-        <img src="/logo-blue-ferret.png" alt="Blue Ferret">
-        <div class="bfg-logo-text">
-          <span class="bfg-logo-name">BLUE FERRET</span>
-          <span class="bfg-logo-sub">видавництво</span>
-        </div>
-      </a>
-      <div class="bfg-nav-links">
-        <a href="/">Головна</a>
-        <a href="/igry/" class="active">Наші ігри</a>
-        <a href="/kontakty/">Контакти</a>
-      </div>
-    </nav>
-  </header>
-  <section class="bfg-shell">
-    <div class="bfg-copy">
-      <span class="bfg-kicker">${statusLabel}</span>
-      <h1 class="bfg-title">${title}</h1>
-      <p class="bfg-sub">${subtitle}</p>
-      <div class="bfg-desc">${renderDescriptionBlocks(g.description)}</div>
-      <div class="bfg-actions">
-        ${buy ? `<a class="bfg-btn primary" href="${buy}">Придбати →</a>` : ''}
-        ${extraLinks}
-        <a class="bfg-btn secondary" href="/igry/">← Назад до каталогу</a>
-      </div>
+<div data-bf-generated-game="true">
+
+<header class="gp-header">
+  <a class="gp-logo" href="/">
+    <img src="/logo-blue-ferret.png" alt="Blue Ferret">
+    <div>
+      <div class="gp-logo-name">BLUE FERRET</div>
+      <div class="gp-logo-sub">видавництво</div>
     </div>
-    <figure class="bfg-cover">
-      <img src="${cover}" alt="${title}" loading="eager">
+  </a>
+  <nav class="gp-nav">
+    <a href="/">Головна</a>
+    <a href="/igry/" class="active">Наші ігри</a>
+    <a href="/kontakty/">Контакти</a>
+  </nav>
+</header>
+
+<section class="gp-hero">
+  <div class="gp-hero-bg">
+    <img src="${coverAbs}" alt="${title}" loading="eager">
+  </div>
+  <div class="gp-hero-overlay"></div>
+  <div class="gp-hero-body">
+    <div class="gp-kicker">${statusLabel}</div>
+    <h1 class="gp-hero-title">${title}</h1>
+    <p class="gp-hero-sub">${subtitle}</p>
+    ${buy
+      ? `<a class="gp-btn-p" href="${buy}">Придбати →</a>`
+      : `<a class="gp-btn-s" href="#pro-gru">Дізнатися більше ↓</a>`
+    }
+  </div>
+  <div class="gp-hero-scroll">Scroll</div>
+</section>
+
+<section class="gp-section" id="pro-gru" style="background:rgb(9,13,19)">
+  <div class="gp-inner">
+    <div class="rv">
+      <p class="gp-eyebrow">Про гру</p>
+      <h2 class="gp-stitle">Паспорт гри</h2>
+    </div>
+    <div class="pp-grid">${passportCards}</div>
+    <div class="rv">
+      <span class="gp-status"><span class="gp-status-dot"></span>${statusLabel}</span>
+    </div>
+  </div>
+</section>
+
+<section class="gp-about">
+  <div class="gp-about-inner">
+    <figure class="gp-cover rv-l">
+      <img src="${cover}" alt="${title}" loading="lazy">
     </figure>
-  </section>
-  ${passportHtml}
-  ${blocksHtml}
-  <footer class="bfg-footer">
-    <div class="bfg-footer-inner">
-      <p>© 2026 <a href="/">Blue Ferret</a> – Незалежне видавництво настільних ігор</p>
+    <div class="gp-about-body rv-r">
+      <p class="gp-eyebrow">Опис</p>
+      <h2>Що за гра?</h2>
+      <div class="gp-divider"></div>
+      <div class="gp-desc">${descHtml}</div>
+      <div class="gp-actions">
+        ${buy ? `<a class="gp-btn-p" href="${buy}">Придбати →</a>` : ''}
+        <a class="gp-btn-s" href="/igry/">← Усі ігри</a>
+      </div>
     </div>
-  </footer>
+  </div>
+</section>
+
+<footer class="gp-footer">
+  <div class="gp-footer-inner">
+    <div class="gp-footer-logo">
+      <img src="/logo-blue-ferret.png" alt="Blue Ferret">
+      <span class="gp-footer-brand">Blue Ferret</span>
+    </div>
+    <p class="gp-footer-desc">Незалежне видавництво настільних ігор</p>
+    <p class="gp-footer-copy">© ${year} <a href="/">Blue Ferret</a>. Всі права захищені.</p>
+  </div>
+</footer>
+
 </div>
+<script>
+(function(){
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);}
+    });
+  },{threshold:.1,rootMargin:'0px 0px -36px 0px'});
+  document.querySelectorAll('.rv,.rv-l,.rv-r').forEach(function(el){io.observe(el);});
+})();
+</script>
 <script src="/api/public/runtime.js" defer></script>
 </body>
 </html>`;
@@ -677,22 +558,14 @@ ${heroBg?`.bfg-hero-bg{position:relative;overflow:hidden}
 function writeGeneratedGamePage(row) {
   const g = gameRow(row);
   if (!g || !g.slug) return;
-  if (!isPublicGameStatus(g.status)) {
-    removeGeneratedGamePage(g.slug);
-    return;
-  }
-  const file = path.join(SITE_ROOT, 'igry', g.slug, 'index.html');
-  const nextHtml = generatedGameHtml(g);
+  const dir = path.join(SITE_ROOT, 'igry', g.slug);
+  const file = path.join(dir, 'index.html');
   if (fs.existsSync(file)) {
+    // Only overwrite if the file was itself generated by this function
     const existing = fs.readFileSync(file, 'utf8');
-    if (existing === nextHtml) return;
-    // A page at this slug that doesn't carry our marker is a hand-crafted
-    // page (e.g. a real Next.js-rendered design) placed here outside the
-    // CMS — never clobber it with the generic generated template.
     if (!existing.includes('data-bf-generated-game="true"')) return;
-    writeBackup(file);
   }
-  writeAtomic(file, nextHtml);
+  writeAtomic(file, generatedGameHtml(g));
 }
 function removeGeneratedGamePage(slug) {
   if (!slug) return;
@@ -709,75 +582,19 @@ function removeGeneratedGamePage(slug) {
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,designer,components,links,always_visible,accent_color,hero_bg_url,stage_notes,blocks,seo_title,seo_description,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@designer,@components,@links,@always_visible,@accent_color,@hero_bg_url,@stage_notes,@blocks,@seo_title,@seo_description,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,designer=@designer,components=@components,links=@links,always_visible=@always_visible,accent_color=@accent_color,hero_bg_url=@hero_bg_url,stage_notes=@stage_notes,blocks=@blocks,seo_title=@seo_title,seo_description=@seo_description,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,players,age,duration,buy_url,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
-function syncPublicGames() {
-  const rows = gAll.all();
-  for (const row of rows) writeGeneratedGamePage(row);
-  regenGamesCatalog();
-  syncGamesChunkVisibility();
-  try { execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); } catch {}
-}
-
-// The /igry catalog's own React chunk decides which games show as real
-// clickable cards vs. locked "coming soon" placeholders via a slug check
-// baked into the component's JS source (originally hardcoded to a single
-// slug: "trymaysia"!==e.slug). We keep it baked into the SOURCE, as a slug
-// whitelist array literal, rather than adding a field to the baked JSON
-// props — the props blob is validated client-side by a strict Zod schema
-// (chunk 1930) that rejects any unrecognized key and crashes the whole
-// site (all pages share that schema chunk). A source-code array literal
-// never touches that schema, so it's safe to update on every game save.
-function syncGamesChunkVisibility() {
-  const igryHtmlPath = path.join(PAGES_ROOT, 'igry', 'index.html');
-  if (!fs.existsSync(igryHtmlPath)) return;
-  let pageHtml; try { pageHtml = fs.readFileSync(igryHtmlPath, 'utf8'); } catch { return; }
-  const visibleSlugs = gAll.all().filter(r => r.always_visible).map(r => r.slug);
-  const arrLiteral = JSON.stringify(visibleSlugs);
-  // Matches the condition regardless of which prior form it's in
-  // (hardcoded single-slug, a stray e.alwaysVisible reference, or an
-  // already-migrated array literal) — always rewritten to the current list.
-  const condRe = /let l=!(?:"trymaysia"!==e\.slug|e\.alwaysVisible|\[[^\]]*\]\.includes\(e\.slug\))&&"announcement"===e\.status/;
-  for (const ref of findPageOwnChunks(pageHtml)) {
-    const chunkFull = path.join(SITE_ROOT, ref);
-    if (!chunkFull.startsWith(SITE_ROOT) || !fs.existsSync(chunkFull)) continue;
-    const dir = path.dirname(chunkFull), oldName = path.basename(chunkFull);
-    let content; try { content = fs.readFileSync(chunkFull, 'utf8'); } catch { continue; }
-    if (!condRe.test(content)) continue;
-    const newCond = `let l=!${arrLiteral}.includes(e.slug)&&"announcement"===e.status`;
-    if (content.match(condRe)[0] === newCond) continue;
-    content = content.replace(condRe, newCond);
-    rehashChunkAndRelink(dir, oldName, content);
-  }
-}
-
-function parseLinks(v) {
-  const arr = Array.isArray(v) ? v : (() => { try { return JSON.parse(v||'[]'); } catch { return []; } })();
-  return arr
-    .map(l => ({ label: cleanText(l && l.label), url: cleanText(l && l.url) }))
-    .filter(l => l.label && l.url);
-}
 function gameBody(b, ex={}) {
   const rawSlug = (b.slug||ex.slug||b.title||'').toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
   const slug = rawSlug || `game-${Date.now()}`;
   const gallery = Array.isArray(b.gallery) ? b.gallery : parseGallery(ex.gallery);
-  const links = b.links !== undefined ? parseLinks(b.links) : parseLinks(ex.links);
   return { slug, title:cleanText(b.title??ex.title), subtitle:cleanText(b.subtitle??ex.subtitle??''), description:cleanText(b.description??ex.description??''),
     status:b.status||ex.status||'published', cover_url:cleanText(b.cover_url??ex.cover_url??''),
     gallery:JSON.stringify(gallery), players:cleanText(b.players??ex.players??''),
     age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:cleanText(b.buy_url??ex.buy_url??''),
-    designer:cleanText(b.designer??ex.designer??''), components:cleanText(b.components??ex.components??''),
-    links:JSON.stringify(links),
-    always_visible:(b.always_visible!==undefined?!!b.always_visible:!!ex.always_visible)?1:0,
-    accent_color:cleanText(b.accent_color??ex.accent_color??''),
-    hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''),
-    stage_notes:JSON.stringify(parseStageNotes(b.stage_notes!==undefined?b.stage_notes:ex.stage_notes)),
-    blocks:JSON.stringify(Array.isArray(b.blocks)?b.blocks:(() => { try { return Array.isArray(JSON.parse(ex.blocks))?JSON.parse(ex.blocks):[]; } catch { return []; } })()),
-    seo_title:cleanText(b.seo_title??ex.seo_title??''),
-    seo_description:cleanText(b.seo_description??ex.seo_description??''),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 
@@ -785,18 +602,14 @@ app.get('/api/admin/games', requireAuth, (_r, res) => res.json(gAll.all().map(ga
 app.get('/api/admin/games/:id', requireAuth, (req, res) => {
   const r = gOne.get(+req.params.id); if (!r) return res.status(404).json({error:'not_found'}); res.json(gameRow(r));
 });
-app.get('/api/preview/:slug', (req, res) => {
-  const g = gSlug.get(req.params.slug);
-  if(!g) return res.status(404).send('Not found');
-  res.send(generatedGameHtml(gameRow(g)));
-});
 app.post('/api/admin/games', requireAuth, (req, res) => {
   const b = req.body||{};
   if (!b.title) return res.status(400).json({error:'title required'});
   const data = gameBody(b);
   if (gSlug.get(data.slug)) return res.status(409).json({error:'slug_exists'});
   const info = gIns.run(data);
-  syncPublicGames();
+  writeGeneratedGamePage(gOne.get(info.lastInsertRowid));
+  regenGamesCatalog();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_create',{id:info.lastInsertRowid,slug:data.slug,publishedAt});
   res.status(201).json({...gameRow(gOne.get(info.lastInsertRowid)), publishedAt});
@@ -809,7 +622,8 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   if (c && c.id!==id) return res.status(409).json({error:'slug_exists'});
   gUpd.run({...data,id});
   if (ex.slug !== data.slug) removeGeneratedGamePage(ex.slug);
-  syncPublicGames();
+  writeGeneratedGamePage(gOne.get(id));
+  regenGamesCatalog();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_update',{id,publishedAt});
   res.json({...gameRow(gOne.get(id)), publishedAt});
@@ -820,39 +634,10 @@ app.delete('/api/admin/games/:id', requireAuth, (req, res) => {
   if (!ex) return res.status(404).json({error:'not_found'});
   removeGeneratedGamePage(ex.slug);
   gDel.run(id);
-  syncPublicGames();
+  regenGamesCatalog();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_delete',{id,publishedAt});
   res.json({ok:true,publishedAt});
-});
-
-app.post('/api/admin/games/:id/duplicate', requireAuth, (req, res) => {
-  const id=+req.params.id, ex=gOne.get(id);
-  if (!ex) return res.status(404).json({error:'not_found'});
-  const base = slugify(`${ex.slug || ex.title}-copy`) || `game-${Date.now()}`;
-  let slug = base, i = 2;
-  while (gSlug.get(slug)) slug = `${base}-${i++}`;
-  const data = gameBody({
-    ...ex,
-    slug,
-    title: `${ex.title || 'Гра'} копія`,
-    status: 'draft',
-    gallery: parseGallery(ex.gallery),
-    sort_order: Number(ex.sort_order || 0) + 1,
-  });
-  const info = gIns.run(data);
-  syncPublicGames();
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip,'game_duplicate',{from:id,id:info.lastInsertRowid,slug,publishedAt});
-  res.status(201).json({...gameRow(gOne.get(info.lastInsertRowid)), publishedAt});
-});
-
-app.post('/api/admin/sync-public', requireAuth, (req, res) => {
-  syncPublicGames();
-  regenKikCatalog();
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'sync_public', { publishedAt });
-  res.json({ ok: true, publishedAt, games: publicGames().length });
 });
 
 // ---------- KIK CRUD ----------
@@ -1037,40 +822,15 @@ app.post('/api/admin/upload', requireAuth, (req, res, next) => {
   res.json({ ok:true, url, filename:req.file.filename, size:req.file.size });
 });
 
-
-
-const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif|svg|avif)$/i;
-// Walks SITE_ROOT/images (game art, characters, etc. — assets that were
-// deployed straight to disk rather than through the upload button) so they
-// show up as pickable/browsable, even though only /uploads files can be
-// deleted through this admin.
-function walkStaticImages(dir, base) {
-  let out = [];
-  let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
-  for (const e of entries) {
-    if (e.name.startsWith('.')) continue;
-    const full = path.join(dir, e.name);
-    const rel = base ? `${base}/${e.name}` : e.name;
-    if (e.isDirectory()) {
-      out = out.concat(walkStaticImages(full, rel));
-    } else if (IMAGE_EXT_RE.test(e.name)) {
-      const stat = fs.statSync(full);
-      out.push({ filename: rel, url: `/images/${rel}`, size: stat.size, mtime: stat.mtimeMs, deletable: false });
-    }
-  }
-  return out;
-}
 app.get('/api/admin/media', requireAuth, (_req, res) => {
   try {
-    const uploaded = fs.readdirSync(UPLOADS)
-      .filter(f => !f.startsWith('.') && IMAGE_EXT_RE.test(f))
+    const files = fs.readdirSync(UPLOADS)
+      .filter(f => !f.startsWith('.') && /\.(jpe?g|png|webp|gif|svg|avif)$/i.test(f))
       .map(f => {
         const stat = fs.statSync(path.join(UPLOADS, f));
-        return { filename:f, url:`/uploads/${f}`, size:stat.size, mtime:stat.mtimeMs, deletable: true };
-      });
-    const staticImages = walkStaticImages(path.join(SITE_ROOT, 'images'), '');
-    res.json([...uploaded, ...staticImages].sort((a,b) => b.mtime - a.mtime));
+        return { filename:f, url:`/uploads/${f}`, size:stat.size, mtime:stat.mtimeMs };
+      }).sort((a,b) => b.mtime - a.mtime);
+    res.json(files);
   } catch { res.json([]); }
 });
 
@@ -1109,29 +869,6 @@ function decodeHtmlEnts(s){
 function encodeHtmlEnts(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 }
-// Paragraph text edited in the page editor may contain a <a href="...">text</a>
-// span (insert-link button) or a <strong>text</strong>/<em>text</em> span
-// (bold/italic buttons). Only these exact, simple, non-nested patterns are
-// allowed through as real markup — everything else (including any other
-// stray angle brackets the user typed) gets HTML-encoded, so a plain
-// textarea can carry a small safe set of inline HTML without becoming an
-// XSS hole.
-function sanitizeUserHtml(v){
-  const re=/<a href="([^"<>]*)">([^<>]*)<\/a>|<(strong|em)>([^<>]*)<\/\3>/g;
-  let out='', last=0, m;
-  while((m=re.exec(v))!==null){
-    out += encodeHtmlEnts(v.slice(last, m.index));
-    if(m[3]){
-      out += `<${m[3]}>${encodeHtmlEnts(m[4])}</${m[3]}>`;
-    } else {
-      const href=m[1];
-      out += /^\s*(javascript|data):/i.test(href) ? encodeHtmlEnts(m[0]) : `<a href="${encodeHtmlEnts(href)}">${encodeHtmlEnts(m[2])}</a>`;
-    }
-    last = re.lastIndex;
-  }
-  out += encodeHtmlEnts(v.slice(last));
-  return out;
-}
 function cleanInner(raw){
   // strip tags inserting spaces so adjacent elements don't concatenate, collapse whitespace
   return decodeHtmlEnts(raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim());
@@ -1146,17 +883,7 @@ function hasOnlyInlineTags(raw){
   return tags.every(t => allowed.has(t.slice(1).toLowerCase()));
 }
 
-function flattenSiteContentValues(obj){
-  const out=new Set();
-  function rec(o){
-    if(typeof o==='string'){ if(o.trim()) out.add(o.trim()); return; }
-    if(Array.isArray(o)){ o.forEach(rec); return; }
-    if(o&&typeof o==='object'){ for(const k of Object.keys(o)) rec(o[k]); }
-  }
-  rec(obj);
-  return out;
-}
-function extractBlocks(html, managedValues){
+function extractBlocks(html){
   // strip non-content regions so their text never leaks into blocks
   const safe = html
     .replace(/<script[\s\S]*?<\/script>/gi,'')
@@ -1167,48 +894,13 @@ function extractBlocks(html, managedValues){
     .replace(/<footer[\s\S]*?<\/footer>/gi,'');
   const headOnly = html.slice(0, html.indexOf('</head>')+7 || 2000);
 
-  // Orphaned titles from the homepage's fallbackPillars/fallbackCta cards —
-  // superseded by "Тексти сайту" (home.fallbackPillars[].title etc.) but the
-  // old words are still sitting in the static HTML with nothing pointing at
-  // them, so value-matching against managedValues can't catch them (the
-  // current title text is different words entirely). Listed explicitly so
-  // they stop appearing as if they were live-editable.
-  const ORPHANED_TEXT = new Set(['Досліджуйте','Підтримуйте','Створюйте']);
-
-  // Same idea as ORPHANED_TEXT/managedValues but for text that's *drifted*
-  // rather than staying byte-identical (e.g. a card description that's since
-  // been trimmed in site-content.json but still has its old, longer wording
-  // sitting in the static HTML) — an exact-match Set can't catch that, so
-  // fall back to substring containment against the live values. Normalize
-  // dash variants/whitespace first since "-" vs "—" alone would otherwise
-  // defeat the containment check.
-  const normForMatch = s => s.replace(/[-–—]/g,'-').replace(/\s+/g,' ').trim();
-  const managedList = managedValues ? [...managedValues].filter(v=>v.length>=12).map(normForMatch) : [];
-  function driftedFromManaged(v){
-    const nv = normForMatch(v);
-    return managedList.some(m => nv.includes(m) || m.includes(nv));
-  }
-
   const blocks=[], seenText=new Set();
-  let managedSkipped=0;
-  const add=(id,type,label,icon,value,orig,origVal,idx,extra)=>{
+  const add=(id,type,label,icon,value,orig,origVal,idx)=>{
     const v=(value||'').trim();
     if(!v) return;
-    // Text also present in site-content.json is live-hydrated from there and
-    // overwritten on every page load — editing the static HTML copy here
-    // would silently do nothing, so skip it in favor of "Тексти сайту". Track
-    // how many so the admin UI can say WHY a tab looks empty instead of just
-    // showing "Немає блоків" with no explanation (this used to look like a
-    // bug — the content genuinely is editable, just from a different tab).
-    if(type!=='seo' && managedValues && managedValues.has(v)) { managedSkipped++; return; }
-    if((type==='p'||type==='h1'||type==='h2'||type==='h3') && driftedFromManaged(v)) return;
-    if(type==='h3' && ORPHANED_TEXT.has(v)) return;
-    // Links with identical visible text but different hrefs must stay distinct
-    // (e.g. two "Детальніше" buttons pointing at different pages) — dedup key
-    // includes href for 'a' blocks, not just the visible text.
-    const key=type+'|'+v+(type==='a'?'|'+(extra&&extra.href||''):'');
+    const key=type+'|'+v;
     if(seenText.has(key)) return; seenText.add(key);
-    blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx,...(extra||{})});
+    blocks.push({id,type,label,icon,value:v,orig,origVal,domIndex:idx});
   };
 
   // ── SEO (from <head>) ──
@@ -1235,26 +927,14 @@ function extractBlocks(html, managedValues){
   }
 
   // ── Paragraphs — allow <p> with simple inline tags (strong, em, a) ──
-  // Cap raised from 14→80: pages with more real content (e.g. the homepage,
-  // which has 20+ genuine paragraphs) were silently losing the tail past the
-  // old cap — "editor has way fewer blocks than the page actually has" bug.
-  // The lookahead after "p" is required: without it, [^>]* also matches
-  // <path (SVG icon elements — this page is full of them), so the "opening
-  // tag" match latches onto a <path ...> and then swallows everything up to
-  // the NEXT real </p>, fusing several unrelated elements' text into one
-  // garbled block. Editing/saving that block then replaces the whole
-  // swallowed span, silently deleting the other elements caught in it —
-  // this is the "several text blocks disappeared after editing one" bug.
-  const pr=/<p(?=[\s>])[^>]*>([\s\S]*?)<\/p>/gi; let pi=0, kept=0;
-  while((m=pr.exec(safe))!==null && kept<150){
+  const pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; let pi=0, kept=0;
+  while((m=pr.exec(safe))!==null && kept<14){
     const inner=m[1];
     const t=cleanInner(inner);
-    // Allow paragraphs with simple inline tags (strong, em, a, etc.). Tag-based
-    // concatenation garbage (nav/footer link lists jammed together) is already
-    // excluded above/here via inlineOk. We allow short texts (like '2-4')
-    // so they can be edited in structural blocks like the game Passport.
+    const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t);
+    // Allow paragraphs with simple inline tags (strong, em, a, etc.)
     const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
-    if(t && inlineOk && t.length>=2 && t.length<=900){
+    if(t && inlineOk && !looksConcat && t.includes(' ') && t.length>=20 && t.length<=900){
       add(`p_${pi}`,'p','Абзац тексту','¶',t,m[0],inner,pi);
       kept++;
     }
@@ -1262,23 +942,12 @@ function extractBlocks(html, managedValues){
   }
 
   // ── Links (<a> with meaningful text) ──
-  // Same word-boundary bug as the <p>/<path> fix above: [^>]* after "a"
-  // would also match <abbr>, <address>, <area>, <article>, <aside>, <audio>
-  // — all common on this site. A false match there swallows text up to the
-  // NEXT real </a>, so a genuine link further down silently never gets its
-  // own block (no visible corruption, just an unreachable link in the editor).
-  const ar=/<a(?=[\s>])[^>]*>([\s\S]*?)<\/a>/gi; let ai=0, aKept=0;
-  while((m=ar.exec(safe))!==null && aKept<60){
+  const ar=/<a[^>]*>([\s\S]*?)<\/a>/gi; let ai=0, aKept=0;
+  while((m=ar.exec(safe))!==null && aKept<10){
     const inner=m[1];
     const t=cleanInner(inner);
-    // Card-style anchors that wrap a whole heading+paragraph produce a huge
-    // concatenated "link text" that isn't really editable link text — same
-    // inline-only guard used for paragraphs.
-    const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
-    const hrefM=m[0].match(/\shref="([^"]*)"/);
-    const href=hrefM?decodeHtmlEnts(hrefM[1]):'';
-    if(t && inlineOk && t.length>=3 && t.length<=120 && !/<img/i.test(inner) && href){
-      add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai,{href});
+    if(t && t.length>=3 && t.length<=120 && !/<img/i.test(inner)){
+      add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai);
       aKept++;
     }
     ai++;
@@ -1286,7 +955,7 @@ function extractBlocks(html, managedValues){
 
   // ── Spans with meaningful text (badges, labels) ──
   const sr=/<span[^>]*>([^<]{4,80})<\/span>/gi; let si=0, sKept=0;
-  while((m=sr.exec(safe))!==null && sKept<50){
+  while((m=sr.exec(safe))!==null && sKept<8){
     const t=decodeHtmlEnts(m[1]).trim();
     // skip very short or numeric-only spans
     if(t && t.length>=4 && t.length<=80 && /[а-яіїєa-z]/i.test(t)){
@@ -1298,12 +967,12 @@ function extractBlocks(html, managedValues){
 
   // ── Images (<img> with src) ──
   const ir=/<img[^>]+src="([^"]+)"[^>]*>/gi; let ii=0, iKept=0;
-  while((m=ir.exec(safe))!==null && iKept<50){
+  while((m=ir.exec(safe))!==null && iKept<8){
     const src=decodeHtmlEnts(m[1]).trim();
     // skip tiny icons, data URIs, tracking pixels
     if(src && !src.startsWith('data:') && src.length>5 && !/favicon|icon/i.test(src)){
       const alt=(m[0].match(/alt="([^"]*)"/)||[])[1]||'';
-      add(`img_${ii}`,'img',decodeHtmlEnts(alt)||'Зображення','🖼',src,m[0],m[1],ii,{alt:decodeHtmlEnts(alt)});
+      add(`img_${ii}`,'img',decodeHtmlEnts(alt)||'Зображення','🖼',src,m[0],m[1],ii);
       iKept++;
     }
     ii++;
@@ -1311,7 +980,7 @@ function extractBlocks(html, managedValues){
 
   // ── List items (<li>) ──
   const lr=/<li[^>]*>([\s\S]*?)<\/li>/gi; let li=0, lKept=0;
-  while((m=lr.exec(safe))!==null && lKept<50){
+  while((m=lr.exec(safe))!==null && lKept<6){
     const t=cleanInner(m[1]);
     if(t && t.length>=4 && t.length<=200 && t.includes(' ')){
       add(`li_${li}`,'li','Елемент списку','📌',t,m[0],m[1],li);
@@ -1320,7 +989,7 @@ function extractBlocks(html, managedValues){
     li++;
   }
 
-  return { blocks, managedSkipped };
+  return blocks;
 }
 
 app.get('/api/admin/pages', requireAuth, (_req, res) => res.json(listPages()));
@@ -1355,9 +1024,9 @@ app.post('/api/admin/pages/create', requireAuth, (req,res)=>{
   if(fs.existsSync(dir)) return res.status(409).json({error:'page_exists', slug});
   fs.mkdirSync(dir,{recursive:true});
   let html;
-  if(copyFrom && typeof copyFrom==='string'){
-    const srcFull = path.join(PAGES_ROOT, copyFrom);
-    if(srcFull.startsWith(PAGES_ROOT) && fs.existsSync(srcFull)){
+  if(copyFrom){
+    const srcFull = path.join(PAGES_ROOT, copyFrom.replace(/\.\./g,''));
+    if(fs.existsSync(srcFull)){
       html = fs.readFileSync(srcFull,'utf8');
       if(title) html = html.replace(/<title>[^<]*<\/title>/,`<title>${encodeHtmlEnts(title)} | Blue Ferret</title>`);
     }
@@ -1379,7 +1048,7 @@ app.delete('/api/admin/pages/delete', requireAuth, (req,res)=>{
   if(!fs.existsSync(dir)) return res.status(404).json({error:'not_found'});
   // safety: only delete if it contains only index.html (+ .bak)
   const contents = fs.readdirSync(dir).filter(f=>!f.startsWith('.'));
-  const safe = contents.every(f => f === 'index.html' || /\.html(\.bak(-\S+)?)?$/.test(f));
+  const safe = contents.every(f=>f==='index.html'||f.endsWith('.bak')||f.endsWith('.html'));
   if(!safe) return res.status(400).json({error:'directory has unexpected files, delete manually'});
   contents.forEach(f=>fs.unlinkSync(path.join(dir,f)));
   fs.rmdirSync(dir);
@@ -1437,525 +1106,6 @@ function setByPath(obj,pathStr,val){
   if(o==null||typeof o[last]==='undefined') return false;
   o[last]=val; return true;
 }
-// A baked getStaticProps blob mixes real prose in with structural data that
-// happens to also be a string (hex colors, slugs, image paths, enum-like
-// status flags, raw IDs) — none of which belong in a TEXT editor. Almost
-// all real prose on this site is Ukrainian, so "contains a Cyrillic letter"
-// is a strong, simple signal; the length+space fallback catches longer
-// English/mixed strings without letting short technical tokens through.
-function looksLikeEditableProse(v){
-  const s=v.trim();
-  if(!s || s.length>2000) return false;
-  if(/^https?:\/\//i.test(s) || s.startsWith('/')) return false;          // URL / path
-  if(/^#[0-9a-fA-F]{3,8}$/.test(s)) return false;                          // hex color
-  if(/^-?\d+(\.\d+)?$/.test(s)) return false;                             // pure number
-  if(/[а-яёіїєґ]/i.test(s)) return true;                                  // Cyrillic → real content
-  return s.includes(' ') && s.length>=15;                                 // longer English/mixed phrase
-}
-function flattenContentServer(obj){
-  const out=[];
-  function rec(o,pathArr,section){
-    if(typeof o==='string'){ if(looksLikeEditableProse(o)) out.push({path:pathArr.join('.'),value:o,section}); return; }
-    if(Array.isArray(o)){ o.forEach((v,i)=>rec(v,[...pathArr,i],section)); return; }
-    if(o&&typeof o==='object'){ for(const k of Object.keys(o)) rec(o[k],[...pathArr,k],section||k); }
-  }
-  for(const k of Object.keys(obj)) rec(obj[k],[k],k);
-  return out;
-}
-
-// ════════════════════════════════════════════════════════
-//  PAGE-SPECIFIC BAKED CONTENT (Next.js getStaticProps payload)
-//  A static export bakes each route's own props into that route's OWN JS
-//  chunk (app/**/page-*.js) — separate from, and NOT the same data as, the
-//  shared "site-content" dictionary chunk above. Sections like the "about"
-//  story / "values" pillar cards live ONLY here; they were previously
-//  invisible to every editor (not in static HTML, not in site-content) —
-//  see server.js commit history for how this was diagnosed.
-// ════════════════════════════════════════════════════════
-function findAllJsonParseBlobs(content){
-  const blobs=[]; const marker="JSON.parse('";
-  let searchFrom=0;
-  while(true){
-    const m=content.indexOf(marker, searchFrom);
-    if(m<0) break;
-    // The blob's root can be a JSON object OR a JSON array (e.g. the shared
-    // layout chunk's games list is `JSON.parse('[{...},{...}]')`) — find
-    // whichever opening delimiter comes first, not just "{". Scanning only
-    // for "{" here used to latch onto the FIRST element's own opening brace
-    // inside an array, then depth-count only braces — closing after just
-    // that one element and silently ignoring every sibling in the array.
-    let braceStart=-1;
-    for(let p=m+marker.length; p<Math.min(content.length, m+marker.length+10); p++){
-      if(content[p]==='{'||content[p]==='['){ braceStart=p; break; }
-    }
-    if(braceStart<0){ searchFrom=m+marker.length; continue; }
-    let depth=0,k=braceStart;
-    while(k<content.length){
-      const c=content[k];
-      if(c==='"'){ k++; while(k<content.length&&content[k]!=='"'){ if(content[k]==='\\')k++; k++; } }
-      else if(c==='{'||c==='[') depth++;
-      else if(c==='}'||c===']'){ depth--; if(depth===0){ k++; break; } }
-      k++;
-    }
-    const raw=content.slice(braceStart,k);
-    try{ blobs.push({start:braceStart, end:k, obj:JSON.parse(jsToJson(raw))}); }catch(e){ /* not JSON, skip */ }
-    searchFrom=k;
-  }
-  return blobs;
-}
-function findPageOwnChunks(pageHtml){
-  // Only this route's own "page-*.js" bundle — NOT layout/error/not-found,
-  // which are the shared app-shell chunks reused across every route and can
-  // carry OTHER pages' baked data (e.g. a specific game's id/slug/palette)
-  // that has nothing to do with the page currently being edited.
-  const refs=new Set(); const re=/_next\/static\/chunks\/app\/[^"'\s]*\/?page-[^"'\s/]+\.js/g;
-  let m; while((m=re.exec(pageHtml))!==null) refs.add(m[0]);
-  return [...refs];
-}
-// Same "content-hash rename + update every HTML <script> ref" pattern as
-// the site-content PUT handler, factored out so both call sites share it.
-// Every content-hash chunk rewrite (block-editor saves, propagation,
-// visibility sync, future editors) funnels through this one function before
-// a chunk goes live — so it's the one place a syntax-validation guard
-// protects the whole site at once. A single unescaped quote in edited text
-// once turned into a JS SyntaxError baked into the root layout chunk,
-// which is loaded on every page — see blueferret-deploy-hazards Міна 12.
-function assertValidJs(content, label){
-  try{ new vm.Script(content); }
-  catch(e){ throw new Error(`refusing to publish invalid JS in ${label}: ${e.message}`); }
-}
-function rehashChunkAndRelink(dir, oldName, newContent){
-  assertValidJs(newContent, oldName);
-  const prefix=oldName.split('-')[0];
-  const hash=crypto.createHash('sha256').update(newContent).digest('hex').slice(0,16);
-  const newName=`${prefix}-${hash}.js`;
-  writeAtomic(path.join(dir,newName), newContent);
-  if(newName!==oldName){
-    try{ fs.unlinkSync(path.join(dir,oldName)); }catch{}
-    let htmlChanged=0;
-    (function walk(d){
-      for(const f of fs.readdirSync(d)){
-        if(f.startsWith('.')||f==='_next'||f==='uploads'||f==='cdn-cgi') continue;
-        const full=path.join(d,f); let st; try{st=fs.statSync(full);}catch{continue;}
-        if(st.isDirectory()) walk(full);
-        else if(f.endsWith('.html')){
-          let h; try{h=fs.readFileSync(full,'utf8');}catch{continue;}
-          if(h.includes(oldName)){ h=h.split(oldName).join(newName); writeAtomic(full,h); htmlChanged++; }
-        }
-      }
-    })(SITE_ROOT);
-    return {newName, htmlChanged};
-  }
-  return {newName, htmlChanged:0};
-}
-
-app.get('/api/admin/page-chunk-content', requireAuth, (req,res)=>{
-  const rel=req.query.path;
-  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full=path.join(PAGES_ROOT,rel);
-  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  let html; try{ html=fs.readFileSync(full,'utf8'); }catch(e){ return res.status(500).json({error:e.message}); }
-  const fields=[];
-  for(const ref of findPageOwnChunks(html)){
-    const chunkFull=path.join(SITE_ROOT, ref);
-    if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) continue;
-    let content; try{ content=fs.readFileSync(chunkFull,'utf8'); }catch{ continue; }
-    findAllJsonParseBlobs(content).forEach((blob,bi)=>{
-      // The shared site-content dictionary is already editable via
-      // /api/admin/site-content — skip it here to avoid listing it twice.
-      if(blob.obj && blob.obj.metadata && blob.obj.metadata.siteTitle) return;
-      flattenContentServer(blob.obj).forEach(f=>fields.push({...f, chunk:ref, blobIndex:bi}));
-    });
-  }
-  res.json({fields});
-});
-
-app.put('/api/admin/page-chunk-content', requireAuth, (req,res)=>{
-  const rel=req.query.path;
-  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full=path.join(PAGES_ROOT,rel);
-  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  const { changes } = req.body||{};
-  if(!Array.isArray(changes)||!changes.length) return res.status(400).json({error:'no changes'});
-  let html; try{ html=fs.readFileSync(full,'utf8'); }catch(e){ return res.status(500).json({error:e.message}); }
-
-  // group requested changes by which chunk file they belong to
-  const byChunk=new Map();
-  for(const c of changes){
-    if(!c||typeof c.chunk!=='string'||typeof c.path!=='string'||typeof c.value!=='string') continue;
-    if(!byChunk.has(c.chunk)) byChunk.set(c.chunk,[]);
-    byChunk.get(c.chunk).push(c);
-  }
-
-  let applied=0, chunksRewritten=0, htmlRefsUpdated=0;
-  const propagatePairs=[];
-  try{
-    for(const [ref, chunkChanges] of byChunk){
-      const chunkFull=path.join(SITE_ROOT, ref);
-      if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) continue;
-      const dir=path.dirname(chunkFull); const oldName=path.basename(chunkFull);
-      let content=fs.readFileSync(chunkFull,'utf8');
-      const blobs=findAllJsonParseBlobs(content);
-      // apply edits to each blob's parsed object, grouped by blobIndex
-      const byBlob=new Map();
-      for(const c of chunkChanges){
-        const bi = typeof c.blobIndex==='number' ? c.blobIndex : 0;
-        if(!byBlob.has(bi)) byBlob.set(bi,[]);
-        byBlob.get(bi).push(c);
-      }
-      // splice from the LAST blob backward so earlier offsets stay valid
-      const order=[...byBlob.keys()].sort((a,b)=>b-a);
-      for(const bi of order){
-        const blob=blobs[bi]; if(!blob) continue;
-        for(const c of byBlob.get(bi)){
-          const before=getByPath(blob.obj,c.path);
-          if(setByPath(blob.obj,c.path,c.value)){
-            applied++;
-            if(typeof before==='string' && before!==c.value) propagatePairs.push([before,c.value]);
-          }
-        }
-        const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
-        content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
-      }
-      if(!byBlob.size) continue;
-      const {newName, htmlChanged}=rehashChunkAndRelink(dir, oldName, content);
-      chunksRewritten++; htmlRefsUpdated+=htmlChanged;
-    }
-    if(!applied) return res.json({ok:true, applied:0});
-    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
-    let propagated={chunksChanged:0,htmlChanged:0};
-    for(const [before,after] of propagatePairs){
-      const r=propagateTextChange(before,after);
-      propagated.chunksChanged+=r.chunksChanged; propagated.htmlChanged+=r.htmlChanged;
-    }
-    const publishedAt=bumpPublishedAt();
-    audit(req.ip,'page_chunk_save',{path:rel,applied,chunksRewritten,htmlRefsUpdated,propagated,publishedAt});
-    res.json({ok:true, applied, chunksRewritten, htmlRefsUpdated, propagated, publishedAt});
-  }catch(e){
-    res.status(500).json({error:e.message});
-  }
-});
-
-function resolvePath(obj, pathStr){
-  const parts=pathStr.split('.'); let o=obj;
-  for(const p of parts){
-    const k=/^\d+$/.test(p)?+p:p;
-    if(o==null) return undefined;
-    o=o[k];
-  }
-  return o;
-}
-// Order-insensitive identity for an array's contents, used to recognize "this
-// is the same duplicated list" in another page's own chunk (e.g. the pillar
-// cards baked separately into index/kontakty/kik/kik/pro-kik) without relying
-// on array order, which is exactly what these operations are changing.
-function arrayFingerprint(arr){
-  return arr.map(x=>JSON.stringify(x)).sort().join('');
-}
-function blankStringLeaves(o){
-  if(typeof o==='string') return 'Новий пункт';
-  if(Array.isArray(o)) return o.map(blankStringLeaves);
-  if(o&&typeof o==='object'){ const r={}; for(const k of Object.keys(o)) r[k]=blankStringLeaves(o[k]); return r; }
-  return o;
-}
-// Find the same array (by content fingerprint, taken BEFORE the caller's own
-// mutation) baked into any OTHER page's own chunk, and apply the identical
-// structural change there — otherwise reordering/adding/removing a card only
-// fixes the page currently being edited while its duplicates on other pages
-// silently drift out of sync.
-function syncArrayToDuplicates(sourceChunkFull, arrayPath, beforeFingerprint, applyFn){
-  let chunksChanged=0;
-  const chunksAppDir=path.join(SITE_ROOT,'_next','static','chunks','app');
-  (function walk(d){
-    let entries; try{ entries=fs.readdirSync(d,{withFileTypes:true}); }catch{ return; }
-    for(const e of entries){
-      const full=path.join(d,e.name);
-      if(e.isDirectory()){ walk(full); continue; }
-      if(!e.name.endsWith('.js')||full===sourceChunkFull) continue;
-      let content; try{ content=fs.readFileSync(full,'utf8'); }catch{ continue; }
-      if(!content.includes("JSON.parse('")) continue;
-      const blobs=findAllJsonParseBlobs(content);
-      const matchIdx=[];
-      blobs.forEach((blob,bi)=>{
-        const arr=resolvePath(blob.obj, arrayPath);
-        if(Array.isArray(arr) && arrayFingerprint(arr)===beforeFingerprint) matchIdx.push(bi);
-      });
-      if(!matchIdx.length) continue;
-      matchIdx.sort((a,b)=>b-a).forEach(bi=>{
-        const blob=blobs[bi];
-        applyFn(resolvePath(blob.obj, arrayPath));
-        const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
-        content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
-      });
-      const dir=path.dirname(full), oldName=path.basename(full);
-      rehashChunkAndRelink(dir, oldName, content);
-      chunksChanged++;
-    }
-  })(chunksAppDir);
-  return chunksChanged;
-}
-
-// Move one entry within an array baked into a page's own JS chunk (e.g. the
-// "values.items" pillar list) — same edit family as page-chunk-content but a
-// position swap rather than a value change, so it gets its own endpoint
-// instead of overloading PUT's per-field {path,value} shape.
-app.post('/api/admin/page-chunk-reorder', requireAuth, (req,res)=>{
-  const rel=req.query.path;
-  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full=path.join(PAGES_ROOT,rel);
-  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  const { chunk, blobIndex, arrayPath, fromIndex, toIndex } = req.body||{};
-  if(typeof chunk!=='string'||typeof blobIndex!=='number'||typeof arrayPath!=='string'||
-     !Number.isInteger(fromIndex)||!Number.isInteger(toIndex)) return res.status(400).json({error:'invalid'});
-  const chunkFull=path.join(SITE_ROOT, chunk);
-  if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) return res.status(404).json({error:'chunk_not_found'});
-  try{
-    let content=fs.readFileSync(chunkFull,'utf8');
-    const blobs=findAllJsonParseBlobs(content);
-    const blob=blobs[blobIndex];
-    if(!blob) return res.status(404).json({error:'blob_not_found'});
-    const arr=resolvePath(blob.obj, arrayPath);
-    if(!Array.isArray(arr)) return res.status(400).json({error:'not_an_array'});
-    if(fromIndex<0||fromIndex>=arr.length||toIndex<0||toIndex>=arr.length) return res.status(400).json({error:'index_out_of_range'});
-    const beforeFingerprint=arrayFingerprint(arr);
-    const [item]=arr.splice(fromIndex,1);
-    arr.splice(toIndex,0,item);
-    const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
-    content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
-    // Sync duplicate arrays on OTHER pages before renaming this chunk — the
-    // exclusion check compares full paths, so it must run while chunkFull's
-    // old filename still exists on disk (a rename first would let this same
-    // file, now under its new name, get matched and double-applied to).
-    const dupChunksChanged=syncArrayToDuplicates(chunkFull, arrayPath, beforeFingerprint, a=>{ const [it]=a.splice(fromIndex,1); a.splice(toIndex,0,it); });
-    const dir=path.dirname(chunkFull), oldName=path.basename(chunkFull);
-    const {newName, htmlChanged}=rehashChunkAndRelink(dir, oldName, content);
-    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
-    const publishedAt=bumpPublishedAt();
-    audit(req.ip,'page_chunk_reorder',{path:rel,chunk,arrayPath,fromIndex,toIndex,newName,dupChunksChanged,publishedAt});
-    res.json({ok:true, newChunk: chunk.replace(oldName,newName), htmlRefsUpdated: htmlChanged, dupChunksChanged, publishedAt});
-  }catch(e){
-    res.status(500).json({error:e.message});
-  }
-});
-
-// Insert a new item into an array baked into a page's own JS chunk, cloning
-// the shape of a sibling item with its string leaves blanked to a visible
-// placeholder — the new item then edits like any other pc-content field.
-app.post('/api/admin/page-chunk-array-insert', requireAuth, (req,res)=>{
-  const rel=req.query.path;
-  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full=path.join(PAGES_ROOT,rel);
-  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  const { chunk, blobIndex, arrayPath, afterIndex } = req.body||{};
-  if(typeof chunk!=='string'||typeof blobIndex!=='number'||typeof arrayPath!=='string')
-    return res.status(400).json({error:'invalid'});
-  const chunkFull=path.join(SITE_ROOT, chunk);
-  if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) return res.status(404).json({error:'chunk_not_found'});
-  try{
-    let content=fs.readFileSync(chunkFull,'utf8');
-    const blobs=findAllJsonParseBlobs(content);
-    const blob=blobs[blobIndex];
-    if(!blob) return res.status(404).json({error:'blob_not_found'});
-    const arr=resolvePath(blob.obj, arrayPath);
-    if(!Array.isArray(arr)) return res.status(400).json({error:'not_an_array'});
-    if(!arr.length) return res.status(400).json({error:'empty_array_no_template'});
-    const insertAt=Number.isInteger(afterIndex)?Math.min(Math.max(afterIndex+1,0),arr.length):arr.length;
-    const beforeFingerprint=arrayFingerprint(arr);
-    const template=arr[Math.min(insertAt,arr.length-1)] ?? arr[0];
-    const clone=blankStringLeaves(JSON.parse(JSON.stringify(template)));
-    arr.splice(insertAt,0,clone);
-    const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
-    content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
-    const dupChunksChanged=syncArrayToDuplicates(chunkFull, arrayPath, beforeFingerprint, a=>{ a.splice(insertAt,0,JSON.parse(JSON.stringify(clone))); });
-    const dir=path.dirname(chunkFull), oldName=path.basename(chunkFull);
-    const {newName, htmlChanged}=rehashChunkAndRelink(dir, oldName, content);
-    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
-    const publishedAt=bumpPublishedAt();
-    audit(req.ip,'page_chunk_array_insert',{path:rel,chunk,arrayPath,insertAt,newName,dupChunksChanged,publishedAt});
-    res.json({ok:true, newChunk: chunk.replace(oldName,newName), htmlRefsUpdated: htmlChanged, dupChunksChanged, publishedAt});
-  }catch(e){
-    res.status(500).json({error:e.message});
-  }
-});
-
-// Remove an item from an array baked into a page's own JS chunk.
-app.post('/api/admin/page-chunk-array-remove', requireAuth, (req,res)=>{
-  const rel=req.query.path;
-  if(!rel||rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full=path.join(PAGES_ROOT,rel);
-  if(!full.startsWith(PAGES_ROOT)||!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  const { chunk, blobIndex, arrayPath, index } = req.body||{};
-  if(typeof chunk!=='string'||typeof blobIndex!=='number'||typeof arrayPath!=='string'||!Number.isInteger(index))
-    return res.status(400).json({error:'invalid'});
-  const chunkFull=path.join(SITE_ROOT, chunk);
-  if(!chunkFull.startsWith(SITE_ROOT)||!fs.existsSync(chunkFull)) return res.status(404).json({error:'chunk_not_found'});
-  try{
-    let content=fs.readFileSync(chunkFull,'utf8');
-    const blobs=findAllJsonParseBlobs(content);
-    const blob=blobs[blobIndex];
-    if(!blob) return res.status(404).json({error:'blob_not_found'});
-    const arr=resolvePath(blob.obj, arrayPath);
-    if(!Array.isArray(arr)) return res.status(400).json({error:'not_an_array'});
-    if(index<0||index>=arr.length) return res.status(400).json({error:'index_out_of_range'});
-    if(arr.length<=1) return res.status(400).json({error:'cannot_remove_last_item'});
-    const beforeFingerprint=arrayFingerprint(arr);
-    arr.splice(index,1);
-    const newBlob=JSON.stringify(blob.obj).replace(/'/g,"\\'");
-    content=content.slice(0,blob.start)+newBlob+content.slice(blob.end);
-    const dupChunksChanged=syncArrayToDuplicates(chunkFull, arrayPath, beforeFingerprint, a=>{ if(a.length>1) a.splice(index,1); });
-    const dir=path.dirname(chunkFull), oldName=path.basename(chunkFull);
-    const {newName, htmlChanged}=rehashChunkAndRelink(dir, oldName, content);
-    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
-    const publishedAt=bumpPublishedAt();
-    audit(req.ip,'page_chunk_array_remove',{path:rel,chunk,arrayPath,index,newName,dupChunksChanged,publishedAt});
-    res.json({ok:true, newChunk: chunk.replace(oldName,newName), htmlRefsUpdated: htmlChanged, dupChunksChanged, publishedAt});
-  }catch(e){
-    res.status(500).json({error:e.message});
-  }
-});
-
-// ── Cross-chunk text propagation ──────────────────────────────────────────
-// Next.js's static export bakes page content into a SEPARATE, per-route JS
-// chunk at build time (getStaticProps/RSC payload), in addition to the one
-// shared "site-content" dictionary chunk the admin edits directly. Since
-// there's no Next.js source project to rebuild from, those page-specific
-// copies never picked up a site-content edit — this is *the* cause behind
-// "saved, but the live page still shows the old text": the value really did
-// change in one chunk, just not the one that page actually renders from.
-//
-// Fix: whenever ANY editor here changes a text value, also find-and-replace
-// that exact value across every other chunk/page that independently embeds
-// it, so every copy stays in lockstep instead of just one.
-function replaceInJsChunk(content, oldValue, newValue) {
-  let changed = false;
-  const jsonForm = JSON.stringify(oldValue);
-  const jsonNew = JSON.stringify(newValue);
-  // JSON.parse('...') wraps that JSON text in a single-quoted JS string
-  // literal, so any apostrophe inside the value needs a SECOND layer of
-  // escaping ( ' → \' ) on top of the JSON encoding above.
-  const jsEscapedForm = jsonForm.replace(/'/g, "\\'");
-  const jsEscapedNew = jsonNew.replace(/'/g, "\\'");
-  // Try the escaped form FIRST and unconditionally (not just when oldValue
-  // itself contains an apostrophe). Bug this fixes: when oldValue had no
-  // apostrophe, jsEscapedForm === jsonForm, so the escaped branch used to
-  // get skipped entirely — and if content.includes(jsonForm) then matched
-  // an occurrence that was actually inside a JSON.parse('...') JS string
-  // (not a plain embedded JSON literal), the plain jsonNew got written
-  // there. If newValue *does* contain an apostrophe, that raw quote breaks
-  // out of the JS string literal, corrupting the whole chunk — and since
-  // this data is duplicated into the root layout chunk, that took down
-  // every page on the site (see blueferret-deploy-hazards Міна 12).
-  // Running the escaped form first, on every occurrence, means an
-  // apostrophe in newValue can only ever land pre-escaped for a
-  // JSON.parse-wrapped context; the (rarer) plain, non-wrapped embedded
-  // JSON case is handled by the second pass below on whatever's left.
-  if (content.includes(jsEscapedForm)) {
-    content = content.split(jsEscapedForm).join(jsEscapedNew);
-    changed = true;
-  }
-  if (content.includes(jsonForm)) {
-    content = content.split(jsonForm).join(jsonNew);
-    changed = true;
-  }
-  return { content, changed };
-}
-// Safety floor before propagating a value site-wide: a lone short word
-// ("Так", "Купити") is exactly the kind of string likely to also appear as
-// an unrelated button/label elsewhere, so a pure length cutoff would need
-// to sit high enough to exclude those — but real short HEADINGS (Ukrainian
-// titles run shorter than English, e.g. "Йти до кінця" is 12 chars/3 words)
-// would then get excluded too. Multi-word phrases are specific enough to be
-// safe even when short; single words need to actually be long to qualify.
-function isSafeToPropagate(value){
-  const v=value.trim();
-  if(v.includes(' ')) return v.length>=8;
-  if(/[а-яёіїєґ]/i.test(v)) return v.length>=6; // Cyrillic single words are distinctive, low collision risk
-  return v.length>=15;
-}
-function propagateTextChange(oldValue, newValue) {
-  if (!oldValue || !newValue || oldValue === newValue) return { chunksChanged: 0, htmlChanged: 0 };
-  if (!isSafeToPropagate(oldValue)) return { chunksChanged: 0, htmlChanged: 0 };
-
-  const chunksDir = path.join(SITE_ROOT, '_next', 'static', 'chunks');
-  const jsFiles = [];
-  (function walk(d) {
-    let entries; try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
-    for (const e of entries) {
-      if (e.name.startsWith('.')) continue;
-      const full = path.join(d, e.name);
-      if (e.isDirectory()) walk(full);
-      else if (e.name.endsWith('.js') && !e.name.includes('.bak')) jsFiles.push(full);
-    }
-  })(chunksDir);
-
-  const renamedChunks = new Map(); // oldName -> newName
-  let chunksChanged = 0;
-  for (const file of jsFiles) {
-    let content; try { content = fs.readFileSync(file, 'utf8'); } catch { continue; }
-    const patched = replaceInJsChunk(content, oldValue, newValue);
-    if (!patched.changed) continue;
-    const oldName = path.basename(file);
-    const dir = path.dirname(file);
-    const prefix = oldName.split('-')[0];
-    const hash = crypto.createHash('sha256').update(patched.content).digest('hex').slice(0, 16);
-    const newName = `${prefix}-${hash}.js`;
-    writeAtomic(path.join(dir, newName), patched.content);
-    if (newName !== oldName) { try { fs.unlinkSync(file); } catch {} renamedChunks.set(oldName, newName); }
-    chunksChanged++;
-  }
-
-  const oldEnc = encodeHtmlEnts(oldValue);
-  const newEnc = encodeHtmlEnts(newValue);
-  let htmlChanged = 0;
-  (function walk(d) {
-    let entries; try { entries = fs.readdirSync(d); } catch { return; }
-    for (const f of entries) {
-      if (f.startsWith('.') || f === '_next' || f === 'uploads' || f === 'cdn-cgi') continue;
-      const full = path.join(d, f);
-      let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { walk(full); continue; }
-      if (!f.endsWith('.html')) continue;
-      let h; try { h = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      let changed = false;
-      for (const [oldName, newName] of renamedChunks) {
-        if (h.includes(oldName)) { h = h.split(oldName).join(newName); changed = true; }
-      }
-      if (h.includes(oldEnc)) { h = h.split(oldEnc).join(newEnc); changed = true; }
-      if (changed) { writeAtomic(full, h); htmlChanged++; }
-    }
-  })(SITE_ROOT);
-
-  if (chunksChanged || htmlChanged) {
-    try { execFileSync('restorecon', ['-R', SITE_ROOT], { stdio: 'ignore', timeout: 15000 }); } catch {}
-  }
-  return { chunksChanged, htmlChanged };
-}
-
-// Scans the live site for leftover literal occurrences of a value we just
-// tried to change. propagateTextChange() deliberately skips short/generic
-// values (isSafeToPropagate) to avoid collisions, and Next.js static export
-// can bake the same string into HTML that isn't caught by that pass either
-// — both cases leave stale content live while the save reports "success".
-// This surfaces that gap instead of hiding it.
-function findStaleOccurrences(value, limit = 8) {
-  const v = (value || '').trim();
-  if (!v || v.length < 3) return [];
-  const found = [];
-  (function walk(d) {
-    if (found.length >= limit) return;
-    let entries; try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
-    for (const e of entries) {
-      if (found.length >= limit) return;
-      if (e.name.startsWith('.') || e.name === 'uploads' || e.name === 'cdn-cgi') continue;
-      const full = path.join(d, e.name);
-      if (e.isDirectory()) { walk(full); continue; }
-      if (!e.name.endsWith('.html') && !e.name.endsWith('.js')) continue;
-      let h; try { h = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      if (h.includes(v) || h.includes(encodeHtmlEnts(v))) found.push(path.relative(SITE_ROOT, full));
-    }
-  })(SITE_ROOT);
-  return found;
-}
 
 app.get('/api/admin/site-content', requireAuth, (_req,res)=>{
   const sc=readSiteContent();
@@ -1963,29 +1113,15 @@ app.get('/api/admin/site-content', requireAuth, (_req,res)=>{
   res.json({ content: sc.obj, bundle: sc.bundle.name });
 });
 
-function getByPath(obj,pathStr){
-  const parts=pathStr.split('.'); let o=obj;
-  for(const p of parts){
-    const k=/^\d+$/.test(p)?+p:p;
-    if(o==null) return undefined; o=o[k];
-  }
-  return o;
-}
-
 app.put('/api/admin/site-content', requireAuth, (req,res)=>{
   const { changes } = req.body||{};
   if(!Array.isArray(changes)||!changes.length) return res.status(400).json({error:'no changes'});
   const sc=readSiteContent();
   if(!sc) return res.status(404).json({error:'content bundle not found'});
   let applied=0;
-  const propagatePairs=[]; // [oldValue, newValue] — synced to other chunks/pages AFTER the primary write
   for(const c of changes){
     if(c && typeof c.path==='string' && typeof c.value==='string'){
-      const before=getByPath(sc.obj,c.path);
-      if(setByPath(sc.obj,c.path,c.value)){
-        applied++;
-        if(typeof before==='string' && before!==c.value) propagatePairs.push([before,c.value]);
-      }
+      if(setByPath(sc.obj,c.path,c.value)) applied++;
     }
   }
   if(!applied) return res.json({ok:true, applied:0});
@@ -2021,26 +1157,9 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
     })(SITE_ROOT);
     // best-effort SELinux restore
     try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
-    // Sync any OTHER page-specific chunk / static HTML that independently
-    // baked in the OLD wording — see propagateTextChange() for why this is
-    // necessary (Next.js static export duplicates content per route).
-    let propagated={chunksChanged:0,htmlChanged:0};
-    for(const [before,after] of propagatePairs){
-      const r=propagateTextChange(before,after);
-      propagated.chunksChanged+=r.chunksChanged;
-      propagated.htmlChanged+=r.htmlChanged;
-    }
-    // Verify the change actually took everywhere — propagateTextChange skips
-    // short/generic values on purpose, so a "successful" save can still
-    // leave the old value live on the site with no indication to the admin.
-    const staleWarnings=[];
-    for(const [before,after] of propagatePairs){
-      const files=findStaleOccurrences(before);
-      if(files.length) staleWarnings.push({value:before, files});
-    }
     const publishedAt = bumpPublishedAt();
-    audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged,propagated,staleWarnings,publishedAt});
-    res.json({ok:true, applied, bundle:newName, htmlChanged, propagated, staleWarnings, publishedAt});
+    audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged,publishedAt});
+    res.json({ok:true, applied, bundle:newName, htmlChanged, publishedAt});
   }catch(e){
     res.status(500).json({error:e.message});
   }
@@ -2069,10 +1188,7 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
   if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   try {
     const html = fs.readFileSync(full, 'utf8');
-    const sc = readSiteContent();
-    const managedValues = sc ? flattenSiteContentValues(sc.obj) : null;
-    const { blocks, managedSkipped } = extractBlocks(html, managedValues);
-    res.json({ blocks, managedSkipped });
+    res.json({ blocks: extractBlocks(html) });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
@@ -2088,67 +1204,22 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   // backup
   writeBackup(full);
   let changed = 0;
-  const propagatePairs = []; // [oldValue, newValue] — plain text blocks only, not img src / href
   for (const b of blocks) {
-    if (!b.orig) continue;
-    const textChanged = b.newVal != null && b.origVal !== b.newVal;
-    const hrefChanged = typeof b.newHref === 'string' && b.newHref !== (b.origHref || '');
-    const altChanged = typeof b.newAlt === 'string' && b.newAlt !== (b.origAlt || '');
-    if (!textChanged && !hrefChanged && !altChanged) continue;
-    // img blocks: replace src/alt attribute values, not text content
+    if (!b.orig || b.origVal === b.newVal || b.newVal == null) continue;
+    // img blocks: replace src attribute value, not text content
     if (b.orig.match(/^<img\s/i)) {
-      let newOrig = b.orig, didChange = false;
-      if (textChanged) {
-        const replaced = newOrig.replace(`src="${b.origVal}"`, `src="${encodeHtmlEnts(b.newVal)}"`);
-        if (replaced !== newOrig) { newOrig = replaced; didChange = true; }
-      }
-      if (altChanged) {
-        const altAttr = `alt="${encodeHtmlEnts(b.origAlt || '')}"`;
-        const replaced = newOrig.includes(altAttr)
-          ? newOrig.replace(altAttr, `alt="${encodeHtmlEnts(b.newAlt)}"`)
-          : newOrig.replace(/^<img\s/i, `<img alt="${encodeHtmlEnts(b.newAlt)}" `);
-        if (replaced !== newOrig) { newOrig = replaced; didChange = true; }
-      }
-      if (didChange) { html = html.split(b.orig).join(newOrig); changed++; }
-      continue;
+      const newOrig = b.orig.replace(`src="${b.origVal}"`, `src="${encodeHtmlEnts(b.newVal)}"`);
+      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
+    } else {
+      const encoded = encodeHtmlEnts(b.newVal);
+      const newOrig = b.orig.replace(b.origVal, encoded);
+      if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
     }
-    let newOrig = b.orig, didChange = false;
-    if (hrefChanged) {
-      const hrefAttr = `href="${encodeHtmlEnts(b.origHref || '')}"`;
-      if (newOrig.includes(hrefAttr)) {
-        newOrig = newOrig.replace(hrefAttr, `href="${encodeHtmlEnts(b.newHref)}"`);
-        didChange = true;
-      }
-    }
-    if (textChanged) {
-      // p/span/li edits may contain a simple <a href="...">/<strong>/<em> span
-      // inserted via the editor's formatting buttons — sanitize so only those
-      // exact, safe patterns survive as real markup and any other stray angle
-      // brackets are encoded.
-      const encoded = (b.type === 'p' || b.type === 'span' || b.type === 'li') ? sanitizeUserHtml(b.newVal) : encodeHtmlEnts(b.newVal);
-      const replaced = newOrig.replace(b.origVal, encoded);
-      if (replaced !== newOrig) {
-        newOrig = replaced; didChange = true;
-        if (!/<a href=|<strong>|<em>/i.test(b.newVal)) propagatePairs.push([b.origVal, b.newVal]);
-      }
-    }
-    if (didChange) { html = html.split(b.orig).join(newOrig); changed++; }
   }
   writeAtomic(full, html);
-  // Sync any OTHER page/chunk that independently baked in this same text —
-  // see propagateTextChange() for why a single-page HTML edit alone can
-  // leave the change invisible (or only half-applied) on a Next.js static
-  // export. Runs against the WHOLE site, so this also fixes duplicate
-  // wording that appears verbatim on more than one page.
-  let propagated = {chunksChanged:0, htmlChanged:0};
-  for (const [before, after] of propagatePairs) {
-    const r = propagateTextChange(before, after);
-    propagated.chunksChanged += r.chunksChanged;
-    propagated.htmlChanged += r.htmlChanged;
-  }
   const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'page_patch', {path: rel, changed, propagated, publishedAt});
-  res.json({ok: true, changed, propagated, publishedAt});
+  audit(req.ip, 'page_patch', {path: rel, changed, publishedAt});
+  res.json({ok: true, changed, publishedAt});
 });
 
 app.get('/api/admin/pages/*', requireAuth, (req, res) => {
@@ -2187,7 +1258,7 @@ app.get('/api/public/games', (_req, res) => {
   res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma','no-cache');
   res.setHeader('Expires','0');
-  res.json(publicGames());
+  res.json(gAll.all().filter(g=>g.status==='published').map(gameRow));
 });
 app.get('/api/public/kik', (_req, res) => {
   res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -2212,17 +1283,7 @@ const RUNTIME_JS = `(function(){
   function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
   function load(){getJson('/api/public/site.json',8000).then(function(s){apply(s);startLiveRefresh(s);}).catch(function(){});}
-  function showUpdateNotice(ts){
-    if(document.getElementById('bf-update-notice'))return;
-    var el=document.createElement('button');
-    el.id='bf-update-notice';
-    el.type='button';
-    el.textContent='Сайт оновлено · Оновити';
-    el.style.cssText='position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9997;border:0;border-radius:999px;padding:11px 16px;background:#0a0f1a;color:#fff;font:700 13px/1.2 Comfortaa,system-ui,sans-serif;box-shadow:0 14px 36px rgba(2,6,23,.24);cursor:pointer;';
-    el.onclick=function(){var u=new URL(location.href);u.searchParams.set('v',ts||Date.now());location.href=u.toString();};
-    document.body.appendChild(el);
-  }
-  // ── Live freshness check: never interrupt a visible visitor with forced reload. ──
+  // ── Live auto-refresh: poll publishedAt every 5s, reload if changed ──
   var lastPub=0;
   function startLiveRefresh(s){
     try{lastPub=(s&&s.general&&s.general.publishedAt)||0;}catch(e){}
@@ -2232,17 +1293,12 @@ const RUNTIME_JS = `(function(){
         var newPub=(ns&&ns.general&&ns.general.publishedAt)||0;
         if(newPub&&lastPub&&newPub!==lastPub){
           lastPub=newPub;
-          try{window.dispatchEvent(new CustomEvent('blueferret:published',{detail:{publishedAt:newPub}}));}catch(e){}
-          if(document.visibilityState==='hidden'){
-            var u=new URL(location.href);
-            u.searchParams.set('v',newPub);
-            location.href=u.toString();
-          }else{
-            showUpdateNotice(newPub);
-          }
+          var u=new URL(location.href);
+          u.searchParams.set('v',newPub);
+          location.href=u.toString();
         }
       }).catch(function(){});
-    },30000);
+    },5000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();});else{load();}
   try {
@@ -2287,15 +1343,6 @@ app.use((err, req, res, _next) => {
   console.error('[blueferret-admin]', req.method, req.url, err);
   if (res.headersSent) return;
   res.status(err.status || 500).json({ error: err.message || 'server_error' });
-});
-
-setImmediate(() => {
-  try {
-    syncPublicGames();
-    console.log('[blueferret-admin] public games synced on boot');
-  } catch (err) {
-    console.error('[blueferret-admin] boot sync failed', err);
-  }
 });
 
 const server = app.listen(PORT, HOST, () =>
