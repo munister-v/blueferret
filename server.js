@@ -998,16 +998,35 @@ app.post('/api/admin/upload', requireAuth, (req, res, next) => {
   res.json({ ok:true, url, filename:req.file.filename, size:req.file.size });
 });
 
+function getAllImages(dir, prefix) {
+  let results = [];
+  if (!fs.existsSync(dir)) return results;
+  try {
+    const list = fs.readdirSync(dir);
+    for (const file of list) {
+      if (file.startsWith('.')) continue;
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        results = results.concat(getAllImages(fullPath, `${prefix}${file}/`));
+      } else if (/\.(jpe?g|png|webp|gif|svg|avif)$/i.test(file)) {
+        // use url path as filename so client can distinguish if needed
+        results.push({ filename: prefix.replace(/^\//,'') + file, url: `${prefix}${file}`, size: stat.size, mtime: stat.mtimeMs });
+      }
+    }
+  } catch (e) {
+    console.error('Error reading images from', dir, e);
+  }
+  return results;
+}
+
 app.get('/api/admin/media', requireAuth, (_req, res) => {
   try {
-    const files = fs.readdirSync(UPLOADS)
-      .filter(f => !f.startsWith('.') && /\.(jpe?g|png|webp|gif|svg|avif)$/i.test(f))
-      .map(f => {
-        const stat = fs.statSync(path.join(UPLOADS, f));
-        return { filename:f, url:`/uploads/${f}`, size:stat.size, mtime:stat.mtimeMs };
-      }).sort((a,b) => b.mtime - a.mtime);
-    res.json(files);
-  } catch { res.json([]); }
+    const uploads = getAllImages(UPLOADS, '/uploads/');
+    const images = getAllImages(path.join(SITE_ROOT, 'images'), '/images/');
+    const allFiles = [...uploads, ...images].sort((a,b) => b.mtime - a.mtime);
+    res.json(allFiles);
+  } catch (e) { res.json([]); }
 });
 
 app.delete('/api/admin/media/:filename', requireAuth, (req, res) => {

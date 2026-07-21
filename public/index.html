@@ -592,28 +592,28 @@ const NAV=[
   {g:'Огляд',items:[{id:'dashboard',ico:'📊',l:'Дашборд'}]},
   {g:'Контент',items:[
     {id:'games',ico:'🎲',l:'Ігри'},
-    {id:'kik',ico:'🚀',l:'КІК-проекти'},
     {id:'pages',ico:'📄',l:'Сторінки'},
-    {id:'sitetext',ico:'🌐',l:'Тексти сайту'},
     {id:'media',ico:'🖼',l:'Медіа'},
   ]},
   {g:'Налаштування',items:[
     {id:'general',ico:'⚙️',l:'Загальне'},
-    {id:'banner',ico:'📢',l:'Банер'},
-    {id:'maintenance',ico:'🔧',l:'Тех. режим'},
     {id:'contacts',ico:'📬',l:'Контакти'},
-    {id:'seo',ico:'🔍',l:'SEO'},
-    {id:'integrations',ico:'📈',l:'Аналітика'},
-    {id:'appearance',ico:'🎨',l:'CSS'},
   ]},
   {g:'Система',items:[
     {id:'security',ico:'🔑',l:'Безпека'},
     {id:'audit',ico:'📋',l:'Журнал'},
   ]},
 ];
-const STABS=new Set(['general','banner','maintenance','contacts','seo','integrations','appearance']);
+const STABS=new Set(['general','contacts']);
 
 // ── UTILS ──
+function autoResize(el) {
+  if(!el || el.tagName!=='TEXTAREA')return;
+  const scrollY = window.scrollY;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+  window.scrollTo(0, scrollY);
+}
 const esc=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const jsq=x=>String(x??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/</g,'\\x3c');
 const fmtD=ts=>ts?new Date(ts).toLocaleString('uk-UA'):'—';
@@ -1743,7 +1743,7 @@ function switchPedTab(tab){
   list.innerHTML=buildBlocksHtml(pageBlocks,tab,pedSearch);
   $$('.ped-tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
   updateTabBadges();
-  setTimeout(()=>$$('#ped-tab-body textarea').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px';}),50);
+  setTimeout(()=>$$('#ped-tab-body textarea').forEach(t=>{autoResize(t);}),50);
 }
 window.switchPedTab=switchPedTab;
 let _pedSearchDeb;
@@ -1883,7 +1883,7 @@ async function renderPages(){
   updateTabBadges();
   if(pvDevice!=='desktop')setDevice(pvDevice);
   if(pvZoom!==100)applyZoom();
-  setTimeout(()=>$$('.blk textarea').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px';}),100);
+  setTimeout(()=>$$('.blk textarea').forEach(t=>{autoResize(t);}),100);
   // restore edited values
   for(const[id,val] of Object.entries(pageEdited)){
     const el=document.querySelector(`[data-blk="${id}"]`);
@@ -1911,7 +1911,7 @@ function markEdited(id){
   if(blk)blk.classList.toggle('edited',changed);
   updateCharCounter(id,val);
   updateTabBadges();
-  if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+  autoResize(el);
   // live preview sync
   syncToPreview(id,val);
 }
@@ -1928,7 +1928,7 @@ function resetField(id){
   delete pageEdited[id];
   el.closest('.blk')?.classList.remove('edited');
   updateCharCounter(id,orig.value);
-  if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+  autoResize(el);
   const cnt=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length + deletedBlocks.size + pageBlocks.filter(b=>b.isNew).length;
   const badge=$('#unsaved-badge');if(badge){badge.textContent=cnt+' змін';badge.classList.toggle('show',cnt>0);}
 }
@@ -2057,7 +2057,7 @@ async function renderSiteText(){
     ${body}
   </div>`;
   // autosize textareas
-  setTimeout(()=>$$('#mainContent textarea[data-scin]').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px';}),50);
+  setTimeout(()=>$$('#mainContent textarea[data-scin]').forEach(t=>{autoResize(t);}),50);
   // The debounced search re-render replaces the whole view including the
   // search input itself — without this, focus (and the caret) died 250ms
   // after every keystroke, making search feel broken.
@@ -2082,7 +2082,7 @@ function markSiteEdited(path){
   const flat=flattenContent(siteContent);
   const orig=flat.find(f=>f.path===path);
   if(blk)blk.classList.toggle('edited',orig&&el.value!==orig.value);
-  if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+  autoResize(el);
   // update save button count
   const cnt=Object.keys(siteEdited).filter(p=>{const f=flat.find(x=>x.path===p);return f&&siteEdited[p]!==f.value;}).length;
   const btn=$('#scSaveBtn');if(btn){btn.disabled=!cnt;btn.textContent=`💾 Зберегти ${cnt?`(${cnt})`:''}`;}
@@ -2700,7 +2700,7 @@ const origRenderMedia=renderMedia;
 
 // ── AUTO-RESIZE textareas after render ──
 function autoResizeAll(){
-  $$('textarea.code, .blk textarea').forEach(t=>{if(t.style.height)return;t.style.height='auto';t.style.height=t.scrollHeight+'px';});
+  $$('textarea.code, .blk textarea').forEach(t=>{if(t.style.height)return;autoResize(t);});
 }
 // observe DOM changes to auto-resize
 const resizeObs=new MutationObserver(()=>autoResizeAll());
