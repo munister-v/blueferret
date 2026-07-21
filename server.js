@@ -20,6 +20,31 @@ fs.mkdirSync(UPLOADS, { recursive: true });
 // ---------- DB ----------
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
+
+// -- Backups --
+function backupDatabase() {
+  try {
+    const backupDir = path.join(__dirname, 'backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, {recursive: true});
+    const date = new Date().toISOString().split('T')[0];
+    const backupFile = path.join(backupDir, `blueferret-${date}.db`);
+    if (!fs.existsSync(backupFile)) {
+      db.backup(backupFile).then(() => {
+        console.log(`Database backed up to ${backupFile}`);
+        const files = fs.readdirSync(backupDir).sort();
+        if (files.length > 7) {
+          for (let i = 0; i < files.length - 7; i++) {
+            fs.unlinkSync(path.join(backupDir, files[i]));
+          }
+        }
+      }).catch(err => console.error('Backup failed:', err));
+    }
+  } catch(e) { console.error('Backup error:', e); }
+}
+setInterval(backupDatabase, 1000 * 60 * 60);
+backupDatabase();
+
+// -- Table setups --
 db.pragma('busy_timeout = 5000');
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
@@ -965,16 +990,9 @@ app.delete('/api/admin/kik/:id', requireAuth, (req, res) => {
 });
 
 // ---------- media upload ----------
-const storage = multer.diskStorage({
-  destination: (_req, _f, cb) => cb(null, UPLOADS),
-  filename: (_req, file, cb) => {
-    const ext  = path.extname(file.originalname).toLowerCase();
-    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9а-яіїєґ]/gi,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'media';
-    cb(null, `${base}-${Date.now()}${ext}`);
-  },
-});
+const sharp = require('sharp');
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10*1024*1024 },
   fileFilter: (_r, f, cb) => {
     if (!/\.(jpe?g|png|webp|gif|svg|avif)$/i.test(f.originalname)) {
@@ -991,11 +1009,36 @@ app.post('/api/admin/upload', requireAuth, (req, res, next) => {
     if (err) return next(err);
     next();
   });
-}, (req, res) => {
+}, async (req, res) => {
   if (!req.file) return res.status(400).json({error:'no file'});
-  const url = `/uploads/${req.file.filename}`;
-  audit(req.ip,'upload',{url});
-  res.json({ ok:true, url, filename:req.file.filename, size:req.file.size });
+  try {
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    const base = path.basename(req.file.originalname, ext).replace(/[^a-z0-9а-яіїєґ]/gi,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'media';
+    
+    // Skip optimizing SVGs and GIFs to preserve animation/vectors
+    if (ext === '.svg' || ext === '.gif') {
+      const filename = `${base}-${Date.now()}${ext}`;
+      const full = path.join(UPLOADS, filename);
+      fs.writeFileSync(full, req.file.buffer);
+      const url = `/uploads/${filename}`;
+      audit(req.ip,'upload',{url});
+      return res.json({ ok:true, url, filename, size:req.file.buffer.length });
+    }
+
+    const filename = `${base}-${Date.now()}.webp`;
+    const full = path.join(UPLOADS, filename);
+    const info = await sharp(req.file.buffer)
+      .resize({ width: 1920, withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toFile(full);
+      
+    const url = `/uploads/${filename}`;
+    audit(req.ip,'upload',{url});
+    res.json({ ok:true, url, filename, size: info.size });
+  } catch(e) {
+    console.error('Image optimization error:', e);
+    res.status(500).json({error:'optimization_failed'});
+  }
 });
 
 function getAllImages(dir, prefix) {
@@ -1548,6 +1591,7 @@ app.use((err, _req, res, next) => {
 });
 
 // ---------- SPA ----------
+app.use(express.static(path.join(__dirname, 'public')));
 app.get(['/admin','/admin/','/admin/*'], (_req, res) =>
   res.sendFile(path.join(__dirname,'public','index.html')));
 app.get('/api/health', (_req, res) => {
