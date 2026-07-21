@@ -337,22 +337,30 @@ function renderGameEditor(){
       <div class="ged-section" style="border-left: 2px solid #009fe3; padding-left: 14px;">
         <h4>Дизайн та оформлення</h4>
         <div class="row2">
-          <div class="field"><label class="flbl">Колір фону (HEX)</label>
-            <input type="text" id="g_bg_color" value="${esc(g.bg_color||'')}" placeholder="#070b10"></div>
-          <div class="field"><label class="flbl">Акцентний колір (HEX)</label>
-            <input type="text" id="g_accent_color" value="${esc(g.accent_color||'')}" placeholder="#009fe3"></div>
+          <div class="field"><label class="flbl">Колір фону</label>
+            <div style="display:flex;gap:8px">
+              <input type="color" id="g_bg_color_sw" value="${esc(g.bg_color||'#070b10')}" oninput="syncColorSwatch('g_bg_color',this.value)" style="width:40px;height:38px;padding:2px;border-radius:8px;cursor:pointer;flex-shrink:0;border:1.5px solid var(--glass-border);background:transparent">
+              <input type="text" id="g_bg_color" value="${esc(g.bg_color||'')}" placeholder="#070b10" oninput="syncColorText('g_bg_color')"></div>
+          </div>
+          <div class="field"><label class="flbl">Акцентний колір</label>
+            <div style="display:flex;gap:8px">
+              <input type="color" id="g_accent_color_sw" value="${esc(g.accent_color||'#009fe3')}" oninput="syncColorSwatch('g_accent_color',this.value)" style="width:40px;height:38px;padding:2px;border-radius:8px;cursor:pointer;flex-shrink:0;border:1.5px solid var(--glass-border);background:transparent">
+              <input type="text" id="g_accent_color" value="${esc(g.accent_color||'')}" placeholder="#009fe3" oninput="syncColorText('g_accent_color')"></div>
+          </div>
         </div>
         <div class="field" style="margin-top:12px"><label class="flbl">Фон головного екрану (Відео .mp4/.webm або Фото)</label>
           <div class="img-pick">
-            <input type="text" id="g_hero_bg" value="${esc(g.hero_bg_url||'')}" placeholder="/images/...">
-            <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_hero_bg',null)">📁</button>
+            <input type="text" id="g_hero_bg" value="${esc(g.hero_bg_url||'')}" placeholder="/images/..." oninput="onHeroInput('g_hero_bg')">
+            <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_hero_bg',()=>onHeroInput('g_hero_bg'))">📁</button>
           </div>
+          ${g.hero_bg_url?`<img id="g_hero_bg_thumb" class="img-thumb" src="${esc(g.hero_bg_url)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="g_hero_bg_thumb">Немає зображення — буде використано обкладинку</div>`}
         </div>
         <div class="field" style="margin-top:12px"><label class="flbl">Логотип гри (Прозорий .png/.svg)</label>
           <div class="img-pick">
-            <input type="text" id="g_hero_logo" value="${esc(g.hero_logo_url||'')}" placeholder="/images/...logo.png">
-            <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_hero_logo',null)">📁</button>
+            <input type="text" id="g_hero_logo" value="${esc(g.hero_logo_url||'')}" placeholder="/images/...logo.png" oninput="onHeroInput('g_hero_logo')">
+            <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_hero_logo',()=>onHeroInput('g_hero_logo'))">📁</button>
           </div>
+          ${g.hero_logo_url?`<img id="g_hero_logo_thumb" class="img-thumb" style="background:rgba(255,255,255,.06)" src="${esc(g.hero_logo_url)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="g_hero_logo_thumb">Немає логотипу</div>`}
         </div>
       </div>
 
@@ -415,8 +423,8 @@ function renderGameEditor(){
         <!-- DETAIL MODE -->
         <div id="pvModeDetail" style="display:none">
           <div class="pv-label">Сторінка гри (спрощено)</div>
-          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden">
-            <div id="pv_detail_img" style="width:100%;height:160px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:40px">🎲</div>
+          <div id="pv_detail_box" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;transition:background .15s">
+            <div id="pv_detail_img" style="position:relative;width:100%;height:160px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:40px">🎲</div>
             <div style="padding:18px">
               <div id="pv_detail_title" style="font-size:22px;font-weight:700;color:#fff;margin-bottom:6px">Назва гри</div>
               <div id="pv_detail_sub" style="color:rgba(255,255,255,.5);font-size:13px;margin-bottom:14px"></div>
@@ -430,8 +438,8 @@ function renderGameEditor(){
         <!-- MOBILE MODE -->
         <div id="pvModeMobile" style="display:none">
           <div class="pv-label">Мобайл-картка (390px)</div>
-          <div style="width:280px;margin:0 auto;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;overflow:hidden;box-shadow:0 0 0 10px #1a2744,0 20px 50px rgba(0,0,0,.4)">
-            <div id="pv_mob_img" style="width:100%;height:200px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:48px">🎲</div>
+          <div id="pv_mob_box" style="width:280px;margin:0 auto;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;overflow:hidden;box-shadow:0 0 0 10px #1a2744,0 20px 50px rgba(0,0,0,.4);transition:background .15s">
+            <div id="pv_mob_img" style="position:relative;width:100%;height:200px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:48px">🎲</div>
             <div style="padding:16px">
               <div id="pv_mob_title" style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px">Назва гри</div>
               <div id="pv_mob_tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
@@ -496,6 +504,32 @@ function renderGallery(){
 }
 window.removeGalleryItem=function(i){gameGallery.splice(i,1);renderGallery();}
 function addToGallery(url){gameGallery.push(url);renderGallery();}
+
+// Colour swatch <-> hex text field. Picking a colour is a click; typing a
+// known hex value used to be the only option at all, with nothing to preview
+// it against until the whole page was saved and reloaded.
+function syncColorSwatch(id,val){
+  const txt=document.getElementById(id); if(txt)txt.value=val;
+  updatePreview();
+}
+window.syncColorSwatch=syncColorSwatch;
+function syncColorText(id){
+  const txt=document.getElementById(id), sw=document.getElementById(id+'_sw');
+  if(sw&&txt&&/^#[0-9a-f]{6}$/i.test(txt.value.trim()))sw.value=txt.value.trim();
+  updatePreview();
+}
+window.syncColorText=syncColorText;
+
+function onHeroInput(id){
+  const url=document.getElementById(id)?.value||'';
+  const th=document.getElementById(id+'_thumb');
+  if(th){
+    if(url){th.outerHTML=`<img id="${id}_thumb" class="img-thumb"${id==='g_hero_logo'?' style="background:rgba(255,255,255,.06)"':''} src="${esc(url)}" onerror="this.style.display='none'">`;}
+    else{th.outerHTML=`<div class="img-thumb-empty" id="${id}_thumb">${id==='g_hero_logo'?'Немає логотипу':'Немає зображення — буде використано обкладинку'}</div>`;}
+  }
+  updatePreview();
+}
+window.onHeroInput=onHeroInput;
 
 function onCoverInput(){
   const url=$('#g_cover')?.value||'';
@@ -567,8 +601,19 @@ function updatePreview(){
   const slug=$('#g_slug')?.value||'slug';
   const status=$('#g_status')?.value||'published';
   const tags=[players&&`👥 ${players}`,age&&`🎂 ${age}`,dur&&`⏱ ${dur}`].filter(Boolean);
-  const tagHtml=tags.map(t=>`<span class="gc-tag">${esc(t)}</span>`).join('');
-  const mobTagHtml=tags.map(t=>`<span style="background:rgba(0,159,227,.12);border:1px solid rgba(0,159,227,.2);color:rgba(0,159,227,.9);padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600">${esc(t)}</span>`).join('');
+  // Design fields (bg/accent colour, hero background, logo) previously had no
+  // effect anywhere in this preview -- they only became visible after saving
+  // and checking the live site. Read them here so every preview mode reflects
+  // what the actual game page will look like.
+  const bgColor=$('#g_bg_color')?.value.trim()||'';
+  const accentColor=$('#g_accent_color')?.value.trim()||'';
+  const heroBg=$('#g_hero_bg')?.value.trim()||cover;
+  const heroLogo=$('#g_hero_logo')?.value.trim()||'';
+  const accentSafe=/^#[0-9a-f]{6}$/i.test(accentColor)?accentColor:'';
+  const tagStyle=accentSafe?`background:${accentSafe}20;border:1px solid ${accentSafe}40;color:${accentSafe}`:'';
+  const btnStyle=accentSafe?`background:${accentSafe};box-shadow:0 4px 14px ${accentSafe}55`:'';
+  const tagHtml=tags.map(t=>`<span class="gc-tag" style="${tagStyle}">${esc(t)}</span>`).join('');
+  const mobTagHtml=tags.map(t=>`<span style="background:${accentSafe?accentSafe+'20':'rgba(0,159,227,.12)'};border:1px solid ${accentSafe?accentSafe+'40':'rgba(0,159,227,.2)'};color:${accentSafe||'rgba(0,159,227,.9)'};padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600">${esc(t)}</span>`).join('');
 
   // Card mode
   const card=$('#gamePreviewCard');
@@ -578,7 +623,7 @@ function updatePreview(){
       ${sub?`<div class="gc-sub">${esc(sub)}</div>`:''}
       ${tags.length?`<div class="gc-tags">${tagHtml}</div>`:''}
       ${desc?`<div class="gc-desc">${esc(desc.slice(0,160))}${desc.length>160?'…':''}</div>`:''}
-      ${buy?`<a class="gc-btn">Купити гру →</a>`:''}
+      ${buy?`<a class="gc-btn" style="${btnStyle}">Купити гру →</a>`:''}
     </div>`;
 
   // List mode
@@ -591,21 +636,24 @@ function updatePreview(){
   if(seoT)seoT.textContent=`${title} · Blue Ferret`;
   if(seoD)seoD.textContent=desc?desc.slice(0,155)+'…':'Опис гри…';
 
-  // Detail mode
-  const di=$('#pv_detail_img'),dt=$('#pv_detail_title'),ds=$('#pv_detail_sub'),dtg=$('#pv_detail_tags'),dd=$('#pv_detail_desc'),db=$('#pv_detail_btn');
-  if(di)di.innerHTML=cover?`<img src="${esc(cover)}" style="width:100%;height:100%;object-fit:cover">`:'🎲';
+  // Detail mode -- this is the closest stand-in for the real hero section, so
+  // it's the one place bg_color/hero_bg_url/hero_logo_url actually render.
+  const di=$('#pv_detail_img'),dt=$('#pv_detail_title'),ds=$('#pv_detail_sub'),dtg=$('#pv_detail_tags'),dd=$('#pv_detail_desc'),db=$('#pv_detail_btn'),dbox=$('#pv_detail_box');
+  if(di)di.innerHTML=`${heroBg?`<img src="${esc(heroBg)}" style="width:100%;height:100%;object-fit:cover">`:'🎲'}${heroLogo?`<img src="${esc(heroLogo)}" style="position:absolute;inset:0;margin:auto;max-width:55%;max-height:65%;object-fit:contain">`:''}`;
+  if(dbox)dbox.style.background=bgColor||'';
   if(dt)dt.textContent=title;
   if(ds)ds.textContent=sub;
   if(dtg)dtg.innerHTML=tagHtml;
   if(dd)dd.textContent=desc?desc.slice(0,300)+(desc.length>300?'…':''):'';
-  if(db){db.style.display=buy?'block':'none';}
+  if(db){db.style.display=buy?'block':'none';if(btnStyle)db.setAttribute('style','display:block;'+btnStyle.replace('14px','10px')+';padding:11px;border-radius:10px;text-align:center;font-weight:700;font-size:13.5px;color:#fff');}
 
   // Mobile mode
-  const mi=$('#pv_mob_img'),mtt=$('#pv_mob_title'),mtg=$('#pv_mob_tags'),mb=$('#pv_mob_btn');
-  if(mi)mi.innerHTML=cover?`<img src="${esc(cover)}" style="width:100%;height:100%;object-fit:cover">`:'🎲';
+  const mi=$('#pv_mob_img'),mtt=$('#pv_mob_title'),mtg=$('#pv_mob_tags'),mb=$('#pv_mob_btn'),mbox=$('#pv_mob_box');
+  if(mi)mi.innerHTML=`${heroBg?`<img src="${esc(heroBg)}" style="width:100%;height:100%;object-fit:cover">`:'🎲'}${heroLogo?`<img src="${esc(heroLogo)}" style="position:absolute;inset:0;margin:auto;max-width:55%;max-height:65%;object-fit:contain">`:''}`;
+  if(mbox)mbox.style.background=bgColor||'';
   if(mtt)mtt.textContent=title;
   if(mtg)mtg.innerHTML=mobTagHtml;
-  if(mb)mb.style.display=buy?'block':'none';
+  if(mb){mb.style.display=buy?'block':'none';if(btnStyle)mb.setAttribute('style','display:block;'+btnStyle.replace('14px','10px')+';padding:10px;border-radius:8px;text-align:center;font-weight:700;font-size:13px;color:#fff');}
 }
 window.updatePreview=updatePreview;
 
@@ -1098,8 +1146,8 @@ function buildBlocksHtml(blocks, tabFilter, search){
       ${isDeleted?`<span style="color:#ef4444;font-size:10px;font-weight:bold;margin-right:8px">ВИДАЛЕНО</span><button class="reset-btn" onclick="restoreBlock('${esc(b.id)}')" title="Відновити" style="color:#22c55e">↩ Відновити</button>`:`
       <button class="reset-btn" onclick="moveBlockUp('${esc(b.id)}')" title="Вгору">⬆</button>
       <button class="reset-btn" onclick="moveBlockDown('${esc(b.id)}')" title="Вниз">⬇</button>
-      <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
-      ${!b.isNew?`<button class="reset-btn" onclick="deleteBlock('${esc(b.id)}')" title="Видалити" style="color:#ef4444;margin-left:4px">🗑</button>`:''}
+      ${!b.isNew?`<button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>`:''}
+      ${!b.isNew?`<button class="reset-btn" onclick="deleteBlock('${esc(b.id)}')" title="Видалити" style="color:#ef4444;margin-left:4px">🗑</button>`:`<button class="reset-btn" onclick="removeNewBlock('${esc(b.id)}')" title="Прибрати новий блок" style="color:#ef4444;margin-left:4px">✕ Прибрати</button>`}
       `}
     `;
 
@@ -1496,6 +1544,20 @@ function addBlockAfter(afterId, type) {
     switchPedTab(pedTab);
   }
 }
+
+// Freshly-added blocks (isNew) never existed on disk, so they don't go
+// through deletedBlocks/restoreBlock like saved content does — there was
+// previously no way to back out of an accidental "+ Абзац/Заголовок/…" click
+// short of reloading the whole page (losing every other pending edit too).
+function removeNewBlock(id){
+  const idx=pageBlocks.findIndex(b=>b.id===id);
+  if(idx===-1)return;
+  pageBlocks.splice(idx,1);
+  delete pageEdited[id];
+  delete pageEdited[id+'_href'];
+  switchPedTab(pedTab);
+}
+window.removeNewBlock=removeNewBlock;
 
 window.markEdited=markEdited;window.resetField=resetField;
 window.deleteBlock=deleteBlock;window.addBlockAfter=addBlockAfter;
