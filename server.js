@@ -71,6 +71,12 @@ try { db.exec("ALTER TABLE games ADD COLUMN bg_color TEXT DEFAULT ''"); } catch(
 try { db.exec("ALTER TABLE games ADD COLUMN accent_color TEXT DEFAULT ''"); } catch(e){}
 try { db.exec("ALTER TABLE games ADD COLUMN hero_bg_url TEXT DEFAULT ''"); } catch(e){}
 try { db.exec("ALTER TABLE games ADD COLUMN hero_logo_url TEXT DEFAULT ''"); } catch(e){}
+try { db.exec("ALTER TABLE games ADD COLUMN links TEXT DEFAULT '[]'"); } catch(e){}
+// always_visible: does the game show as a real clickable card in /igry/, or a
+// locked "coming soon" placeholder. Independent of status label — a game can
+// be status=preorder yet still be a locked teaser card, or an announcement
+// that's already clickable. Default 1 (visible) so existing games don't hide.
+try { db.exec("ALTER TABLE games ADD COLUMN always_visible INTEGER DEFAULT 1"); } catch(e){}
 
 const getRow  = db.prepare('SELECT value FROM settings WHERE key=?');
 const upsert  = db.prepare(`INSERT INTO settings(key,value,updated_at) VALUES(?,?,?)
@@ -261,7 +267,11 @@ app.get('/api/admin/stats', requireAuth, (_req, res) => {
 // ---------- games CRUD ----------
 function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
 function parseStages(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
-function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), stages: parseStages(r.stages) } : null; }
+function parseGameLinks(v) {
+  const arr = Array.isArray(v) ? v : (()=>{ try { return JSON.parse(v||'[]'); } catch { return []; } })();
+  return arr.map(l => ({ label: cleanText(l&&l.label), url: cleanText(l&&l.url) })).filter(l => l.label && l.url);
+}
+function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), stages: parseStages(r.stages), links: parseGameLinks(r.links), always_visible: r.always_visible==null?1:(r.always_visible?1:0) } : null; }
 
 // Stage lock icons as inline SVG — the 🔓 emoji renders as a *closed* gold
 // padlock in several system fonts (indistinguishable from 🔒), so the open
@@ -271,6 +281,19 @@ function stageLockSvg(open, size) {
   return open
     ? `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="rgba(189,246,223,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`
     : `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+}
+function renderGameGalleryHtml(gallery, title) {
+  const imgs = (Array.isArray(gallery) ? gallery : []).filter(Boolean);
+  if (!imgs.length) return '';
+  return `<section style="background-color:rgb(7,11,16);padding:64px 24px">
+  <div style="max-width:1120px;margin:0 auto">
+    <p style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 12px">Галерея</p>
+    <h2 style="font-size:clamp(26px,4vw,40px);font-weight:800;color:rgba(255,255,255,.92);margin:0 0 28px;letter-spacing:-.02em">Ближче до гри</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+      ${imgs.map(u => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener" style="display:block;border-radius:16px;overflow:hidden;background:#0f172a;border:1px solid rgba(255,255,255,.06)"><img src="${escapeHtml(u)}" alt="${escapeHtml(title)}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block"></a>`).join('')}
+    </div>
+  </div>
+</section>`;
 }
 function renderGameStagesHtml(stages, statusRaw) {
   if (!stages || stages.length === 0) return '';
@@ -603,12 +626,15 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
         
         <div class="gp-actions">
           ${buy ? `<a class="gp-btn-p" href="${buy}">Придбати →</a>` : ''}
+          ${(g.links||[]).map(l => `<a class="gp-btn-s" href="${escapeHtml(l.url)}"${/^https?:/i.test(l.url)?' target="_blank" rel="noopener"':''}>${escapeHtml(l.label)}</a>`).join('')}
           <a class="gp-btn-s" href="/igry/">← Каталог</a>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+${renderGameGalleryHtml(g.gallery, title)}
 
 ${renderGameStagesHtml(g.stages, statusRaw)}
 
@@ -669,12 +695,65 @@ function removeGeneratedGamePage(slug) {
   try { fs.rmdirSync(dir); } catch {}
 }
 
+// The /igry catalog's own React chunk decides which game cards are real
+// clickable links vs. locked "coming soon" placeholders via a slug whitelist
+// baked into the component source: `let l=![...whitelist].includes(e.slug)&&
+// "announcement"===e.status`. `l` == "this card is locked". So a game is
+// clickable when its slug IS in the whitelist (always_visible=1) OR its status
+// isn't "announcement". We rewrite the whitelist array on every save to match
+// the always_visible flags. The chunk filename is content-hashed, so after
+// editing we must rename it and re-point every HTML <script> that loads it,
+// else the immutable-cached old copy keeps serving. Source-code array literal,
+// NOT the props JSON (that's Zod-validated and would crash the whole site).
+function syncGamesChunkVisibility() {
+  const root = path.join(SITE_ROOT, '_next', 'static', 'chunks');
+  const condRe = /let l=!(?:\[[^\]]*\]\.includes\(e\.slug\)|"[^"]*"!==e\.slug)&&"announcement"===e\.status/;
+  const visibleSlugs = gAll.all().filter(r => (r.always_visible==null?1:r.always_visible)).map(r => r.slug);
+  const newCond = `let l=!${JSON.stringify(visibleSlugs)}.includes(e.slug)&&"announcement"===e.status`;
+  // Recurse: the condition lives in chunks/app/igry/page-*.js, a nested dir.
+  const stack = [root];
+  while (stack.length) {
+    const dir = stack.pop();
+    let items; try { items = fs.readdirSync(dir); } catch { continue; }
+    for (const it of items) {
+      const full = path.join(dir, it); let st; try { st = fs.statSync(full); } catch { continue; }
+      if (st.isDirectory()) { stack.push(full); continue; }
+      if (!it.endsWith('.js')) continue;
+      let content; try { content = fs.readFileSync(full, 'utf8'); } catch { continue; }
+      if (!condRe.test(content)) continue;
+      if (content.match(condRe)[0] === newCond) continue;
+      content = content.replace(condRe, newCond);
+      const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
+      const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + `-${hash}.js`;
+      if (newName === it) { writeAtomic(full, content); continue; }
+      writeAtomic(path.join(dir, newName), content);
+      try { fs.unlinkSync(full); } catch {}
+      relinkChunkEverywhere(it, newName);
+    }
+  }
+  try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
+}
+function relinkChunkEverywhere(oldName, newName) {
+  (function walk(d) {
+    let items; try { items = fs.readdirSync(d); } catch { return; }
+    for (const it of items) {
+      if (it.startsWith('.') || it === '_next' || it === 'uploads' || it === 'cdn-cgi') continue;
+      const full = path.join(d, it); let st; try { st = fs.statSync(full); } catch { continue; }
+      if (st.isDirectory()) walk(full);
+      else if (it.endsWith('.html')) {
+        let h; try { h = fs.readFileSync(full, 'utf8'); } catch { continue; }
+        if (h.includes(oldName)) writeAtomic(full, h.split(oldName).join(newName));
+      }
+    }
+  })(SITE_ROOT);
+}
+
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,stages,author,bg_color,accent_color,hero_bg_url,hero_logo_url,players,age,duration,buy_url,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@stages,@author,@bg_color,@accent_color,@hero_bg_url,@hero_logo_url,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,stages=@stages,author=@author,bg_color=@bg_color,accent_color=@accent_color,hero_bg_url=@hero_bg_url,hero_logo_url=@hero_logo_url,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,stages,links,always_visible,author,bg_color,accent_color,hero_bg_url,hero_logo_url,players,age,duration,buy_url,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@stages,@links,@always_visible,@author,@bg_color,@accent_color,@hero_bg_url,@hero_logo_url,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,stages=@stages,links=@links,always_visible=@always_visible,author=@author,bg_color=@bg_color,accent_color=@accent_color,hero_bg_url=@hero_bg_url,hero_logo_url=@hero_logo_url,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 
 function gameBody(b, ex={}) {
@@ -682,9 +761,11 @@ function gameBody(b, ex={}) {
   const slug = rawSlug || `game-${Date.now()}`;
   const gallery = Array.isArray(b.gallery) ? b.gallery : parseGallery(ex.gallery);
   const stages = Array.isArray(b.stages) ? b.stages : parseStages(ex.stages);
+  const links = b.links!==undefined ? parseGameLinks(b.links) : parseGameLinks(ex.links);
   return { slug, title:cleanText(b.title??ex.title), subtitle:cleanText(b.subtitle??ex.subtitle??''), description:cleanText(b.description??ex.description??''),
     status:b.status||ex.status||'published', cover_url:cleanText(b.cover_url??ex.cover_url??''),
-    gallery:JSON.stringify(gallery), stages:JSON.stringify(stages),
+    gallery:JSON.stringify(gallery), stages:JSON.stringify(stages), links:JSON.stringify(links),
+    always_visible:(b.always_visible!==undefined?!!b.always_visible:(ex.always_visible==null?true:!!ex.always_visible))?1:0,
     author:cleanText(b.author??ex.author??''), bg_color:cleanText(b.bg_color??ex.bg_color??''), accent_color:cleanText(b.accent_color??ex.accent_color??''),
     hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''), hero_logo_url:cleanText(b.hero_logo_url??ex.hero_logo_url??''),
     players:cleanText(b.players??ex.players??''), age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:cleanText(b.buy_url??ex.buy_url??''),
@@ -703,6 +784,7 @@ app.post('/api/admin/games', requireAuth, (req, res) => {
   const info = gIns.run(data);
   writeGeneratedGamePage(gOne.get(info.lastInsertRowid));
   regenGamesCatalog();
+  syncGamesChunkVisibility();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_create',{id:info.lastInsertRowid,slug:data.slug,publishedAt});
   res.status(201).json({...gameRow(gOne.get(info.lastInsertRowid)), publishedAt});
@@ -717,6 +799,7 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   if (ex.slug !== data.slug) removeGeneratedGamePage(ex.slug);
   writeGeneratedGamePage(gOne.get(id));
   regenGamesCatalog();
+  syncGamesChunkVisibility();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_update',{id,publishedAt});
   res.json({...gameRow(gOne.get(id)), publishedAt});

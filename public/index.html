@@ -585,7 +585,7 @@ let activeTab='dashboard';
 let pickerCallback=null;
 // editor state
 let editingGame=null;
-let gameGallery=[], gameStages=[];
+let gameGallery=[], gameStages=[], gameLinks=[];
 
 // ── NAV ──
 const NAV=[
@@ -673,8 +673,10 @@ async function render(){
   if(activeTab==='game-editor'){el.style.padding='0';el.innerHTML='';renderGameEditor();return;}
   if(activeTab==='kik-editor'){el.style.padding='0';el.innerHTML='';renderKikEditor();return;}
   el.style.padding='22px';
-  // skeleton loading
-  el.innerHTML=renderSkeleton();
+  // Skeleton only for tabs that actually hit the network — flashing it for
+  // instant synchronous renders (games/kik lists, settings) made every
+  // filter click strobe grey placeholders for a frame. Pure jank.
+  if(['dashboard','pages','sitetext','media','audit'].includes(activeTab)) el.innerHTML=renderSkeleton();
   try{
     switch(activeTab){
       case'dashboard':el.innerHTML=await renderDash();break;
@@ -774,13 +776,18 @@ function renderGamesList(){
     <td style="width:54px">${g.cover_url?`<img class="thumb" src="${esc(g.cover_url)}" onerror="this.style.display='none'">`:''}</td>
     <td><div style="font-weight:700">${esc(g.title)}</div><div style="color:var(--txt-m);font-size:11.5px">/igry/${esc(g.slug)}</div></td>
     <td>
-      <span class="badge ${g.status==='published'?'b-g':g.status==='draft'?'b-r':'b-s'}" style="cursor:pointer" onclick="quickToggleStatus('game',${g.id},'${g.status}')" title="Клікніть щоб змінити статус">${g.status}</span>
+      <span class="badge ${g.status==='published'?'b-g':(g.status==='draft'||g.status==='hidden'||g.status==='archived')?'b-r':'b-s'}" style="cursor:pointer" onclick="quickToggleStatus('game',${g.id},'${g.status}')" title="Клікніть щоб змінити статус">${g.status}</span>
+    </td>
+    <td>
+      ${(g.status==='draft'||g.status==='hidden'||g.status==='archived')
+        ? `<span class="badge b-s" title="Приховано з каталогу через статус">— поза сайтом</span>`
+        : `<button class="badge ${g.always_visible?'b-g':'b-r'}" style="cursor:pointer;border:none;font:inherit" onclick="quickToggleVisible(${g.id},${g.always_visible?'false':'true'})" title="${g.always_visible?'Клік — заблокувати картку («скоро»)':'Клік — зробити картку клікабельною'}">${g.always_visible?'🔓 клікабельна':'🔒 заблокована'}</button>`}
     </td>
     <td style="color:var(--txt-m);font-size:12px">${[g.players,g.age,g.duration].filter(Boolean).join(' · ')||'—'}</td>
     <td style="white-space:nowrap;display:flex;gap:6px">
       <button class="btn btn-g btn-sm" onclick="openGameEditor(${g.id})">✏️ Редагувати</button>
     </td>
-  </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;padding:36px;color:var(--txt-m)">${gameFilter==='all'?'Ігор ще немає — додайте першу!':'Немає ігор з таким статусом'}</td></tr>`;
+  </tr>`).join(''):`<tr><td colspan="6" style="text-align:center;padding:36px;color:var(--txt-m)">${gameFilter==='all'?'Ігор ще немає — додайте першу!':'Немає ігор з таким статусом'}</td></tr>`;
   return `<div class="card">
     <div class="ch">
       <div><div class="ct">🎲 Ігри</div><div class="cs">${games.length} всього</div></div>
@@ -792,7 +799,7 @@ function renderGamesList(){
       <button class="ftab${gameFilter==='draft'?' on':''}" onclick="gameFilter='draft';render()">📝 Чернетки<span class="cnt">${dft}</span></button>
       ${arc?`<button class="ftab${gameFilter==='archived'?' on':''}" onclick="gameFilter='archived';render()">📦 Архів<span class="cnt">${arc}</span></button>`:''}
     </div>
-    <table class="tbl"><thead><tr><th></th><th>Назва</th><th>Статус <span style="font-weight:400;opacity:.5">(клікніть)</span></th><th>Характеристики</th><th></th></tr></thead>
+    <table class="tbl"><thead><tr><th></th><th>Назва</th><th>Статус <span style="font-weight:400;opacity:.5">(клік)</span></th><th>На сайті <span style="font-weight:400;opacity:.5">(клік)</span></th><th>Характеристики</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 
@@ -805,12 +812,22 @@ async function quickToggleStatus(type,id,current){
   }catch(e){toast(e.message,'er');}
 }
 window.quickToggleStatus=quickToggleStatus;
+async function quickToggleVisible(id,next){
+  try{
+    await api('PUT',`/api/admin/games/${id}`,{always_visible:next});
+    games=await api('GET','/api/admin/games');
+    toast(next?'Картка клікабельна на сайті ✓':'Картку заблоковано («скоро») ✓','ok');
+    render();
+  }catch(e){toast(e.message,'er');}
+}
+window.quickToggleVisible=quickToggleVisible;
 
 // ── GAME EDITOR (full-page with preview) ──
 function openGameEditor(id){
   editingGame=id?games.find(x=>x.id===id)||null:null;
   gameGallery=editingGame?parseArrayValue(editingGame.gallery):[];
   gameStages=editingGame?parseArrayValue(editingGame.stages):[];
+  gameLinks=editingGame?parseArrayValue(editingGame.links).filter(l=>l&&(l.label||l.url)):[];
   activeTab='game-editor'; render();
 }
 function parseArrayValue(value){
@@ -853,6 +870,10 @@ function renderGameEditor(){
               </optgroup>
             </select></div>
         </div>
+        <label class="field" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;background:rgba(0,159,227,.06);border:1px solid rgba(0,159,227,.18);border-radius:10px;padding:12px 14px">
+          <input type="checkbox" id="g_always_visible" ${(g.always_visible==null?true:g.always_visible)?'checked':''} style="margin-top:2px;width:16px;height:16px;flex-shrink:0">
+          <span><b style="color:rgba(255,255,255,.9)">Картка клікабельна в каталозі</b><br><span style="font-size:12px;color:var(--txt-m)">Вимкнено — на «Наші ігри» гра показується заблокованою карткою «скоро» (з замком), без переходу на сторінку. Це окремо від статусу-бейджа вище.</span></span>
+        </label>
         <div class="field"><label class="flbl">Підзаголовок</label>
           <input type="text" id="g_subtitle" value="${esc(g.subtitle)}" placeholder="Короткий опис" oninput="updatePreview()"></div>
         <div class="field"><label class="flbl">Опис</label>
@@ -872,6 +893,14 @@ function renderGameEditor(){
         <h4>Галерея</h4>
         <div class="gal-grid" id="galGrid"></div>
         <button type="button" class="btn btn-g btn-sm" style="margin-top:10px;width:100%" onclick="openPickerFor(null,addToGallery)">+ Додати зображення</button>
+        <div style="font-size:11.5px;color:var(--txt-m);margin-top:8px">Показується окремим блоком «Галерея» на сторінці гри.</div>
+      </div>
+
+      <div class="ged-section">
+        <h4>Додаткові кнопки / посилання</h4>
+        <div id="linksList"></div>
+        <button type="button" class="btn btn-g btn-sm" style="margin-top:8px;width:100%" onclick="addGameLink()">+ Додати посилання</button>
+        <div style="font-size:11.5px;color:var(--txt-m);margin-top:8px">З'являються поруч із «Придбати» — напр. правила PDF, BoardGameGeek, відео-огляд.</div>
       </div>
 
       <div class="ged-section">
@@ -1005,8 +1034,24 @@ function renderGameEditor(){
   el.style.padding='0';
   renderGallery();
   renderStages();
+  renderLinks();
   updatePreview();
 }
+
+function renderLinks(){
+  const box=$('#linksList'); if(!box)return;
+  box.innerHTML=gameLinks.map((l,i)=>`
+    <div class="row2" style="align-items:end;gap:8px;margin-bottom:8px">
+      <div class="field" style="margin:0"><label class="flbl">Текст кнопки</label>
+        <input type="text" value="${esc(l.label||'')}" oninput="updateGameLink(${i},'label',this.value)" placeholder="Напр., Правила PDF"></div>
+      <div class="field" style="margin:0"><label class="flbl">Посилання</label>
+        <input type="text" value="${esc(l.url||'')}" oninput="updateGameLink(${i},'url',this.value)" placeholder="https://..."></div>
+      <button class="btn btn-sm" style="background:rgba(239,68,68,.15);color:#ef4444;border:none;height:38px;flex-shrink:0" onclick="removeGameLink(${i})" title="Видалити">✕</button>
+    </div>`).join('') || `<div style="font-size:12px;color:var(--txt-m)">Посилань немає.</div>`;
+}
+window.addGameLink=function(){ gameLinks.push({label:'',url:''}); renderLinks(); };
+window.removeGameLink=function(i){ gameLinks.splice(i,1); renderLinks(); };
+window.updateGameLink=function(i,k,v){ if(gameLinks[i]) gameLinks[i][k]=v; };
 
 let galDragIdx = null;
 window.galDragStart = function(e){
@@ -1161,6 +1206,8 @@ async function saveGame(){
     const body={title,slug:$('#g_slug')?.value,subtitle:$('#g_subtitle')?.value,
       description:$('#g_desc')?.value,status:$('#g_status')?.value,
       cover_url:$('#g_cover')?.value,gallery:gameGallery,stages:gameStages,
+      links:gameLinks.filter(l=>l.label?.trim()&&l.url?.trim()),
+      always_visible:!!$('#g_always_visible')?.checked,
       author:$('#g_author')?.value, bg_color:$('#g_bg_color')?.value, accent_color:$('#g_accent_color')?.value,
       hero_bg_url:$('#g_hero_bg')?.value, hero_logo_url:$('#g_hero_logo')?.value,
       players:$('#g_players')?.value,age:$('#g_age')?.value,duration:$('#g_duration')?.value,
@@ -1686,19 +1733,26 @@ function countTab(tab){
   return pageBlocks.filter(b=>(typeToTab[b.type]||'content')===tab&&b.type!=='seo').length;
 }
 
+// Rebuilds ONLY the block list — never the search input. The old version
+// re-innerHTML'ed the search field together with the list on every keystroke,
+// which destroyed the focused input after each typed character (search was
+// effectively unusable: one letter, click back in, one letter…).
 function switchPedTab(tab){
   pedTab=tab;
-  // re-render just the body content
-  const body=$('#ped-tab-body');if(!body)return;
-  body.innerHTML=`
-    <div class="ped-search"><input type="text" id="pedSearchInp" placeholder="Пошук блоків…" value="${esc(pedSearch)}" oninput="pedSearch=this.value;switchPedTab('${tab}')"></div>
-    ${buildBlocksHtml(pageBlocks,tab,pedSearch)}`;
+  const list=$('#ped-tab-body');if(!list)return;
+  list.innerHTML=buildBlocksHtml(pageBlocks,tab,pedSearch);
   $$('.ped-tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
   updateTabBadges();
-  // auto-resize textareas
   setTimeout(()=>$$('#ped-tab-body textarea').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px';}),50);
 }
 window.switchPedTab=switchPedTab;
+let _pedSearchDeb;
+function pedSearchInput(v){
+  pedSearch=v;
+  clearTimeout(_pedSearchDeb);
+  _pedSearchDeb=setTimeout(()=>switchPedTab(pedTab),120);
+}
+window.pedSearchInput=pedSearchInput;
 
 function updateTabBadges(){
   $$('.ped-tab').forEach(t=>{
@@ -1754,9 +1808,9 @@ async function renderPages(){
         ⚡ Ця сторінка генерується динамічно — її заголовки й тексти редагуються в розділі
         <button onclick="activeTab='sitetext';saveTab('sitetext');render()" style="background:none;border:none;color:var(--bf);font:700 12px inherit;cursor:pointer;text-decoration:underline;padding:0">🌐 Тексти сайту</button>
       </div>`:''}
-      <div class="ped-body" id="ped-tab-body">
-        <div class="ped-search"><input type="text" id="pedSearchInp" placeholder="Пошук блоків…" value="${esc(pedSearch)}" oninput="pedSearch=this.value;switchPedTab('${pedTab}')"></div>
-        ${buildBlocksHtml(pageBlocks,pedTab,pedSearch)}
+      <div class="ped-body">
+        <div class="ped-search"><input type="text" id="pedSearchInp" placeholder="Пошук блоків…" value="${esc(pedSearch)}" oninput="pedSearchInput(this.value)"></div>
+        <div id="ped-tab-body">${buildBlocksHtml(pageBlocks,pedTab,pedSearch)}</div>
       </div>`;
     edHtml=editorContent;
     const pagePath='/'+activePage.replace(/\/?index\.html$/,'');
@@ -1997,16 +2051,27 @@ async function renderSiteText(){
       <button class="btn btn-p" id="scSaveBtn" onclick="saveSiteContent()" ${changedCount?'':'disabled'}>💾 Зберегти ${changedCount?`(${changedCount})`:''}</button>
     </div>
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
-      <div class="ped-search" style="flex:1;margin:0"><input type="text" placeholder="Пошук тексту…" value="${esc(siteSearch)}" oninput="siteSearch=this.value;renderSiteTextDebounced()"></div>
+      <div class="ped-search" style="flex:1;margin:0"><input type="text" id="scSearchInp" placeholder="Пошук тексту…" value="${esc(siteSearch)}" oninput="siteSearch=this.value;renderSiteTextDebounced()"></div>
     </div>
     <div class="ftabs" style="flex-wrap:wrap;max-width:100%;margin-bottom:16px">${secTabs}</div>
     ${body}
   </div>`;
   // autosize textareas
   setTimeout(()=>$$('#mainContent textarea[data-scin]').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px';}),50);
+  // The debounced search re-render replaces the whole view including the
+  // search input itself — without this, focus (and the caret) died 250ms
+  // after every keystroke, making search feel broken.
+  if(_scRestoreFocus){
+    _scRestoreFocus=false;
+    const i=$('#scSearchInp');
+    if(i){ i.focus(); const L=i.value.length; try{i.setSelectionRange(L,L);}catch{} }
+  }
 }
-let _scDeb;
-function renderSiteTextDebounced(){clearTimeout(_scDeb);_scDeb=setTimeout(renderSiteText,250);}
+let _scDeb,_scRestoreFocus=false;
+function renderSiteTextDebounced(){
+  _scRestoreFocus=document.activeElement?.id==='scSearchInp';
+  clearTimeout(_scDeb);_scDeb=setTimeout(renderSiteText,250);
+}
 window.renderSiteTextDebounced=renderSiteTextDebounced;
 
 function markSiteEdited(path){
