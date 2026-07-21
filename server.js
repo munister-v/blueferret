@@ -25,7 +25,6 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER
   );
-  try { db.exec("ALTER TABLE games ADD COLUMN stages TEXT DEFAULT '[]'"); } catch(e){}
   CREATE TABLE IF NOT EXISTS audit (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ts INTEGER, ip TEXT, action TEXT, detail TEXT
@@ -62,8 +61,10 @@ db.exec(`
     sort_order INTEGER DEFAULT 0,
     created_at INTEGER,
     updated_at INTEGER
-  );
+);
 `);
+
+try { db.exec("ALTER TABLE games ADD COLUMN stages TEXT DEFAULT '[]'"); } catch(e) {}
 
 const getRow  = db.prepare('SELECT value FROM settings WHERE key=?');
 const upsert  = db.prepare(`INSERT INTO settings(key,value,updated_at) VALUES(?,?,?)
@@ -397,7 +398,7 @@ function generatedGameHtml(g) {
     `<div class="pp-card"><div class="pp-ico">🎲</div><div class="pp-label">Видавець</div><div class="pp-val">Blue Ferret</div></div>`,
   ].filter(Boolean).join('');
   return `<!doctype html>
-<html lang="uk">
+<html lang="uk" data-bf-generated-game="true">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -1390,8 +1391,19 @@ app.use((err, req, res, _next) => {
   res.status(err.status || 500).json({ error: err.message || 'server_error' });
 });
 
-const server = app.listen(PORT, HOST, () =>
-  console.log(`[blueferret-admin] http://${HOST}:${PORT}`));
+const server = app.listen(PORT, HOST, () => {
+  console.log(`[blueferret-admin] http://${HOST}:${PORT}`);
+  setTimeout(() => {
+    try {
+      regenGamesCatalog();
+      const allGames = gAll.all();
+      for (const row of allGames) {
+        writeGeneratedGamePage(row);
+      }
+      console.log('[blueferret-admin] games catalog and game pages regenerated on boot');
+    } catch(e) { console.error('[blueferret-admin] regen error:', e); }
+  }, 1000);
+});
 
 function shutdown(signal) {
   console.log(`[blueferret-admin] ${signal}: graceful shutdown`);
