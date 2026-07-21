@@ -1015,10 +1015,9 @@ function extractBlocks(html){
   while((m=pr.exec(safe))!==null && kept<40){
     const inner=m[1];
     const t=cleanInner(inner);
-    const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t);
     // Allow paragraphs with simple inline tags (strong, em, a, etc.)
     const inlineOk = !hasNestedTag(inner) || hasOnlyInlineTags(inner);
-    if(t && inlineOk && !looksConcat && t.includes(' ') && t.length>=20 && t.length<=900){
+    if(t && inlineOk && t.length>=2 && t.length<=1500){
       add(`p_${pi}`,'p','Абзац тексту','¶',t,m[0],inner,pi);
       kept++;
     }
@@ -1030,7 +1029,7 @@ function extractBlocks(html){
   while((m=ar.exec(safe))!==null && aKept<40){
     const inner=m[1];
     const t=cleanInner(inner);
-    if(t && t.length>=3 && t.length<=120 && !/<img/i.test(inner)){
+    if(t && t.length>=2 && t.length<=150 && !/<img/i.test(inner)){
       const hrefMatch = m[0].match(/href="([^"]*)"/i);
       const href = hrefMatch ? decodeHtmlEnts(hrefMatch[1]) : '';
       add(`a_${ai}`,'a','Посилання / кнопка','🔗',t,m[0],inner,ai,{href});
@@ -1043,8 +1042,7 @@ function extractBlocks(html){
   const sr=/<span[^>]*>([^<]{4,80})<\/span>/gi; let si=0, sKept=0;
   while((m=sr.exec(safe))!==null && sKept<20){
     const t=decodeHtmlEnts(m[1]).trim();
-    // skip very short or numeric-only spans
-    if(t && t.length>=4 && t.length<=80 && /[а-яіїєa-z]/i.test(t)){
+    if(t && t.length>=2 && t.length<=120 && /[а-яіїєa-z0-9]/i.test(t)){
       add(`span_${si}`,'span','Мітка / бейдж','🏷',t,m[0],m[1],si);
       sKept++;
     }
@@ -1292,6 +1290,13 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   let changed = 0;
   for (const b of blocks) {
     if (!b.orig) continue;
+
+    if (b.delete) {
+      html = html.split(b.orig).join('');
+      changed++;
+      continue;
+    }
+
     let newOrig = b.orig;
     
     if (b.newHref !== undefined && b.type === 'a') {
@@ -1315,6 +1320,10 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
       }
     }
     
+    if (b.appendHtml) {
+      newOrig += '\n' + b.appendHtml;
+    }
+
     if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
   }
   writeAtomic(full, html);

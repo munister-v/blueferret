@@ -1600,15 +1600,19 @@ function buildBlocksHtml(blocks, tabFilter, search){
     const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
     const curLen=curVal.length;
     const cntClass='char-cnt'+(maxLen&&curLen>maxLen?' over':maxLen&&curLen>maxLen*.85?' warn':'');
-    const edited=pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value;
+    const edited=(pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value) || b.isNew;
+    const isDeleted=deletedBlocks.has(b.id);
+    const delStyle=isDeleted?'opacity:0.3;pointer-events:none;background:rgba(239,68,68,0.05);border-color:rgba(239,68,68,0.2)':'';
 
     if (b.type === 'img') {
-      return `<div class="blk img${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="images" style="padding:14px 16px 12px">
+      return `<div class="blk img${edited?' edited':''}${b.isNew?' new-blk':''}" data-id="${esc(b.id)}" data-tab="images" style="padding:14px 16px 12px;${delStyle}">
         <div class="blk-head" style="margin-bottom:6px">
           <div class="blk-ico img">🖼</div>
           <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
           <div class="blk-actions">
+            ${isDeleted?`<span style="color:#ef4444;font-size:10px;font-weight:bold;margin-right:8px">ВИДАЛЕНО</span>`:''}
             <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
+            ${!b.isNew&&!isDeleted?`<button class="reset-btn" onclick="deleteBlock('${esc(b.id)}')" title="Видалити" style="color:#ef4444;margin-left:4px">🗑</button>`:''}
           </div>
         </div>
         <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
@@ -1620,7 +1624,8 @@ function buildBlocksHtml(blocks, tabFilter, search){
             <button class="btn btn-sm" onclick="openPickerFor('inp_${esc(b.id)}', (v)=>{const el=document.getElementById('inp_${esc(b.id)}');if(el){el.value=v;markEdited('${esc(b.id)}');}})" style="align-self:flex-start;background:rgba(0,159,227,0.15);color:var(--bf);padding:4px 10px;font-size:11.5px;border:none">🖼 Обрати з медіа</button>
           </div>
         </div>
-      </div>`;
+      </div>
+      ${!isDeleted?`<div class="add-block-row" style="text-align:center;margin:4px 0 12px;opacity:0.6;transition:.2s;display:flex;justify-content:center"><div class="add-block-btns" style="display:flex;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:12px;cursor:pointer;border:1px dashed rgba(255,255,255,0.1)"><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','p')">➕ ¶ Абзац</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','h2')">➕ H₂ Загол</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','img')">➕ 🖼 Фото</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','a')">➕ 🔗 Кнопка</span></div></div>`:''}`;
     }
 
       const isWysiwyg = (b.type === 'p' || b.type === 'li');
@@ -1674,7 +1679,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
 
 function countTabChanges(tab){
   const typeToTab={h1:'content',h2:'content',h3:'content',p:'content',a:'content',span:'content',li:'content',img:'images'};
-  return pageBlocks.filter(b=>(typeToTab[b.type]||'content')===tab&&b.type!=='seo'&&pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value).length;
+  return pageBlocks.filter(b=>(typeToTab[b.type]||'content')===tab&&b.type!=='seo'&&((pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value) || b.isNew || deletedBlocks.has(b.id))).length;
 }
 function countTab(tab){
   const typeToTab={h1:'content',h2:'content',h3:'content',p:'content',a:'content',span:'content',li:'content',img:'images'};
@@ -1704,7 +1709,7 @@ function updateTabBadges(){
     t.classList.toggle('has-changes',changes>0);
   });
   // update unsaved badge total
-  const total=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length;
+  const total=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length + deletedBlocks.size + pageBlocks.filter(b=>b.isNew).length;
   const badge=$('#unsaved-badge');if(badge){badge.textContent=total+' змін';badge.classList.toggle('show',total>0);}
 }
 
@@ -1870,10 +1875,37 @@ function resetField(id){
   el.closest('.blk')?.classList.remove('edited');
   updateCharCounter(id,orig.value);
   if(el.tagName==='TEXTAREA'){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
-  const cnt=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length;
+  const cnt=Object.keys(pageEdited).filter(k=>{const b=pageBlocks.find(x=>x.id===k);return b&&pageEdited[k]!==b.value;}).length + deletedBlocks.size + pageBlocks.filter(b=>b.isNew).length;
   const badge=$('#unsaved-badge');if(badge){badge.textContent=cnt+' змін';badge.classList.toggle('show',cnt>0);}
 }
+
+const deletedBlocks=new Set();
+function deleteBlock(id){
+  if(confirm('Видалити цей блок зі сторінки?')){
+    deletedBlocks.add(id);
+    switchPedTab(pedTab);
+  }
+}
+function addBlockAfter(afterId, type) {
+  const newId = 'new_' + Date.now() + Math.floor(Math.random()*1000);
+  const idx = pageBlocks.findIndex(b => b.id === afterId);
+  if (idx > -1) {
+    const lbl = type==='p'?'Новий абзац':type==='h2'?'Новий заголовок':type==='img'?'Нове фото':'Нова кнопка';
+    const icn = type==='p'?'¶':type==='h2'?'H₂':type==='img'?'🖼':'🔗';
+    const href = type==='a'?'/':'';
+    pageBlocks.splice(idx + 1, 0, {
+      id: newId, type, label: lbl, icon: icn,
+      value: type==='img'?'https://placehold.co/600x400':(type==='h2'?'Новий заголовок':'Новий текст...'),
+      href, isNew: true, afterBlockId: afterId
+    });
+    pageEdited[newId] = pageBlocks[idx+1].value;
+    if(type==='a') pageEdited[newId+'_href'] = href;
+    switchPedTab(pedTab);
+  }
+}
+
 window.markEdited=markEdited;window.resetField=resetField;
+window.deleteBlock=deleteBlock;window.addBlockAfter=addBlockAfter;
 
 // ══════════ SITE TEXT (content dictionary) ══════════
 let siteContent=null, siteEdited={}, siteSearch='', siteSection='all';
@@ -2016,9 +2048,9 @@ async function saveSiteContent(){
 window.saveSiteContent=saveSiteContent;
 window.renderSiteText=renderSiteText;
 
-async function selectPage(file){
-  if(activePage===file) return;
-  activePage=file; pageBlocks=[]; pageEdited={};
+async function selectPage(file, force=false){
+  if(activePage===file && !force) return;
+  activePage=file; pageBlocks=[]; pageEdited={}; deletedBlocks.clear();
   try{const res=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(file)}`);pageBlocks=res.blocks||[];}catch{}
   await renderPages();
 }
@@ -2026,24 +2058,65 @@ window.selectPage=selectPage;
 
 async function savePatchedPage(){
   const btn=$('#pedSaveBtn');if(btn)btn.disabled=true;
-  const updates=pageBlocks.map(b=>{
+  
+  const updates = [];
+  for (const id of deletedBlocks) {
+    const b = pageBlocks.find(x=>x.id===id);
+    if (b && !b.isNew) updates.push({ orig: b.orig, delete: true });
+  }
+
+  let currentAnchor = null;
+  const anchorAppendHtml = {};
+  const activeBlocks = pageBlocks.filter(b => !deletedBlocks.has(b.id));
+
+  for (const b of activeBlocks) {
+    if (!b.isNew) {
+      currentAnchor = b;
+      anchorAppendHtml[b.id] = '';
+    } else if (currentAnchor) {
+      let val = pageEdited[b.id]!==undefined ? pageEdited[b.id] : b.value;
+      let h = '';
+      if (b.type === 'p') h = `<p>${esc(val)}</p>`;
+      else if (b.type === 'h2') h = `<h2>${esc(val)}</h2>`;
+      else if (b.type === 'h3') h = `<h3>${esc(val)}</h3>`;
+      else if (b.type === 'img') h = `<img src="${esc(val)}" alt="">`;
+      else if (b.type === 'a') {
+        let href = pageEdited[b.id+'_href']!==undefined ? pageEdited[b.id+'_href'] : b.href;
+        h = `<a href="${esc(href)}" class="gp-btn-p" style="margin-top:10px">${esc(val)}</a>`;
+      }
+      else if (b.type === 'li') h = `<li>${esc(val)}</li>`;
+      anchorAppendHtml[currentAnchor.id] += '\n' + h;
+    }
+  }
+
+  for (const b of activeBlocks) {
+    if (b.isNew) continue;
     const newVal = pageEdited[b.id]!==undefined ? pageEdited[b.id] : b.value;
     const newHref = b.type==='a' ? (pageEdited[b.id+'_href']!==undefined ? pageEdited[b.id+'_href'] : b.href) : undefined;
+    
     const isValChanged = newVal !== undefined && newVal !== b.origVal;
     const isHrefChanged = b.type==='a' && newHref !== undefined && newHref !== b.href;
-    if(isValChanged || isHrefChanged) {
-      return { orig:b.orig, origVal:b.origVal, newVal, newHref, type:b.type };
+    const hasAppend = !!anchorAppendHtml[b.id];
+    
+    if(isValChanged || isHrefChanged || hasAppend) {
+      updates.push({ 
+        orig: b.orig, origVal: b.origVal, 
+        newVal: isValChanged ? newVal : undefined, 
+        newHref: isHrefChanged ? newHref : undefined, 
+        type: b.type,
+        appendHtml: hasAppend ? anchorAppendHtml[b.id] : undefined
+      });
     }
-    return null;
-  }).filter(Boolean);
+  }
+
   if(!updates.length){toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;}
   try{
     const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`,{blocks:updates});
     toast(`Збережено (${res.changed} змін) ✓`,'ok');
-    // Re-read blocks from the saved file so the next edit uses fresh orig/origVal contexts.
+    
     const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
     if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;
-    pageEdited={};
+    pageEdited={}; deletedBlocks.clear();
     refreshPreview();
     renderPages();
   }catch(e){toast('Помилка: '+e.message,'er');}
