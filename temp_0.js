@@ -1,3 +1,4 @@
+
 'use strict';
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -31,11 +32,10 @@ const STABS=new Set(['general','contacts']);
 // ── UTILS ──
 function autoResize(el) {
   if(!el || el.tagName!=='TEXTAREA')return;
-  const parent = el.closest('.pages-editor, #mainContent') || document.documentElement;
-  const top = parent.scrollTop;
+  const scrollY = window.scrollY;
   el.style.height = 'auto';
   el.style.height = el.scrollHeight + 'px';
-  parent.scrollTop = top;
+  window.scrollTo(0, scrollY);
 }
 const esc=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const jsq=x=>String(x??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/</g,'\\x3c');
@@ -94,16 +94,19 @@ async function render(){
   const el=$('#mainContent');el.scrollTop=0;window.scrollTo(0,0);
   // full-page editors
   if(activeTab==='game-editor'){el.style.padding='0';el.innerHTML='';renderGameEditor();return;}
+  if(activeTab==='kik-editor'){el.style.padding='0';el.innerHTML='';renderKikEditor();return;}
   el.style.padding='22px';
   // Skeleton only for tabs that actually hit the network — flashing it for
   // instant synchronous renders (games/kik lists, settings) made every
   // filter click strobe grey placeholders for a frame. Pure jank.
-  if(['dashboard','pages','media','audit'].includes(activeTab)) el.innerHTML=renderSkeleton();
+  if(['dashboard','pages','sitetext','media','audit'].includes(activeTab)) el.innerHTML=renderSkeleton();
   try{
     switch(activeTab){
       case'dashboard':el.innerHTML=await renderDash();break;
       case'games':el.innerHTML=renderGamesList();break;
+      case'kik':el.innerHTML=renderKikList();break;
       case'pages':await renderPages();break;
+      case'sitetext':await renderSiteText();break;
       case'media':await renderMedia();break;
       case'security':el.innerHTML=renderSecurity();break;
       case'audit':el.innerHTML=await renderAudit();break;
@@ -158,9 +161,17 @@ async function renderDash(){
   return `<div class="stats">
     <div class="sc bl"><div class="n">${st.games}</div><div class="l">Ігор</div><div class="trend">опубліковано</div></div>
     <div class="sc"><div class="n">${st.drafts}</div><div class="l">Чернеток</div></div>
+    <div class="sc bl"><div class="n">${st.kik}</div><div class="l">КІК</div></div>
+    <div class="sc gr"><div class="n">${st.backers}</div><div class="l">Бекерів</div></div>
     <div class="sc am"><div class="n">${st.uploads}</div><div class="l">Медіафайлів</div></div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:18px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+    <div class="kik-banner" style="margin:0">
+      <div class="kb-l">КІК · Загальні збори</div>
+      <div class="kb-t">${fmtM(st.kikRaised)} / ${fmtM(st.kikGoal)} ₴</div>
+      <div class="kb-s">${pct}% від цілі · ${fmtM(st.backers)} бекерів</div>
+      <div class="pb"><span style="width:${pct}%"></span></div>
+    </div>
     <div class="card" style="margin:0">
       <div class="ch" style="margin-bottom:10px"><div class="ct" style="font-size:13px">📋 Остання активність</div></div>
       <div class="act-feed">${feedItems||'<div style="color:var(--txt-s);font-size:12px;padding:8px 0">Поки що немає дій</div>'}</div>
@@ -170,6 +181,7 @@ async function renderDash(){
     <div class="ch"><div class="ct">⚡ Швидкі дії</div></div>
     <div style="display:flex;flex-wrap:wrap;gap:10px">
       <button class="btn btn-p" onclick="openGameEditor(null)">🎲 Нова гра</button>
+      <button class="btn btn-k" onclick="openKikEditor(null)">🚀 Новий КІК</button>
       <button class="btn btn-g" onclick="activeTab='media';saveTab('media');render()">🖼 Завантажити фото</button>
       <button class="btn btn-g" onclick="activeTab='pages';saveTab('pages');render()">📄 Редагувати сторінки</button>
       <button class="btn btn-g" onclick="activeTab='general';saveTab('general');render()">⚙️ Налаштування</button>
@@ -844,7 +856,7 @@ window.openKikEditor=openKikEditor;window.saveKik=saveKik;window.deleteKik=delet
 // ── SETTINGS ──
 function renderSettings(id){
   const g=S.general||{},b=S.banner||{},m=S.maintenance||{},c=S.contacts||{},seo=S.seo||{},ig=S.integrations||{},ap=S.appearance||{};
-  const T={general:'⚙️ Загальні',contacts:'📬 Контакти'};
+  const T={general:'⚙️ Загальні',banner:'📢 Банер',maintenance:'🔧 Тех. режим',contacts:'📬 Контакти',seo:'🔍 SEO',integrations:'📈 Аналітика',appearance:'🎨 CSS'};
   let body='';
   switch(id){
     case'general':body=`
@@ -853,6 +865,21 @@ function renderSettings(id){
       <div class="field"><label class="flbl">Основний колір</label>
         <div class="cp"><input type="color" data-p="general.primaryColor" value="${g.primaryColor||'#009fe3'}">
         <input type="text" data-p="general.primaryColor" value="${g.primaryColor||''}" style="max-width:130px"></div></div>`;break;
+    case'banner':body=`
+      <div class="field"><label class="sw"><input type="checkbox" data-p="banner.enabled" ${b.enabled?'checked':''}><span>Показувати банер</span></label></div>
+      <div class="field"><label class="flbl">Текст</label><input type="text" id="bv_text" data-p="banner.text" value="${esc(b.text)}" placeholder="Текст банера…" oninput="updateBannerPreview()"></div>
+      <div class="field"><label class="flbl">Посилання</label><input type="url" data-p="banner.link" value="${esc(b.link)}" placeholder="https://…"></div>
+      <div class="row2">
+        <div class="field"><label class="flbl">Колір фону</label><div class="cp"><input type="color" id="bv_bg" data-p="banner.bg" value="${b.bg||'#009fe3'}" oninput="updateBannerPreview()"><input type="text" data-p="banner.bg" value="${b.bg||''}" style="max-width:100px" oninput="updateBannerPreview()"></div></div>
+        <div class="field"><label class="flbl">Колір тексту</label><div class="cp"><input type="color" id="bv_fg" data-p="banner.fg" value="${b.fg||'#fff'}" oninput="updateBannerPreview()"><input type="text" data-p="banner.fg" value="${b.fg||''}" style="max-width:100px" oninput="updateBannerPreview()"></div></div>
+      </div>
+      <div class="banner-pv" id="bannerPreview">
+        <div class="banner-pv-bar" style="background:${b.bg||'#009fe3'};color:${b.fg||'#fff'}">${esc(b.text)||'Текст банера'}</div>
+        <div class="banner-pv-page">↑ Так виглядатиме банер на сайті</div>
+      </div>`;break;
+    case'maintenance':body=`
+      <div class="field"><label class="sw"><input type="checkbox" data-p="maintenance.enabled" ${m.enabled?'checked':''}><span>Увімкнути режим обслуговування</span></label></div>
+      <div class="field"><label class="flbl">Повідомлення</label><textarea data-p="maintenance.message" style="min-height:80px">${esc(m.message)}</textarea></div>`;break;
     case'contacts':body=`
       <div class="field"><label class="flbl">Email</label><input type="email" data-p="contacts.email" value="${esc(c.email)}"></div>
       <div class="row2">
@@ -863,6 +890,16 @@ function renderSettings(id){
         <div class="field"><label class="flbl">Facebook</label><input type="url" data-p="contacts.facebook" value="${esc(c.facebook)}"></div>
         <div class="field"><label class="flbl">X</label><input type="url" data-p="contacts.x" value="${esc(c.x)}"></div>
       </div>`;break;
+    case'seo':body=`
+      <div class="field"><label class="flbl">Title</label><input type="text" data-p="seo.defaultTitle" value="${esc(seo.defaultTitle)}"></div>
+      <div class="field"><label class="flbl">Description</label><textarea data-p="seo.defaultDescription" style="min-height:70px">${esc(seo.defaultDescription)}</textarea></div>
+      <div class="field"><label class="flbl">OG Image URL</label><input type="url" data-p="seo.ogImage" value="${esc(seo.ogImage)}"></div>
+      <div class="field"><label class="sw"><input type="checkbox" data-p="seo.noindex" ${seo.noindex?'checked':''}><span>Noindex</span></label></div>`;break;
+    case'integrations':body=`
+      <div class="field"><label class="flbl">Скрипти &lt;head&gt;</label><textarea class="code" data-p="integrations.headScripts">${esc(ig.headScripts)}</textarea></div>
+      <div class="field"><label class="flbl">Скрипти &lt;body&gt;</label><textarea class="code" data-p="integrations.bodyScripts">${esc(ig.bodyScripts)}</textarea></div>`;break;
+    case'appearance':body=`
+      <div class="field"><label class="flbl">Кастомний CSS</label><textarea class="code" style="min-height:260px" data-p="appearance.customCss">${esc(ap.customCss)}</textarea></div>`;break;
   }
   return `<div class="card">
     <div class="ch"><div class="ct">${T[id]||id}</div></div>
@@ -1022,27 +1059,6 @@ window.deletePage=deletePage; window.duplicatePage=duplicatePage;
 
 let pedTab='content', pedSearch='';
 
-function moveBlockUp(id) {
-  const idx = pageBlocks.findIndex(b => b.id === id);
-  if (idx > 0) {
-    const temp = pageBlocks[idx];
-    pageBlocks[idx] = pageBlocks[idx - 1];
-    pageBlocks[idx - 1] = temp;
-    switchPedTab(pedTab);
-  }
-}
-function moveBlockDown(id) {
-  const idx = pageBlocks.findIndex(b => b.id === id);
-  if (idx > -1 && idx < pageBlocks.length - 1) {
-    const temp = pageBlocks[idx];
-    pageBlocks[idx] = pageBlocks[idx + 1];
-    pageBlocks[idx + 1] = temp;
-    switchPedTab(pedTab);
-  }
-}
-window.moveBlockUp = moveBlockUp;
-window.moveBlockDown = moveBlockDown;
-
 function buildBlocksHtml(blocks, tabFilter, search){
   const typeToTab={h1:'content',h2:'content',h3:'content',p:'content',a:'content',span:'content',li:'content',img:'images'};
   let filtered=blocks.filter(b=>(typeToTab[b.type]||'content')===tabFilter && b.type !== 'seo');
@@ -1050,27 +1066,24 @@ function buildBlocksHtml(blocks, tabFilter, search){
   if(!filtered.length) return`<div class="tab-empty">${search?'Нічого не знайдено':'Немає блоків'}</div>`;
   return filtered.map(b=>{
     const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc');
+    const maxLen=0; // removed SEO limits
     const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
+    const curLen=curVal.length;
+    const cntClass='char-cnt'+(maxLen&&curLen>maxLen?' over':maxLen&&curLen>maxLen*.85?' warn':'');
     const edited=(pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value) || b.isNew;
     const isDeleted=deletedBlocks.has(b.id);
     const delStyle=isDeleted?'opacity:0.3;pointer-events:none;background:rgba(239,68,68,0.05);border-color:rgba(239,68,68,0.2)':'';
-
-    const actionControls = `
-      ${isDeleted?`<span style="color:#ef4444;font-size:10px;font-weight:bold;margin-right:8px">ВИДАЛЕНО</span>`:''}
-      <button class="reset-btn" onclick="moveBlockUp('${esc(b.id)}')" title="Вгору">⬆</button>
-      <button class="reset-btn" onclick="moveBlockDown('${esc(b.id)}')" title="Вниз">⬇</button>
-      <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
-      ${!b.isNew&&!isDeleted?`<button class="reset-btn" onclick="deleteBlock('${esc(b.id)}')" title="Видалити" style="color:#ef4444;margin-left:4px">🗑</button>`:''}
-    `;
-
-    const addRow = !isDeleted?`<div class="add-block-row" style="text-align:center;margin:4px 0 12px;opacity:0.6;transition:.2s;display:flex;justify-content:center"><div class="add-block-btns" style="display:flex;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:12px;cursor:pointer;border:1px dashed rgba(255,255,255,0.1)"><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','p')">➕ ¶ Абзац</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','h2')">➕ H₂ Загол</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','img')">➕ 🖼 Фото</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','a')">➕ 🔗 Кнопка</span></div></div>`:'';
 
     if (b.type === 'img') {
       return `<div class="blk img${edited?' edited':''}${b.isNew?' new-blk':''}" data-id="${esc(b.id)}" data-tab="images" style="padding:14px 16px 12px;${delStyle}">
         <div class="blk-head" style="margin-bottom:6px">
           <div class="blk-ico img">🖼</div>
           <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
-          <div class="blk-actions">${actionControls}</div>
+          <div class="blk-actions">
+            ${isDeleted?`<span style="color:#ef4444;font-size:10px;font-weight:bold;margin-right:8px">ВИДАЛЕНО</span>`:''}
+            <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
+            ${!b.isNew&&!isDeleted?`<button class="reset-btn" onclick="deleteBlock('${esc(b.id)}')" title="Видалити" style="color:#ef4444;margin-left:4px">🗑</button>`:''}
+          </div>
         </div>
         <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
           <div style="width:64px;height:48px;border-radius:6px;overflow:hidden;background:rgba(255,255,255,0.05);flex-shrink:0;border:1px solid rgba(255,255,255,0.1)">
@@ -1082,54 +1095,55 @@ function buildBlocksHtml(blocks, tabFilter, search){
           </div>
         </div>
       </div>
-      ${addRow}`;
+      ${!isDeleted?`<div class="add-block-row" style="text-align:center;margin:4px 0 12px;opacity:0.6;transition:.2s;display:flex;justify-content:center"><div class="add-block-btns" style="display:flex;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:12px;cursor:pointer;border:1px dashed rgba(255,255,255,0.1)"><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','p')">➕ ¶ Абзац</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','h2')">➕ H₂ Загол</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','img')">➕ 🖼 Фото</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','a')">➕ 🔗 Кнопка</span></div></div>`:''}`;
     }
 
-    const isWysiwyg = (b.type === 'p' || b.type === 'li');
-    let inputHtml = '';
-    if (isWysiwyg) {
-      inputHtml = `
-        <div class="wysiwyg-toolbar" style="display:flex;gap:4px;margin-bottom:6px;background:rgba(255,255,255,.05);padding:4px;border-radius:6px;border:1px solid var(--glass-border)">
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('bold')" title="Жирний" style="padding:4px 8px;font-weight:bold;background:transparent;border:none">B</button>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('italic')" title="Курсив" style="padding:4px 8px;font-style:italic;background:transparent;border:none">I</button>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('underline')" title="Підкреслений" style="padding:4px 8px;text-decoration:underline;background:transparent;border:none">U</button>
-          <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); const url=prompt('Введіть посилання (URL):'); if(url) execCmd('createLink', url);" title="Посилання" style="padding:4px 8px;background:transparent;border:none">🔗</button>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('unlink')" title="Прибрати посилання" style="padding:4px 8px;background:transparent;border:none">🚫</button>
-          <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('insertUnorderedList')" title="Маркований список" style="padding:4px 8px;background:transparent;border:none">● List</button>
-        </div>
-        <div class="wysiwyg-editor" contenteditable="true" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:80px;padding:12px;border:1.5px solid var(--glass-border);border-radius:8px;background:rgba(255,255,255,.02);color:var(--txt);outline:none;font-size:14px;line-height:1.6;overflow-y:auto">${curVal}</div>
-      `;
-    } else if (b.type === 'a') {
-      const curHref = pageEdited[b.id+'_href'] !== undefined ? pageEdited[b.id+'_href'] : (b.href||'');
-      inputHtml = `
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div>
-            <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">Текст кнопки/посилання</div>
-            <input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">
+      const isWysiwyg = (b.type === 'p' || b.type === 'li');
+      let inputHtml = '';
+      if (isWysiwyg) {
+        inputHtml = `
+          <div class="wysiwyg-toolbar" style="display:flex;gap:4px;margin-bottom:6px;background:rgba(255,255,255,.05);padding:4px;border-radius:6px;border:1px solid var(--glass-border)">
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('bold')" title="Жирний" style="padding:4px 8px;font-weight:bold;background:transparent;border:none">B</button>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('italic')" title="Курсив" style="padding:4px 8px;font-style:italic;background:transparent;border:none">I</button>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('underline')" title="Підкреслений" style="padding:4px 8px;text-decoration:underline;background:transparent;border:none">U</button>
+            <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); const url=prompt('Введіть посилання (URL):'); if(url) execCmd('createLink', url);" title="Посилання" style="padding:4px 8px;background:transparent;border:none">🔗</button>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('unlink')" title="Прибрати посилання" style="padding:4px 8px;background:transparent;border:none">🚫</button>
+            <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('insertUnorderedList')" title="Маркований список" style="padding:4px 8px;background:transparent;border:none">● List</button>
           </div>
-          <div>
-            <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">URL (куди веде)</div>
-            <input type="text" data-blk="${esc(b.id)}_href" oninput="markEdited('${esc(b.id)}_href')" value="${esc(curHref)}" placeholder="https:// або /page">
+          <div class="wysiwyg-editor" contenteditable="true" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:80px;padding:12px;border:1.5px solid var(--glass-border);border-radius:8px;background:rgba(255,255,255,.02);color:var(--txt);outline:none;font-size:14px;line-height:1.6;overflow-y:auto">${curVal}</div>
+        `;
+      } else if (b.type === 'a') {
+        const curHref = pageEdited[b.id+'_href'] !== undefined ? pageEdited[b.id+'_href'] : (b.href||'');
+        inputHtml = `
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div>
+              <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">Текст кнопки/посилання</div>
+              <input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">
+            </div>
+            <div>
+              <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">URL (куди веде)</div>
+              <input type="text" data-blk="${esc(b.id)}_href" oninput="markEdited('${esc(b.id)}_href')" value="${esc(curHref)}" placeholder="https:// або /page">
+            </div>
           </div>
-        </div>
-      `;
-    } else if (isLong) {
-      inputHtml = `<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:52px;padding:4px 0">${esc(curVal)}</textarea>`;
-    } else {
-      inputHtml = `<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`;
-    }
+        `;
+      } else if (isLong) {
+        inputHtml = `<textarea data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:52px;padding:4px 0">${esc(curVal)}</textarea>`;
+      } else {
+        inputHtml = `<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`;
+      }
 
-    return `<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="${typeToTab[b.type]||'content'}" style="padding:14px 16px 12px;${delStyle}">
-      <div class="blk-head" style="margin-bottom:6px">
-        <div class="blk-ico ${b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
-        <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
-        <div class="blk-actions">${actionControls}</div>
-      </div>
-      ${inputHtml}
-    </div>
-    ${addRow}`;
+      return `<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="${typeToTab[b.type]||'content'}" style="padding:14px 16px 12px">
+        <div class="blk-head" style="margin-bottom:6px">
+          <div class="blk-ico ${b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
+          <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
+          <div class="blk-actions">
+            <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
+          </div>
+        </div>
+        ${inputHtml}
+    </div>`;
   }).join('');
 }
 
@@ -1214,7 +1228,8 @@ async function renderPages(){
         </button>
       </div>
       ${(cCount===0&&iCount===0)?`<div class="ped-hint" style="margin:14px 16px 0;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#92400e">
-        ⚡ Ця сторінка генерується динамічно.
+        ⚡ Ця сторінка генерується динамічно — її заголовки й тексти редагуються в розділі
+        <button onclick="activeTab='sitetext';saveTab('sitetext');render()" style="background:none;border:none;color:var(--bf);font:700 12px inherit;cursor:pointer;text-decoration:underline;padding:0">🌐 Тексти сайту</button>
       </div>`:''}
       <div class="ped-body">
         <div class="ped-search"><input type="text" id="pedSearchInp" placeholder="Пошук блоків…" value="${esc(pedSearch)}" oninput="pedSearchInput(this.value)"></div>
@@ -1582,14 +1597,9 @@ async function savePatchedPage(){
     }
   }
 
-  const reorderList = activeBlocks.map(b => b.orig).filter(Boolean);
-  if (!updates.length && (!reorderList || reorderList.length <= 1)){
-    toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;
-  }
+  if(!updates.length){toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;}
   try{
-    const payload = { blocks: updates };
-    if (reorderList && reorderList.length > 1) payload.reorder = reorderList;
-    const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`, payload);
+    const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`,{blocks:updates});
     toast(`Збережено (${res.changed} змін) ✓`,'ok');
     
     const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
