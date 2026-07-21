@@ -903,6 +903,45 @@ const PICO={'/':{i:'🏠'},igry:{i:'🎲'},kik:{i:'🚀'},kontakty:{i:'📬'}};
 function pIco(p){const s=p==='/'?'/':p.split('/')[0];return(PICO[s]||{i:'📄'}).i;}
 function gPages(ps){const g={};for(const p of ps){const s=p.path==='/'?'__root__':p.path.split('/')[0];const l=s==='__root__'?'Головна':s==='igry'?'🎲 Ігри':s==='kik'?'🚀 КІК':s==='kontakty'?'📬 Контакти':s;if(!g[s])g[s]={l,items:[]};g[s].items.push(p);}return g;}
 
+// KIK pages are nested (kik/proekty/<N>/pidtrymaty) — the raw list is just a flat
+// filesystem walk, so build human labels + a stable project-grouped order instead
+// of showing bare numeric segments ("1","2"…) and repeated "pidtrymaty".
+function kikLabel(p){
+  const segs=p.split('/'); // e.g. ['kik'], ['kik','pro-kik'], ['kik','proekty','2'], ['kik','proekty','2','pidtrymaty']
+  if(segs.length===1)return{label:'Головна КІК',indent:0,order:[0]};
+  if(segs[1]==='pro-kik')return{label:'Про KIK',indent:0,order:[1]};
+  if(segs[1]==='proekty'&&segs.length===2)return{label:'Усі проєкти',indent:0,order:[2]};
+  if(segs[1]==='proekty'&&segs.length===3)return{label:`Проєкт ${segs[2]}`,indent:1,order:[3,+segs[2]||0,0]};
+  if(segs[1]==='proekty'&&segs.length===4&&segs[3]==='pidtrymaty')return{label:'↳ Підтримати',indent:2,order:[3,+segs[2]||0,1]};
+  return{label:segs[segs.length-1],indent:0,order:[9]};
+}
+// Individual game pages (igry/<slug>/index.html) show up under the "Ігри" group
+// alongside the catalog page — label them with the game's real title instead of
+// the raw slug, and indent them under the catalog entry like KIK sub-pages.
+function igrySorted(items){
+  return items.map(p=>{
+    const segs=p.path.split('/');
+    if(segs.length===1)return{p,label:null,indent:0,order:[0]};
+    const g=games.find(x=>x.slug===segs[1]);
+    return{p,label:(g?g.title:segs[1]),indent:1,order:[1,segs[1]]};
+  }).sort((a,b)=>{
+    for(let i=0;i<Math.max(a.order.length,b.order.length);i++){
+      const d=String(a.order[i]||'').localeCompare(String(b.order[i]||''));
+      if(typeof a.order[i]==='number'&&typeof b.order[i]==='number'){const dn=a.order[i]-b.order[i];if(dn)return dn;continue;}
+      if(d)return d;
+    }
+    return 0;
+  });
+}
+function kikSorted(items){
+  return items.map(p=>({p,...kikLabel(p.path)})).sort((a,b)=>{
+    for(let i=0;i<Math.max(a.order.length,b.order.length);i++){
+      const d=(a.order[i]||0)-(b.order[i]||0);if(d)return d;
+    }
+    return 0;
+  });
+}
+
 // ── PAGE MANAGEMENT ──
 const SYS_PAGES=new Set(['index.html']); // pages that cannot be deleted
 
@@ -1223,16 +1262,20 @@ function updateTabBadges(){
 async function renderPages(){
   pages=await api('GET','/api/admin/pages');
   const gr=gPages(pages);
-  const sideHtml=Object.values(gr).map(g=>`<div class="p-grp">
+  const sideHtml=Object.entries(gr).map(([sec,g])=>{
+    const isKik=sec==='kik', isIgry=sec==='igry';
+    const rows=isKik?kikSorted(g.items):isIgry?igrySorted(g.items):g.items.map(p=>({p,label:null,indent:0}));
+    return `<div class="p-grp">
     <div class="p-grp-l">${g.l}</div>
-    ${g.items.map(p=>{
+    ${rows.map(({p,label,indent})=>{
       const isSys=SYS_PAGES.has(p.file);
       const isActive=activePage===p.file;
-      return`<div class="p-row${isActive?' ap':''}" data-file="${esc(p.file)}" data-path="${esc(p.path)}"
+      const dispLabel=label||(p.path==='/'?'Головна':p.path.split('/').pop()||p.path);
+      return`<div class="p-row${isActive?' ap':''}${indent?' p-row-nested':''}" style="${indent?`padding-left:${14+indent*16}px`:''}" data-file="${esc(p.file)}" data-path="${esc(p.path)}"
         onclick="selectPage('${esc(p.file)}')">
         <span class="p-ico">${pIco(p.path)}</span>
         <div class="p-inf">
-          <div class="p-path">${esc(p.path==='/'?'Головна':p.path.split('/').pop()||p.path)}</div>
+          <div class="p-path">${esc(dispLabel)}</div>
           <div class="p-mt">${relT(p.mtime)}</div>
         </div>
         ${isSys?`<span class="pg-sys">SYS</span>`:''}
@@ -1242,7 +1285,8 @@ async function renderPages(){
         </div>
       </div>`;
     }).join('')}
-  </div>`).join('');
+  </div>`;
+  }).join('');
 
   // build editor area
   let edHtml='', pvSrc='';
@@ -1257,9 +1301,14 @@ async function renderPages(){
           🖼 Зображення<span class="tab-cnt">${iCount}</span><span class="tab-dot"></span>
         </button>
       </div>
-      ${(cCount===0&&iCount===0)?`<div class="ped-hint" style="margin:14px 16px 0;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#92400e">
-        ⚡ Ця сторінка генерується динамічно.
-      </div>`:''}
+      ${(cCount===0&&iCount===0)?(()=>{
+        const m=activePage.match(/^igry\/([^/]+)\/index\.html$/);
+        const g=m?games.find(x=>x.slug===m[1]):null;
+        return `<div class="ped-hint" style="margin:14px 16px 0;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#92400e;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span>⚡ Ця сторінка генерується динамічно з даних гри — текст, галерею, етапи й посилання можна редагувати частково через форму гри.</span>
+          ${g?`<button class="btn btn-sm" onclick="openGameEditor(${g.id})" style="background:#009FE3;color:#fff;padding:5px 12px;flex-shrink:0">✏️ Редагувати гру «${esc(g.title)}»</button>`:''}
+        </div>`;
+      })():''}
       <div class="ped-body">
         <div class="ped-search"><input type="text" id="pedSearchInp" placeholder="Пошук блоків…" value="${esc(pedSearch)}" oninput="pedSearchInput(this.value)"></div>
         <div id="ped-tab-body">${buildBlocksHtml(pageBlocks,pedTab,pedSearch)}</div>

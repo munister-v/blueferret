@@ -457,55 +457,6 @@ function relinkChunkEverywhere(oldName, newName) {
   })(SITE_ROOT);
 }
 
-
-// The /igry/ catalog hero text (badge/title/subtitle) is duplicated inside a
-// shared client JS chunk (baked in during the original Next.js migration —
-// same class of bug as the games-visibility lock condition above). This
-// route hydrates client-side (useSearchParams), so after JS loads it
-// overwrites the server-rendered HTML with these stale hardcoded strings,
-// silently reverting any text edit made via the page editor. Whenever
-// igry/index.html is saved, re-extract the current badge/H1/paragraph and
-// patch them into the chunk too.
-function syncIgryHeroChunk() {
-  const igryFile = path.join(SITE_ROOT, 'igry', 'index.html');
-  let html; try { html = fs.readFileSync(igryFile, 'utf8'); } catch { return; }
-  const $ = cheerio.load(html, { decodeEntities: false });
-  const badge = $('[data-bf-id="bf_23a70ecb"]').first().text().trim();
-  const title = $('[data-bf-id="bf_ca918952"]').first().text().trim();
-  const subtitle = $('[data-bf-id="bf_cf418ebc"]').first().text().trim();
-  if (!title && !badge && !subtitle) return;
-
-  const root = path.join(SITE_ROOT, '_next', 'static', 'chunks');
-  const objRe = /\{"paymentSuccess":"[^{}]*"badgeTitle":"[^"]*","title":"[^"]*","subtitle":"[^"]*"[^{}]*\}/;
-  const stack = [root];
-  while (stack.length) {
-    const dir = stack.pop();
-    let items; try { items = fs.readdirSync(dir); } catch { continue; }
-    for (const it of items) {
-      const full = path.join(dir, it); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { stack.push(full); continue; }
-      if (!it.endsWith('.js')) continue;
-      let content; try { content = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      const m = content.match(objRe);
-      if (!m) continue;
-      let obj; try { obj = JSON.parse(m[0]); } catch { continue; }
-      let dirty = false;
-      if (badge && obj.badgeTitle !== badge) { obj.badgeTitle = badge; dirty = true; }
-      if (title && obj.title !== title) { obj.title = title; dirty = true; }
-      if (subtitle && obj.subtitle !== subtitle) { obj.subtitle = subtitle; dirty = true; }
-      if (!dirty) continue;
-      content = content.replace(objRe, JSON.stringify(obj));
-      const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
-      const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + `-${hash}.js`;
-      if (newName === it) { writeAtomic(full, content); continue; }
-      writeAtomic(path.join(dir, newName), content);
-      try { fs.unlinkSync(full); } catch {}
-      relinkChunkEverywhere(it, newName);
-    }
-  }
-  try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
-}
-
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
@@ -820,11 +771,12 @@ function listPages() {
     let items;
     try { items = fs.readdirSync(dir); } catch { return; }
     for (const f of items) {
-      if (f.startsWith('.') || f.startsWith('_next') || f==='uploads' || f==='cdn-cgi' || f==='images' || f==='fonts') continue;
+      if (f.startsWith('.') || f.startsWith('_next') || f==='uploads' || f==='cdn-cgi' || f==='images' || f==='kik' || f==='fonts') continue;
       
       const full = path.join(dir,f), r2 = rel ? `${rel}/${f}` : f;
       const stat = fs.statSync(full);
       if (stat.isDirectory()) {
+        if (r2.startsWith('igry/')) continue; // hide individual games from pages list
         walk(full, r2);
       }
       else if (f==='index.html') pages.push({ path: rel||'/', file: r2, mtime: stat.mtimeMs });
@@ -1211,7 +1163,6 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
 
   if (changed > 0) {
     writeAtomic(full, $.html());
-    if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
     const publishedAt = bumpPublishedAt();
     audit(req.ip, 'page_patch', {path: rel, changed, publishedAt});
     res.json({ok: true, changed, publishedAt});
@@ -1238,7 +1189,6 @@ app.put('/api/admin/pages/*', requireAuth, (req, res) => {
   // backup
   writeBackup(full);
   writeAtomic(full, content);
-  if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'page_edit',{path:rel,publishedAt});
   res.json({ok:true,publishedAt});
