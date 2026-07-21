@@ -479,3 +479,5 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .lightbox-close{position:absolute;top:20px;right:20px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .bulk-bar{background:var(--dark3);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;margin-bottom:12px;display:none}
 .bulk-bar.show{display:flex}
+.blk-ico { cursor: grab; }
+.blk-ico:active { cursor: grabbing; }

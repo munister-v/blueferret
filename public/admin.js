@@ -1153,6 +1153,50 @@ function switchPedTab(tab){
   $$('.ped-tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
   updateTabBadges();
   setTimeout(()=>$$('#ped-tab-body textarea').forEach(t=>{autoResize(t);}),50);
+  
+  if (window._pedSortable) window._pedSortable.destroy();
+  if (window.Sortable) {
+    window._pedSortable = new Sortable(list, {
+      animation: 150,
+      handle: '.blk-ico',
+      ghostClass: 'sortable-ghost',
+      onEnd: function(evt) {
+        // Find the IDs of blocks in their new order
+        const newOrderIds = Array.from(list.querySelectorAll('.blk')).map(el => el.dataset.id);
+        
+        // We need to reorder pageBlocks to match this new order
+        // We must only reorder the blocks that are currently visible in this tab!
+        // Elements not visible (e.g. SEO, or other tabs) should retain their relative positions.
+        
+        // Get all visible blocks from pageBlocks in the order they were before
+        const visibleBlocks = pageBlocks.filter(b => (typeToTab[b.type]||'content')===pedTab && b.type!=='seo' && !deletedBlocks.has(b.id));
+        
+        // Ensure sizes match
+        if (visibleBlocks.length === newOrderIds.length) {
+          // Reconstruct the ordered array
+          const orderedBlocks = newOrderIds.map(id => visibleBlocks.find(b => b.id === id)).filter(Boolean);
+          
+          if (orderedBlocks.length === visibleBlocks.length) {
+            // Apply new order to pageBlocks
+            let i = 0;
+            const newPageBlocks = [];
+            for (const b of pageBlocks) {
+              if ((typeToTab[b.type]||'content')===pedTab && b.type!=='seo' && !deletedBlocks.has(b.id)) {
+                // Insert from the newly ordered subset
+                const blockToInsert = orderedBlocks[i++];
+                // Temporarily mark it as edited to force a save if needed, or rely on reorder payload
+                newPageBlocks.push(blockToInsert);
+              } else {
+                newPageBlocks.push(b);
+              }
+            }
+            pageBlocks = newPageBlocks;
+            updateTabBadges();
+          }
+        }
+      }
+    });
+  }
 }
 window.switchPedTab=switchPedTab;
 let _pedSearchDeb;
@@ -1535,54 +1579,41 @@ async function savePatchedPage(){
   const updates = [];
   for (const id of deletedBlocks) {
     const b = pageBlocks.find(x=>x.id===id);
-    if (b && !b.isNew) updates.push({ orig: b.orig, delete: true });
+    if (b && !b.isNew) updates.push({ id: b.id, orig: b.orig, delete: true });
   }
 
-  let currentAnchor = null;
-  const anchorAppendHtml = {};
   const activeBlocks = pageBlocks.filter(b => !deletedBlocks.has(b.id));
 
   for (const b of activeBlocks) {
-    if (!b.isNew) {
-      currentAnchor = b;
-      anchorAppendHtml[b.id] = '';
-    } else if (currentAnchor) {
-      let val = pageEdited[b.id]!==undefined ? pageEdited[b.id] : b.value;
-      let h = '';
-      if (b.type === 'p') h = `<p>${esc(val)}</p>`;
-      else if (b.type === 'h2') h = `<h2>${esc(val)}</h2>`;
-      else if (b.type === 'h3') h = `<h3>${esc(val)}</h3>`;
-      else if (b.type === 'img') h = `<img src="${esc(val)}" alt="">`;
-      else if (b.type === 'a') {
-        let href = pageEdited[b.id+'_href']!==undefined ? pageEdited[b.id+'_href'] : b.href;
-        h = `<a href="${esc(href)}" class="gp-btn-p" style="margin-top:10px">${esc(val)}</a>`;
-      }
-      else if (b.type === 'li') h = `<li>${esc(val)}</li>`;
-      anchorAppendHtml[currentAnchor.id] += '\n' + h;
-    }
-  }
-
-  for (const b of activeBlocks) {
-    if (b.isNew) continue;
     const newVal = pageEdited[b.id]!==undefined ? pageEdited[b.id] : b.value;
     const newHref = b.type==='a' ? (pageEdited[b.id+'_href']!==undefined ? pageEdited[b.id+'_href'] : b.href) : undefined;
     
+    if (b.isNew) {
+      updates.push({
+        id: b.id,
+        type: b.type,
+        isNew: true,
+        newVal: newVal,
+        newHref: newHref
+      });
+      continue;
+    }
+    
     const isValChanged = newVal !== undefined && newVal !== b.origVal;
     const isHrefChanged = b.type==='a' && newHref !== undefined && newHref !== b.href;
-    const hasAppend = !!anchorAppendHtml[b.id];
     
-    if(isValChanged || isHrefChanged || hasAppend) {
+    if(isValChanged || isHrefChanged) {
       updates.push({ 
+        id: b.id,
         orig: b.orig, origVal: b.origVal, 
         newVal: isValChanged ? newVal : undefined, 
         newHref: isHrefChanged ? newHref : undefined, 
-        type: b.type,
-        appendHtml: hasAppend ? anchorAppendHtml[b.id] : undefined
+        type: b.type
       });
     }
   }
 
-  const reorderList = activeBlocks.map(b => b.orig).filter(Boolean);
+  const reorderList = activeBlocks.map(b => b.id);
   if (!updates.length && (!reorderList || reorderList.length <= 1)){
     toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;
   }

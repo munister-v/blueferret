@@ -798,94 +798,82 @@ function encodeHtmlEnts(s){
 function cleanInner(raw){
   return decodeHtmlEnts(raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim());
 }
-function hasNestedTag(raw){ return /<[a-z]/i.test(raw); }
-
-function hasOnlyInlineTags(raw){
-  const tags = raw.match(/<([a-z][a-z0-9]*)/gi);
-  if(!tags) return true;
-  const allowed = new Set(['strong','em','a','b','i','br','span','small','mark','u','s','sub','sup']);
-  return tags.every(t => allowed.has(t.slice(1).toLowerCase()));
-}
 
 function extractBlocks(html){
   const $ = cheerio.load(html, { decodeEntities: false });
-  const blocks = [], seenText = new Set();
+  const blocks = [];
+  let changed = false;
 
-  const add = (id, type, label, icon, value, orig, origVal, idx, extra = {}) => {
+  const add = (id, type, label, icon, value, domIndex, extra = {}) => {
     const v = (value || '').trim();
-    if (!v) return;
-    const key = type + '|' + v;
-    if (seenText.has(key)) return;
-    seenText.add(key);
-    blocks.push({ id, type, label, icon, value: v, orig, origVal, domIndex: idx, ...extra });
+    if (!v && type !== 'img') return;
+    blocks.push({ id, type, label, icon, value: v, domIndex, orig: id, origVal: v, ...extra });
   };
 
-  // SEO
   const title = $('head title').text();
-  if (title) add('title', 'seo', 'Заголовок сторінки (SEO)', '🔍', decodeHtmlEnts(title), `<title>${title}</title>`, title);
+  if (title) add('seo_title', 'seo', 'Заголовок сторінки (SEO)', '🔍', decodeHtmlEnts(title), -3);
   
   const ogTitle = $('head meta[property="og:title"]').attr('content');
-  if (ogTitle) add('og_title', 'seo', 'OG Title (соцмережі)', '📲', decodeHtmlEnts(ogTitle), `<meta property="og:title" content="${ogTitle}">`, ogTitle);
+  if (ogTitle) add('seo_og_title', 'seo', 'OG Title (соцмережі)', '📲', decodeHtmlEnts(ogTitle), -2);
   
   const metaDesc = $('head meta[name="description"]').attr('content');
-  if (metaDesc) add('meta_desc', 'seo', 'Meta Description', '📝', decodeHtmlEnts(metaDesc), `<meta name="description" content="${metaDesc}">`, metaDesc);
+  if (metaDesc) add('seo_meta_desc', 'seo', 'Meta Description', '📝', decodeHtmlEnts(metaDesc), -1);
 
   const root = $('main').length ? $('main') : $('body');
-  const scope = root.clone();
-  scope.find('script, style, svg, header, nav, footer').remove();
-
+  
   let idx = 0;
-  scope.find('h1, h2, h3, p, a, span, img, li').each((_, el) => {
+  root.find('h1, h2, h3, p, a, span, img, li').each((_, el) => {
     const $el = $(el);
-    const tag = el.tagName.toLowerCase();
-    const outerHtml = $.html(el);
+    if ($el.closest('script, style, svg, header, nav, footer').length > 0) return;
 
+    const tag = el.tagName.toLowerCase();
+    
+    let id = $el.attr('data-bf-id');
+    if (!id) {
+      id = 'bf_' + crypto.randomBytes(4).toString('hex');
+      $el.attr('data-bf-id', id);
+      changed = true;
+    }
+    
     if (tag === 'img') {
       const src = ($el.attr('src') || '').trim();
       if (src && !src.startsWith('data:') && src.length > 5 && !/favicon|icon/i.test(src)) {
-        const alt = $el.attr('alt') || '';
-        add(`img_${idx}`, 'img', decodeHtmlEnts(alt) || 'Зображення', '🖼', src, outerHtml, src, idx);
-        idx++;
+        add(id, 'img', decodeHtmlEnts($el.attr('alt') || '') || 'Зображення', '🖼', src, idx++);
       }
     } else if (tag === 'a') {
       const text = cleanInner($el.html() || '');
       const href = ($el.attr('href') || '').trim();
       if (text && text.length >= 2 && text.length <= 150 && !$el.find('img').length) {
-        add(`a_${idx}`, 'a', 'Посилання / кнопка', '🔗', text, outerHtml, $el.html(), idx, { href });
-        idx++;
+        add(id, 'a', 'Посилання / кнопка', '🔗', text, idx++, { href });
       }
     } else if (['h1', 'h2', 'h3'].includes(tag)) {
       const text = cleanInner($el.html() || '');
       if (text && text.length >= 2 && text.length <= 160) {
         const label = tag === 'h1' ? 'Заголовок H1' : tag === 'h2' ? 'Заголовок H2' : 'Підзаголовок';
         const icon = tag === 'h1' ? 'H₁' : tag === 'h2' ? 'H₂' : 'H₃';
-        add(`${tag}_${idx}`, tag, label, icon, text, outerHtml, $el.html(), idx);
-        idx++;
+        add(id, tag, label, icon, text, idx++);
       }
     } else if (tag === 'p') {
       const innerHtml = $el.html() || '';
       const text = cleanInner(innerHtml);
-      if (text && text.length >= 2 && text.length <= 1500 && (hasOnlyInlineTags(innerHtml) || !hasNestedTag(innerHtml))) {
-        add(`p_${idx}`, 'p', 'Абзац тексту', '¶', text, outerHtml, innerHtml, idx);
-        idx++;
+      if (text && text.length >= 2 && text.length <= 1500) {
+        add(id, 'p', 'Абзац тексту', '¶', text, idx++);
       }
     } else if (tag === 'li') {
       const innerHtml = $el.html() || '';
       const text = cleanInner(innerHtml);
-      if (text && text.length >= 4 && text.length <= 200 && text.includes(' ')) {
-        add(`li_${idx}`, 'li', 'Елемент списку', '📌', text, outerHtml, innerHtml, idx);
-        idx++;
+      if (text && text.length >= 4 && text.length <= 200) {
+        add(id, 'li', 'Елемент списку', '📌', text, idx++);
       }
     } else if (tag === 'span') {
       const text = decodeHtmlEnts($el.text()).trim();
-      if (text && text.length >= 2 && text.length <= 120 && /[а-яіїєa-z0-9]/i.test(text) && !$el.children().length) {
-        add(`span_${idx}`, 'span', 'Мітка / бейдж', '🏷', text, outerHtml, $el.text(), idx);
-        idx++;
+      if (text && text.length >= 3 && text.length <= 60 && !$el.find('*').length) {
+        add(id, 'span', 'Мітка / бейдж', '🏷', text, idx++);
       }
     }
   });
 
-  return blocks;
+  return { blocks, newHtml: changed ? $.html() : html };
 }
 
 app.get('/api/admin/pages', requireAuth, (_req, res) => res.json(listPages()));
@@ -1080,64 +1068,107 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
   if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   try {
     const html = fs.readFileSync(full, 'utf8');
-    res.json({ blocks: extractBlocks(html) });
+    const ext = extractBlocks(html);
+    if (ext.newHtml !== html) writeAtomic(full, ext.newHtml);
+    res.json({ blocks: ext.blocks });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
-// patch specific blocks (no full HTML needed)
 app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   const rel = req.query.path;
   if (!rel || rel.includes('..') || !rel.endsWith('.html')) return res.status(400).json({error:'invalid'});
   const full = path.join(PAGES_ROOT, rel);
   if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  const {blocks} = req.body || {};
+  const {blocks, reorder} = req.body || {};
   if (!Array.isArray(blocks)) return res.status(400).json({error:'blocks required'});
+  
   let html = fs.readFileSync(full, 'utf8');
-  // backup
   writeBackup(full);
+  const $ = cheerio.load(html, { decodeEntities: false });
   let changed = 0;
+  
   for (const b of blocks) {
-    if (!b.orig) continue;
-
-    if (b.delete) {
-      html = html.split(b.orig).join('');
-      changed++;
+    if (!b.id) continue;
+    if (b.id.startsWith('seo_')) {
+      if (b.id === 'seo_title') {
+        let el = $('head title');
+        if (!el.length) { $('head').append('<title></title>'); el = $('head title'); }
+        el.text(b.newVal); changed++;
+      } else if (b.id === 'seo_og_title') {
+        let el = $('head meta[property="og:title"]');
+        if (!el.length) { $('head').append('<meta property="og:title" content="">'); el = $('head meta[property="og:title"]'); }
+        el.attr('content', encodeHtmlEnts(b.newVal)); changed++;
+      } else if (b.id === 'seo_meta_desc') {
+        let el = $('head meta[name="description"]');
+        if (!el.length) { $('head').append('<meta name="description" content="">'); el = $('head meta[name="description"]'); }
+        el.attr('content', encodeHtmlEnts(b.newVal)); changed++;
+      }
       continue;
     }
 
-    let newOrig = b.orig;
-    
-    if (b.newHref !== undefined && b.type === 'a') {
-      const hrefMatch = newOrig.match(/href="([^"]*)"/i);
-      if (hrefMatch) {
-        newOrig = newOrig.replace(`href="${hrefMatch[1]}"`, `href="${encodeHtmlEnts(b.newHref)}"`);
+    if (b.isNew) {
+      let tag = b.type;
+      let newEl;
+      if (tag === 'p') newEl = $(`<p data-bf-id="${b.id}">${b.newVal || ''}</p>`);
+      else if (tag === 'h2') newEl = $(`<h2 data-bf-id="${b.id}">${b.newVal || ''}</h2>`);
+      else if (tag === 'img') newEl = $(`<img data-bf-id="${b.id}" src="${encodeHtmlEnts(b.newVal || '')}" alt="">`);
+      else if (tag === 'a') newEl = $(`<a data-bf-id="${b.id}" href="${encodeHtmlEnts(b.newHref || '')}" class="gp-btn-p" style="margin-top:10px">${b.newVal || ''}</a>`);
+      else if (tag === 'li') newEl = $(`<li data-bf-id="${b.id}">${b.newVal || ''}</li>`);
+      
+      if (newEl) {
+        if ($('main').length) $('main').append(newEl);
+        else $('body').append(newEl);
+        changed++;
       }
+      continue;
     }
 
+    const el = $(`[data-bf-id="${b.id}"]`);
+    if (!el.length) continue;
+    
+    if (b.delete) {
+      el.remove();
+      changed++;
+      continue;
+    }
+    
+    if (b.newHref !== undefined && b.type === 'a') {
+      el.attr('href', encodeHtmlEnts(b.newHref));
+      changed++;
+    }
+    
     if (b.newVal != null && b.origVal !== b.newVal) {
-      if (b.orig.match(/^<img\s/i)) {
-        newOrig = newOrig.replace(`src="${b.origVal}"`, `src="${encodeHtmlEnts(b.newVal)}"`);
-      } else {
-        let encoded = encodeHtmlEnts(b.newVal);
-        if (b.orig.match(/^<p[\s>]/i) || b.orig.match(/^<li[\s>]/i)) {
-          encoded = encoded.replace(/&lt;(\/?)(b|i|u|strong|em|br|ul|ol|li)&gt;/gi, '<$1$2>');
-          encoded = encoded.replace(/&lt;a\s+href=&quot;([^&"]+)&quot;&gt;/gi, '<a href="$1">');
-          encoded = encoded.replace(/&lt;\/a&gt;/gi, '</a>');
-        }
-        newOrig = newOrig.replace(b.origVal, encoded);
-      }
+      if (b.type === 'img') el.attr('src', encodeHtmlEnts(b.newVal));
+      else el.html(b.newVal);
+      changed++;
     }
     
     if (b.appendHtml) {
-      newOrig += '\n' + b.appendHtml;
+      el.after('\\n' + b.appendHtml);
+      changed++;
     }
-
-    if (newOrig !== b.orig) { html = html.split(b.orig).join(newOrig); changed++; }
   }
-  writeAtomic(full, html);
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'page_patch', {path: rel, changed, publishedAt});
-  res.json({ok: true, changed, publishedAt});
+
+  if (Array.isArray(reorder) && reorder.length > 1) {
+    const elements = reorder.map(id => $(`[data-bf-id="${id}"]`)).filter(el => el.length);
+    if (elements.length > 1) {
+      let anchor = elements[0];
+      for (let i = 1; i < elements.length; i++) {
+        anchor.after(elements[i]);
+        anchor = elements[i];
+      }
+      changed++;
+    }
+  }
+
+  if (changed > 0) {
+    writeAtomic(full, $.html());
+    const publishedAt = bumpPublishedAt();
+    audit(req.ip, 'page_patch', {path: rel, changed, publishedAt});
+    res.json({ok: true, changed, publishedAt});
+  } else {
+    res.json({ok: true, changed: 0});
+  }
 });
 
 app.get('/api/admin/pages/*', requireAuth, (req, res) => {
