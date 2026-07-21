@@ -263,33 +263,45 @@ function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []
 function parseStages(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
 function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), stages: parseStages(r.stages) } : null; }
 
+// Stage lock icons as inline SVG — the 🔓 emoji renders as a *closed* gold
+// padlock in several system fonts (indistinguishable from 🔒), so the open
+// state was invisible to visitors. SVG open/closed shackles are unambiguous.
+function stageLockSvg(open, size) {
+  const s = size || 18;
+  return open
+    ? `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="rgba(189,246,223,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`
+    : `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+}
 function renderGameStagesHtml(stages, statusRaw) {
   if (!stages || stages.length === 0) return '';
-  let html = `<section class="gp-stages" style="background-color:rgb(9,13,19);padding:72px 24px;">
-  <div class="gp-inner">
-    <div class="rv" style="margin-bottom:32px">
-      <p class="gp-eyebrow">Прогрес</p>
-      <h2 class="gp-stitle" style="margin-bottom:12px">Етапи проєкту</h2>
-      <p style="color:rgba(255,255,255,.45);font-size:15px">Стан запуску кожного етапу.</p>
+  // Everything inline-styled: this HTML gets injected into HAND-CRAFTED pages
+  // (trymaysia) via the BF_STAGES markers, where none of the generated-template
+  // classes (.rv reveal animation, .gp-eyebrow, .gp-stitle) exist — depending
+  // on them left the section heading nearly invisible.
+  let html = `<section style="background-color:rgb(9,13,19);padding:72px 24px">
+  <div style="max-width:880px;margin:0 auto">
+    <div style="margin-bottom:32px">
+      <p style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 12px">Прогрес</p>
+      <h2 style="font-size:clamp(26px,4vw,40px);font-weight:800;color:rgba(255,255,255,.92);margin:0 0 12px;letter-spacing:-.02em">Етапи проєкту</h2>
+      <p style="color:rgba(255,255,255,.45);font-size:15px;margin:0">Стан запуску кожного етапу.</p>
     </div>
-    <div class="stg-grid" style="display:grid;gap:20px">`;
+    <div style="display:grid;gap:20px">`;
   for (const stg of stages) {
     const isUn = stg.status === 'unlocked';
     html += `
-      <article class="stg-card rv" style="background:linear-gradient(135deg, ${isUn ? 'rgba(61,107,138,0.22) 0%, rgb(11,17,24) 48%' : 'rgb(9,13,19) 0%, rgb(12,18,26) 100%'});border:1px solid ${isUn ? 'rgb(22,34,48)' : 'rgb(15,23,33)'};border-radius:24px;padding:24px;position:relative;overflow:hidden">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:16px">
-          <div style="display:flex;align-items:center;gap:12px">
-            <span style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:${isUn ? 'rgba(61,107,138,0.23)' : 'rgba(61,107,138,0.18)'};border:1px solid rgba(61,107,138,0.55)">
-              ${isUn ? '🔓' : '🔒'}
+      <article style="background:linear-gradient(135deg, ${isUn ? 'rgba(61,107,138,0.22) 0%, rgb(11,17,24) 48%' : 'rgb(9,13,19) 0%, rgb(12,18,26) 100%'});border:1px solid ${isUn ? 'rgb(22,34,48)' : 'rgb(15,23,33)'};border-radius:24px;padding:24px;position:relative;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isUn ? '16px' : '10px'};gap:16px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0">
+            <span style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:${isUn ? 'rgba(61,107,138,0.23)' : 'rgba(61,107,138,0.14)'};border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
+              ${stageLockSvg(isUn)}
             </span>
-            <h3 style="font-size:22px;font-weight:600;color:rgba(255,255,255,.9)">${escapeHtml(stg.title)}</h3>
+            <h3 style="font-size:22px;font-weight:600;color:rgba(255,255,255,${isUn ? '.9' : '.55'});margin:0">${escapeHtml(stg.title)}</h3>
           </div>
-          <span style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:${isUn ? 'rgba(61,107,138,0.26)' : 'rgba(216,226,240,0.11)'};color:${isUn ? '#bdf6df' : 'rgba(230,238,247,0.9)'};border:1px solid ${isUn ? 'rgba(61,107,138,0.6)' : 'rgba(190,205,224,0.22)'}">${escapeHtml(stg.label)}</span>
+          ${stg.label ? `<span style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:${isUn ? 'rgba(61,107,138,0.26)' : 'rgba(216,226,240,0.11)'};color:${isUn ? '#bdf6df' : 'rgba(230,238,247,0.7)'};border:1px solid ${isUn ? 'rgba(61,107,138,0.6)' : 'rgba(190,205,224,0.22)'};white-space:nowrap">${escapeHtml(stg.label)}</span>` : ''}
         </div>
-        <div style="color:${isUn ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.52)'};font-size:15px;line-height:1.6">
+        <div style="color:rgba(255,255,255,${isUn ? '.6' : '.35'});font-size:15px;line-height:1.6">
           ${escapeHtml(stg.description || (isUn ? '' : 'Секція ще не заповнена'))}
         </div>
-        ${!isUn ? `<div style="position:absolute;inset:0;background:linear-gradient(180deg, rgba(2,8,20,0.28) 0%, rgba(2,8,20,0.6) 100%);display:flex;align-items:center;justify-content:center;z-index:10"><div style="width:80px;height:80px;border-radius:50%;background:rgba(10,24,44,0.55);border:1px solid rgba(184,212,245,0.42);display:flex;align-items:center;justify-content:center;font-size:32px">🔒</div></div>` : ''}
       </article>`;
   }
   html += `</div></div></section>`;
