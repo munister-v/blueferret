@@ -186,7 +186,7 @@ function parseGallery(v) { try { return JSON.parse(v||'[]'); } catch { return []
 function parseStages(v) { try { return JSON.parse(v||'[]'); } catch { return []; } }
 function parseGameLinks(v) {
   const arr = Array.isArray(v) ? v : (()=>{ try { return JSON.parse(v||'[]'); } catch { return []; } })();
-  return arr.map(l => ({ label: cleanText(l&&l.label), url: sanitizeHref(l&&l.url) })).filter(l => l.label && l.url);
+  return arr.map(l => ({ label: cleanText(l&&l.label), url: cleanText(l&&l.url) })).filter(l => l.label && l.url);
 }
 function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), stages: parseStages(r.stages), links: parseGameLinks(r.links), always_visible: r.always_visible==null?1:(r.always_visible?1:0) } : null; }
 
@@ -331,17 +331,6 @@ function regenGamesCatalog() {
 }
 
 function cleanText(v) { return String(v ?? '').trim(); }
-// Any URL that ends up in href/src of saved page or game HTML must be
-// checked here first -- an admin (or anyone who reaches these endpoints
-// directly, bypassing the client-side prompt guard added for the WYSIWYG
-// toolbar) could otherwise store a "javascript:" URL that runs for every
-// visitor who clicks the link. Client-side checks are advisory only; this
-// is the actual enforcement point.
-function sanitizeHref(v) {
-  const s = cleanText(v);
-  if (/^\s*(javascript|data|vbscript):/i.test(s)) return '';
-  return s;
-}
 function escapeHtml(s) {
   return cleanText(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;'}[c]));
 }
@@ -537,7 +526,7 @@ function gameBody(b, ex={}) {
     always_visible:(b.always_visible!==undefined?!!b.always_visible:(ex.always_visible==null?true:!!ex.always_visible))?1:0,
     author:cleanText(b.author??ex.author??''), bg_color:cleanText(b.bg_color??ex.bg_color??''), accent_color:cleanText(b.accent_color??ex.accent_color??''),
     hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''), hero_logo_url:cleanText(b.hero_logo_url??ex.hero_logo_url??''),
-    players:cleanText(b.players??ex.players??''), age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:sanitizeHref(b.buy_url??ex.buy_url??''),
+    players:cleanText(b.players??ex.players??''), age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:cleanText(b.buy_url??ex.buy_url??''),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };
 }
 
@@ -1171,7 +1160,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
       if (tag === 'p') newEl = $(`<p data-bf-id="${b.id}">${b.newVal || ''}</p>`);
       else if (tag === 'h2') newEl = $(`<h2 data-bf-id="${b.id}">${b.newVal || ''}</h2>`);
       else if (tag === 'img') newEl = $(`<img data-bf-id="${b.id}" src="${encodeHtmlEnts(b.newVal || '')}" alt="">`);
-      else if (tag === 'a') newEl = $(`<a data-bf-id="${b.id}" href="${encodeHtmlEnts(sanitizeHref(b.newHref || ''))}" class="gp-btn-p" style="margin-top:10px">${b.newVal || ''}</a>`);
+      else if (tag === 'a') newEl = $(`<a data-bf-id="${b.id}" href="${encodeHtmlEnts(b.newHref || '')}" class="gp-btn-p" style="margin-top:10px">${b.newVal || ''}</a>`);
       else if (tag === 'li') newEl = $(`<li data-bf-id="${b.id}">${b.newVal || ''}</li>`);
       
       if (newEl) {
@@ -1192,7 +1181,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     }
     
     if (b.newHref !== undefined && b.type === 'a') {
-      el.attr('href', encodeHtmlEnts(sanitizeHref(b.newHref)));
+      el.attr('href', encodeHtmlEnts(b.newHref));
       changed++;
     }
     
@@ -1381,12 +1370,4 @@ function shutdown(signal) {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 process.on('unhandledRejection', err => console.error('[blueferret-admin] unhandledRejection', err));
-// An uncaught exception leaves the process in an unknown state (mid-request,
-// possibly a half-open DB handle) -- continuing to serve traffic after one is
-// how a single bad request turns into silent corruption instead of a clean,
-// visible restart. Log then exit; pm2's restart_delay/backoff (ecosystem.
-// config.js) keeps this from becoming a fast crash-loop.
-process.on('uncaughtException', err => {
-  console.error('[blueferret-admin] uncaughtException', err);
-  process.exit(1);
-});
+process.on('uncaughtException', err => console.error('[blueferret-admin] uncaughtException', err));

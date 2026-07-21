@@ -1,6 +1,4 @@
-<!doctype html>
-<html lang="uk" data-bf-generated-game="true">
-<head>
+<!DOCTYPE html><html lang="uk" data-bf-generated-game="true"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Друга гра | Blue Ferret</title>
@@ -16,7 +14,7 @@
 <meta name="twitter:image" content="https://blueferret.com.ua/images/placeholder-game.svg">
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&amp;display=swap">
 <link rel="stylesheet" href="/bf.css?v=9">
 <style>
 :root {
@@ -123,36 +121,36 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 <section class="gp-hero">
   <div class="gp-hero-bg">
     
-      <img src="https://blueferret.com.ua/images/placeholder-game.svg" alt="Друга гра" loading="eager">
+      <img src="https://blueferret.com.ua/images/placeholder-game.svg" alt="Друга гра" loading="eager" data-bf-id="bf_94027b6c"><h1 class="gp-hero-title" data-bf-id="bf_28e0946d">Друга гра ТЕСТ</h1><p class="gp-hero-sub" data-bf-id="bf_ce02062d">Кожен хід - нова історія</p><a class="gp-btn-s" href="#passport" data-bf-id="bf_98c562e7">Дізнатися більше ↓</a><span data-bf-id="bf_1ea49cdf">Зануритися</span><p class="gp-eyebrow" data-bf-id="bf_953f0b78">Про гру</p><h2 class="gp-stitle" data-bf-id="bf_c656e8fa">Паспорт пригоди</h2><p style="color:rgba(255,255,255,0.4);max-width:600px;margin:0 auto" data-bf-id="bf_24743e34">Коротко про формат гри, щоб одразу зрозуміти, чого чекати.</p><img src="/images/placeholder-game.svg" alt="Друга гра" loading="lazy" data-bf-id="bf_1653f766"><span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6" style="background:rgba(255,255,255,0.05);color:var(--accent);border:1px solid rgba(255,255,255,0.1)" data-bf-id="bf_57532553">Анонс</span><h3 class="gp-stitle" style="font-size:28px" data-bf-id="bf_d7c9be5a">Що за гра?</h3><p data-bf-id="bf_df5ed692">Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.</p><a class="gp-btn-s" href="/igry/" data-bf-id="bf_3580c6b5">← Каталог</a>
     
   </div>
   <div class="gp-hero-overlay"></div>
   
   <div class="gp-hero-body rv">
     
-      <div class="gp-kicker">Анонс</div><h1 class="gp-hero-title">Друга гра</h1>
+      <div class="gp-kicker">Анонс</div>
     
-    <p class="gp-hero-sub">Кожен хід - нова історія</p>
     
-      <a class="gp-btn-s" href="#passport">Дізнатися більше ↓</a>
+    
+      
     
   </div>
 
   <div class="gp-hero-scroll rv" onclick="document.getElementById('passport').scrollIntoView({behavior:'smooth'})">
-    <span>Зануритися</span>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
   </div>
 </section>
 
 <section class="gp-section" id="passport" style="background:rgba(0,0,0,0.2)">
   <div class="gp-inner">
     <div class="rv text-center" style="text-align:center;margin-bottom:40px">
-      <p class="gp-eyebrow">Про гру</p>
-      <h2 class="gp-stitle">Паспорт пригоди</h2>
-      <p style="color:rgba(255,255,255,0.4);max-width:600px;margin:0 auto">Коротко про формат гри, щоб одразу зрозуміти, чого чекати.</p>
+      
+      
+      
     </div>
     
-    <div class="pp-grid rv"><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></div><div class="pp-label">ГРАВЦІ</div><div class="pp-val">2-4</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div class="pp-label">ТРИВАЛІСТЬ</div><div class="pp-val">30-45</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-baby"><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M15 12h.01"/><path d="M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/><path d="M9 12h.01"/></svg></div><div class="pp-label">ВІК</div><div class="pp-val">8+</div></div></div>
+    <div class="pp-grid rv"><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg></div><div class="pp-label">ГРАВЦІ</div><div class="pp-val">2-4</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></div><div class="pp-label">ТРИВАЛІСТЬ</div><div class="pp-val">30-45</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-baby"><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"></path><path d="M15 12h.01"></path><path d="M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"></path><path d="M9 12h.01"></path></svg></div><div class="pp-label">ВІК</div><div class="pp-val">8+</div></div></div>
   </div>
 </section>
 
@@ -161,20 +159,20 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
     <div class="gp-about-grid">
       <div class="gp-about-visual rv">
         <div class="gp-3d-box">
-          <img src="/images/placeholder-game.svg" alt="Друга гра" loading="lazy">
+          
         </div>
       </div>
       
       <div class="gp-about-content rv" style="transition-delay:0.1s">
-        <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6" style="background:rgba(255,255,255,0.05);color:var(--accent);border:1px solid rgba(255,255,255,0.1)">Анонс</span>
-        <h3 class="gp-stitle" style="font-size:28px">Що за гра?</h3>
+        
+        
         <div style="width:100%;height:1px;background:rgba(255,255,255,0.1);margin-bottom:24px"></div>
-        <div class="gp-desc"><p>Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.</p></div>
+        <div class="gp-desc"></div>
         
         <div class="gp-actions">
           
           
-          <a class="gp-btn-s" href="/igry/">← Каталог</a>
+          
         </div>
       </div>
     </div>
@@ -207,6 +205,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
   document.querySelectorAll('.rv').forEach(function(el){io.observe(el);});
 })();
 </script>
-<script src="/api/public/runtime.js" defer></script>
-</body>
-</html>
+<script src="/api/public/runtime.js" defer=""></script>
+
+
+</body></html>

@@ -1026,7 +1026,7 @@ async function execPgAction(){
     const extr=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(res.file)}`).catch(()=>({blocks:[]}));
     pageBlocks=extr.blocks||[];
     toast(`Сторінку /${res.slug}/ створено ✓`,'ok');
-    await renderPages();
+    renderPagesUI();
   }catch(e){ if(e.message!=='unauth') toast('Помилка: '+e.message,'er'); }
   finally{ if(btn)btn.disabled=false; }
 }
@@ -1041,7 +1041,7 @@ async function deletePage(file){
     if(activePage===file){ activePage=null; pageBlocks=[]; pageEdited={}; }
     pages=await api('GET','/api/admin/pages');
     toast(`Сторінку "${pg.path}" видалено`,'ok');
-    await renderPages();
+    renderPagesUI();
   }catch(e){ if(e.message!=='unauth') toast('Помилка: '+e.message,'er'); }
 }
 async function duplicatePage(file){
@@ -1054,7 +1054,7 @@ async function duplicatePage(file){
     const extr=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(res.file)}`).catch(()=>({blocks:[]}));
     pageBlocks=extr.blocks||[];
     toast(`Дублікат /${res.slug}/ створено ✓`,'ok');
-    await renderPages();
+    renderPagesUI();
   }catch(e){ if(e.message!=='unauth') toast('Помилка: '+e.message,'er'); }
 }
 window.deletePage=deletePage; window.duplicatePage=duplicatePage;
@@ -1095,11 +1095,12 @@ function buildBlocksHtml(blocks, tabFilter, search){
     const delStyle=isDeleted?'opacity:0.3;pointer-events:none;background:rgba(239,68,68,0.05);border-color:rgba(239,68,68,0.2)':'';
 
     const actionControls = `
-      ${isDeleted?`<span style="color:#ef4444;font-size:10px;font-weight:bold;margin-right:8px">ВИДАЛЕНО</span>`:''}
+      ${isDeleted?`<span style="color:#ef4444;font-size:10px;font-weight:bold;margin-right:8px">ВИДАЛЕНО</span><button class="reset-btn" onclick="restoreBlock('${esc(b.id)}')" title="Відновити" style="color:#22c55e">↩ Відновити</button>`:`
       <button class="reset-btn" onclick="moveBlockUp('${esc(b.id)}')" title="Вгору">⬆</button>
       <button class="reset-btn" onclick="moveBlockDown('${esc(b.id)}')" title="Вниз">⬇</button>
       <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
-      ${!b.isNew&&!isDeleted?`<button class="reset-btn" onclick="deleteBlock('${esc(b.id)}')" title="Видалити" style="color:#ef4444;margin-left:4px">🗑</button>`:''}
+      ${!b.isNew?`<button class="reset-btn" onclick="deleteBlock('${esc(b.id)}')" title="Видалити" style="color:#ef4444;margin-left:4px">🗑</button>`:''}
+      `}
     `;
 
     const addRow = !isDeleted?`<div class="add-block-row" style="text-align:center;margin:4px 0 12px;opacity:0.6;transition:.2s;display:flex;justify-content:center"><div class="add-block-btns" style="display:flex;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:12px;cursor:pointer;border:1px dashed rgba(255,255,255,0.1)"><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','p')">➕ ¶ Абзац</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','h2')">➕ H₂ Загол</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','img')">➕ 🖼 Фото</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','a')">➕ 🔗 Кнопка</span></div></div>`:'';
@@ -1133,7 +1134,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
           <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('italic')" title="Курсив" style="padding:4px 8px;font-style:italic;background:transparent;border:none">I</button>
           <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('underline')" title="Підкреслений" style="padding:4px 8px;text-decoration:underline;background:transparent;border:none">U</button>
           <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); const url=prompt('Введіть посилання (URL):'); if(url) execCmd('createLink', url);" title="Посилання" style="padding:4px 8px;background:transparent;border:none">🔗</button>
+          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmdLink();" title="Посилання" style="padding:4px 8px;background:transparent;border:none">🔗</button>
           <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('unlink')" title="Прибрати посилання" style="padding:4px 8px;background:transparent;border:none">🚫</button>
           <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
           <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('insertUnorderedList')" title="Маркований список" style="padding:4px 8px;background:transparent;border:none">● List</button>
@@ -1259,8 +1260,19 @@ function updateTabBadges(){
   const badge=$('#unsaved-badge');if(badge){badge.textContent=total+' змін';badge.classList.toggle('show',total>0);}
 }
 
+// renderPages() used to re-fetch the full page list (a recursive filesystem
+// walk server-side) AND rebuild the whole sidebar+editor+preview HTML on
+// every single click in the sidebar, even though selecting a page only
+// changes the pages count/that walk. Split fetch from render: renderPagesUI()
+// re-renders from the already-loaded `pages` array (used when just switching
+// the active page or saving), renderPages() additionally refetches the list
+// (used on first load and after create/duplicate/delete, where the list
+// itself actually changed).
 async function renderPages(){
   pages=await api('GET','/api/admin/pages');
+  renderPagesUI();
+}
+function renderPagesUI(){
   const gr=gPages(pages);
   const sideHtml=Object.entries(gr).map(([sec,g])=>{
     const isKik=sec==='kik', isIgry=sec==='igry';
@@ -1393,13 +1405,28 @@ async function renderPages(){
 }
 
 function execCmd(command, value = null) {
-  document.execCommand(command, false, value);
+  // execCommand can throw in some browsers when there's no active selection
+  // (e.g. the toolbar button is clicked before the field was ever focused) —
+  // an uncaught throw here happens inside an inline onclick, so it doesn't
+  // just no-op, it can leave the toolbar's mousedown/preventDefault sequence
+  // half-run and the field's focus/selection state stuck.
+  try{ document.execCommand(command, false, value); }catch(e){ return; }
   const el = document.activeElement;
   if (el && el.hasAttribute('contenteditable')) {
     const id = el.getAttribute('data-blk');
     if (id) markEdited(id);
   }
 }
+function execCmdLink(){
+  const url=(prompt('Введіть посилання (URL):')||'').trim();
+  if(!url) return;
+  // execCommand('createLink', url) inserts the raw string as an href — a
+  // "javascript:" URL would land in saved page content and execute for any
+  // visitor who clicks it.
+  if(/^\s*javascript:/i.test(url)){ toast('Небезпечне посилання відхилено','er'); return; }
+  execCmd('createLink', url);
+}
+window.execCmdLink=execCmdLink;
 
 function markEdited(id){
   const el=document.querySelector(`[data-blk="${id}"]`);
@@ -1435,12 +1462,23 @@ function resetField(id){
 }
 
 const deletedBlocks=new Set();
+function livePreviewSetDeleted(id,deleted){
+  const el=blockElMap[id];
+  if(el&&el.nodeType===1)el.style.opacity=deleted?'0.15':'';
+}
 function deleteBlock(id){
   if(confirm('Видалити цей блок зі сторінки?')){
     deletedBlocks.add(id);
+    livePreviewSetDeleted(id,true);
     switchPedTab(pedTab);
   }
 }
+function restoreBlock(id){
+  deletedBlocks.delete(id);
+  livePreviewSetDeleted(id,false);
+  switchPedTab(pedTab);
+}
+window.restoreBlock=restoreBlock;
 function addBlockAfter(afterId, type) {
   const newId = 'new_' + Date.now() + Math.floor(Math.random()*1000);
   const idx = pageBlocks.findIndex(b => b.id === afterId);
@@ -1618,7 +1656,7 @@ async function selectPage(file, force=false){
   if(activePage===file && !force) return;
   activePage=file; pageBlocks=[]; pageEdited={}; deletedBlocks.clear();
   try{const res=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(file)}`);pageBlocks=res.blocks||[];}catch{}
-  await renderPages();
+  renderPagesUI();
 }
 window.selectPage=selectPage;
 
@@ -1676,7 +1714,8 @@ async function savePatchedPage(){
     if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;
     pageEdited={}; deletedBlocks.clear();
     refreshPreview();
-    renderPages();
+    const pg=pages.find(p=>p.file===activePage);if(pg)pg.mtime=Date.now();
+    renderPagesUI();
   }catch(e){toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
 }
@@ -1727,15 +1766,27 @@ window.onPvLoad=onPvLoad;
 function mapBlocksToDom(doc){
   blockElMap={};
   const usedEls=new Set();
+  // The live HTML carries the same data-bf-id the editor already keys blocks
+  // by (it's how page-patch finds elements to update server-side) — matching
+  // on that directly is exact and immune to duplicate-text ambiguity, unlike
+  // the old tag+text-content guess below, which silently lost live-sync
+  // whenever two blocks of the same tag shared a prefix or got edited to
+  // look alike. Keep the guess only as a fallback for blocks that predate
+  // marker injection (rare) or the isNew/seo pseudo-blocks that have no DOM
+  // counterpart yet.
   const candidates=[...doc.querySelectorAll('h1,h2,h3,p,a,span,img,li')];
   for(const b of pageBlocks){
     if(b.type==='seo'){
       if(b.id==='title'){ blockElMap[b.id]={set:v=>{doc.title=v;}}; }
       continue;
     }
+    if(b.isNew) continue; // no DOM element until saved
+    let el=doc.querySelector(`[data-bf-id="${(window.CSS&&CSS.escape)?CSS.escape(b.id):b.id}"]`);
+    if(el){usedEls.add(el);el.__bf=b.id;blockElMap[b.id]=el;continue;}
+    // fallback heuristic for unmarked legacy elements
     const tag=b.type; // h1/h2/h3/p/a/span/img/li
     const want=normTxt(b.value);
-    const el=candidates.find(e=>{
+    el=candidates.find(e=>{
       if(usedEls.has(e)) return false;
       if(e.tagName.toLowerCase()!==tag) return false;
       if(tag==='img'){ return (e.getAttribute('src')||'').trim() === b.value.trim(); }
@@ -1793,13 +1844,30 @@ window.openBlockForEdit=openBlockForEdit;
 
 // live-sync editor → preview element
 function syncToPreview(id,val){
+  // href edits are tracked under "<blockId>_href" — route them to the anchor's
+  // href attribute instead of its text content.
+  if(id.endsWith('_href')){
+    const el=blockElMap[id.slice(0,-5)];
+    if(el&&el.nodeType===1&&el.tagName==='A'){
+      try{el.setAttribute('href',val);el.classList.add('bf-edit-flash');setTimeout(()=>el.classList.remove('bf-edit-flash'),900);}catch{}
+    }
+    return;
+  }
   const el=blockElMap[id];if(!el)return;
   try{
     if(el.set){el.set(val);return;} // title setter
     if(el.nodeType===1){
+      // Rich-text blocks (p/li) are edited via contenteditable + execCommand,
+      // so their value is HTML (<b>, <ul><li>, <a>…) — it must go through
+      // innerHTML, not textContent, or the tags show up as literal visible
+      // text in the preview. This used to check for an id prefix ("p_"/
+      // "li_") that real block ids (bf_xxxxx) never actually have, so rich
+      // formatting never rendered in the live preview at all.
+      const srcBlock=pageBlocks.find(b=>b.id===id);
+      const isRichText=srcBlock&&(srcBlock.type==='p'||srcBlock.type==='li');
       if(el.tagName==='IMG'){
         el.src=val;
-      } else if (id.startsWith('p_') || id.startsWith('li_')) {
+      } else if (isRichText) {
         el.innerHTML=val;
       } else {
         el.textContent=val;
@@ -1868,7 +1936,7 @@ document.addEventListener('keydown',e=>{
 function closePagesEditor(){
   activePage=null;pageBlocks=[];pageEdited={};
   $('#mainContent').style.padding='22px';
-  renderPages();
+  renderPagesUI();
 }
 window.savePatchedPage=savePatchedPage;window.refreshPreview=refreshPreview;window.closePagesEditor=closePagesEditor;
 

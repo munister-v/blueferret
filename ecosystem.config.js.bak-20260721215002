@@ -3,13 +3,6 @@ module.exports = {
     name: "blueferret-admin",
     script: "server.js",
     cwd: "/var/www/blueferret-admin",
-    // Stability: cap restart attempts and back off between them so a fast
-    // crash-loop (e.g. a bad boot-time deploy) can't hammer CPU/logs forever —
-    // this app has restarted 100+ times historically with no such limit.
-    max_restarts: 10,
-    min_uptime: "15s",
-    restart_delay: 3000,
-    exp_backoff_restart_delay: 200,
     env: {
       PORT: "4100",
       HOST: "127.0.0.1",
