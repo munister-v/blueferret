@@ -1046,11 +1046,12 @@ function listPages() {
     let items;
     try { items = fs.readdirSync(dir); } catch { return; }
     for (const f of items) {
-      if (f.startsWith('.') || f.startsWith('_next') || f==='uploads' || f==='cdn-cgi') continue;
+      if (f.startsWith('.') || f.startsWith('_next') || f==='uploads' || f==='cdn-cgi' || f==='images' || f==='kik' || f==='fonts') continue;
       
       const full = path.join(dir,f), r2 = rel ? `${rel}/${f}` : f;
       const stat = fs.statSync(full);
       if (stat.isDirectory()) {
+        if (r2.startsWith('igry/')) continue; // hide individual games from pages list
         walk(full, r2);
       }
       else if (f==='index.html') pages.push({ path: rel||'/', file: r2, mtime: stat.mtimeMs });
