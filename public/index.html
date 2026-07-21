@@ -1596,7 +1596,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
   if(!filtered.length) return`<div class="tab-empty">${search?'Нічого не знайдено':'Немає блоків'}</div>`;
   return filtered.map(b=>{
     const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc');
-    const maxLen=SEO_LIMITS[b.id]||0;
+    const maxLen=0; // removed SEO limits
     const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
     const curLen=curVal.length;
     const cntClass='char-cnt'+(maxLen&&curLen>maxLen?' over':maxLen&&curLen>maxLen*.85?' warn':'');
@@ -1628,14 +1628,14 @@ function buildBlocksHtml(blocks, tabFilter, search){
       if (isWysiwyg) {
         inputHtml = `
           <div class="wysiwyg-toolbar" style="display:flex;gap:4px;margin-bottom:6px;background:rgba(255,255,255,.05);padding:4px;border-radius:6px;border:1px solid var(--glass-border)">
-            <button type="button" class="btn btn-sm" onclick="execCmd('bold')" title="Жирний" style="padding:4px 8px;font-weight:bold;background:transparent;border:none">B</button>
-            <button type="button" class="btn btn-sm" onclick="execCmd('italic')" title="Курсив" style="padding:4px 8px;font-style:italic;background:transparent;border:none">I</button>
-            <button type="button" class="btn btn-sm" onclick="execCmd('underline')" title="Підкреслений" style="padding:4px 8px;text-decoration:underline;background:transparent;border:none">U</button>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('bold')" title="Жирний" style="padding:4px 8px;font-weight:bold;background:transparent;border:none">B</button>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('italic')" title="Курсив" style="padding:4px 8px;font-style:italic;background:transparent;border:none">I</button>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('underline')" title="Підкреслений" style="padding:4px 8px;text-decoration:underline;background:transparent;border:none">U</button>
             <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
-            <button type="button" class="btn btn-sm" onclick="const url=prompt('Введіть посилання (URL):'); if(url) execCmd('createLink', url);" title="Посилання" style="padding:4px 8px;background:transparent;border:none">🔗</button>
-            <button type="button" class="btn btn-sm" onclick="execCmd('unlink')" title="Прибрати посилання" style="padding:4px 8px;background:transparent;border:none">🚫</button>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); const url=prompt('Введіть посилання (URL):'); if(url) execCmd('createLink', url);" title="Посилання" style="padding:4px 8px;background:transparent;border:none">🔗</button>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('unlink')" title="Прибрати посилання" style="padding:4px 8px;background:transparent;border:none">🚫</button>
             <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
-            <button type="button" class="btn btn-sm" onclick="execCmd('insertUnorderedList')" title="Маркований список" style="padding:4px 8px;background:transparent;border:none">● List</button>
+            <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('insertUnorderedList')" title="Маркований список" style="padding:4px 8px;background:transparent;border:none">● List</button>
           </div>
           <div class="wysiwyg-editor" contenteditable="true" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:80px;padding:12px;border:1.5px solid var(--glass-border);border-radius:8px;background:rgba(255,255,255,.02);color:var(--txt);outline:none;font-size:14px;line-height:1.6;overflow-y:auto">${curVal}</div>
         `;
@@ -1668,21 +1668,17 @@ function buildBlocksHtml(blocks, tabFilter, search){
           </div>
         </div>
         ${inputHtml}
-      ${maxLen?`<div class="char-bar">
-        <span id="cc_${esc(b.id)}" class="${cntClass}" data-max="${maxLen}">${curLen} / ${maxLen}</span>
-        <span style="font-size:10px;color:var(--txt-s)">${maxLen===60?'оптим. 50–60':'оптим. 140–160'}</span>
-      </div>`:''}
     </div>`;
   }).join('');
 }
 
 function countTabChanges(tab){
-  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images'};
-  return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab&&pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value).length;
+  const typeToTab={h1:'content',h2:'content',h3:'content',p:'content',a:'content',span:'content',li:'content',img:'images'};
+  return pageBlocks.filter(b=>(typeToTab[b.type]||'content')===tab&&b.type!=='seo'&&pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value).length;
 }
 function countTab(tab){
-  const typeToTab={seo:'seo',h1:'headings',h2:'headings',h3:'headings',p:'texts',a:'texts',span:'texts',li:'texts',img:'images'};
-  return pageBlocks.filter(b=>(typeToTab[b.type]||'texts')===tab).length;
+  const typeToTab={h1:'content',h2:'content',h3:'content',p:'content',a:'content',span:'content',li:'content',img:'images'};
+  return pageBlocks.filter(b=>(typeToTab[b.type]||'content')===tab&&b.type!=='seo').length;
 }
 
 function switchPedTab(tab){

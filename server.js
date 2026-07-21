@@ -1012,7 +1012,7 @@ function extractBlocks(html){
 
   // ── Paragraphs — allow <p> with simple inline tags (strong, em, a) ──
   const pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; let pi=0, kept=0;
-  while((m=pr.exec(safe))!==null && kept<14){
+  while((m=pr.exec(safe))!==null && kept<40){
     const inner=m[1];
     const t=cleanInner(inner);
     const looksConcat=/[а-яёіїєa-z][A-ZА-ЯЁІЇЄ]/.test(t);
@@ -1027,7 +1027,7 @@ function extractBlocks(html){
 
   // ── Links (<a> with meaningful text) ──
   const ar=/<a[^>]*>([\s\S]*?)<\/a>/gi; let ai=0, aKept=0;
-  while((m=ar.exec(safe))!==null && aKept<20){
+  while((m=ar.exec(safe))!==null && aKept<40){
     const inner=m[1];
     const t=cleanInner(inner);
     if(t && t.length>=3 && t.length<=120 && !/<img/i.test(inner)){
@@ -1041,7 +1041,7 @@ function extractBlocks(html){
 
   // ── Spans with meaningful text (badges, labels) ──
   const sr=/<span[^>]*>([^<]{4,80})<\/span>/gi; let si=0, sKept=0;
-  while((m=sr.exec(safe))!==null && sKept<8){
+  while((m=sr.exec(safe))!==null && sKept<20){
     const t=decodeHtmlEnts(m[1]).trim();
     // skip very short or numeric-only spans
     if(t && t.length>=4 && t.length<=80 && /[а-яіїєa-z]/i.test(t)){
