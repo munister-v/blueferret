@@ -1293,12 +1293,17 @@ const RUNTIME_JS = `(function(){
   function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
   function load(){getJson('/api/public/site.json',8000).then(function(s){apply(s);startLiveRefresh(s);}).catch(function(){});}
-  // ── Live auto-refresh: poll publishedAt every 5s, reload if changed ──
-  var lastPub=0;
+  // Live auto-refresh: poll publishedAt and reload if changed. 1.5s (was 5s)
+  // -- a visitor editing content in the admin now sees it land on the live
+  // site in ~1-2s instead of up to 5, at the cost of one small JSON fetch
+  // every 1.5s per open tab (negligible for this site's traffic). Paused
+  // while the tab is hidden and checked immediately on return, so a
+  // backgrounded tab doesn't keep polling for nothing.
+  var lastPub=0, pollTimer=null;
   function startLiveRefresh(s){
     try{lastPub=(s&&s.general&&s.general.publishedAt)||0;}catch(e){}
     if(!lastPub)return;
-    setInterval(function(){
+    function checkOnce(){
       getJson('/api/public/site.json',4000).then(function(ns){
         var newPub=(ns&&ns.general&&ns.general.publishedAt)||0;
         if(newPub&&lastPub&&newPub!==lastPub){
@@ -1308,7 +1313,9 @@ const RUNTIME_JS = `(function(){
           location.href=u.toString();
         }
       }).catch(function(){});
-    },5000);
+    }
+    pollTimer=setInterval(function(){ if(!document.hidden) checkOnce(); },1500);
+    document.addEventListener('visibilitychange',function(){ if(!document.hidden) checkOnce(); });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();});else{load();}
   try {

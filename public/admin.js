@@ -1109,12 +1109,36 @@ window.deletePage=deletePage; window.duplicatePage=duplicatePage;
 
 let pedTab='content', pedSearch='';
 
+// Reordering only ever swapped entries in the pageBlocks array (which
+// controls the payload sent on save) -- the live preview kept showing the
+// old order until you actually saved and it reloaded. Every other edit
+// (text, href, delete) already reflects instantly; reorder was the one
+// action that silently didn't.
+function syncReorderToPreview(idA,idB){
+  const elA=getMappedEl(idA), elB=getMappedEl(idB);
+  // Only attempt in-place DOM surgery when both blocks are true immediate
+  // siblings -- real page markup very often nests "adjacent" blocks inside
+  // separate wrapper divs (a heading in one section, the next paragraph in
+  // another), where swapping the elements themselves would misplace them
+  // relative to their actual containers. Verified against a live page: the
+  // naive same-parent assumption silently failed there. Falling back to a
+  // full preview reload for those cases is slower but never wrong.
+  if(elA&&elB&&elA.nodeType===1&&elB.nodeType===1&&elA.parentNode&&elA.parentNode===elB.parentNode){
+    const after=elA.nextElementSibling===elB;
+    if(after) elA.parentNode.insertBefore(elA,elB);
+    else elB.parentNode.insertBefore(elB,elA);
+    [elA,elB].forEach(el=>{el.classList.add('bf-edit-flash');setTimeout(()=>el.classList.remove('bf-edit-flash'),900);});
+  } else {
+    refreshPreview();
+  }
+}
 function moveBlockUp(id) {
   const idx = pageBlocks.findIndex(b => b.id === id);
   if (idx > 0) {
     const temp = pageBlocks[idx];
     pageBlocks[idx] = pageBlocks[idx - 1];
     pageBlocks[idx - 1] = temp;
+    syncReorderToPreview(id, pageBlocks[idx].id);
     switchPedTab(pedTab);
   }
 }
@@ -1124,6 +1148,7 @@ function moveBlockDown(id) {
     const temp = pageBlocks[idx];
     pageBlocks[idx] = pageBlocks[idx + 1];
     pageBlocks[idx + 1] = temp;
+    syncReorderToPreview(id, pageBlocks[idx].id);
     switchPedTab(pedTab);
   }
 }
