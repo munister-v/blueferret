@@ -1511,7 +1511,7 @@ function resetField(id){
 
 const deletedBlocks=new Set();
 function livePreviewSetDeleted(id,deleted){
-  const el=blockElMap[id];
+  const el=getMappedEl(id);
   if(el&&el.nodeType===1)el.style.opacity=deleted?'0.15':'';
 }
 function deleteBlock(id){
@@ -1812,18 +1812,43 @@ window.changeZoom=changeZoom;
 let blockElMap={}; // block.id -> DOM element in iframe
 function normTxt(s){return String(s||'').replace(/\s+/g,' ').trim();}
 
+let currentPvDoc=null; // last-mapped iframe document, used to self-heal blockElMap on demand
+
 function onPvLoad(){
   const f=$('#pvIframe');if(!f)return;
   f.classList.remove('pv-refreshing');f.classList.add('pv-refreshed');
   try{
     const doc=f.contentDocument;if(!doc)return;
-    // wire up click-to-edit + mapping after a tick (let hydration settle)
+    currentPvDoc=doc;
+    // Map immediately -- most pages are plain server-rendered HTML and are
+    // already queryable the instant the iframe fires load, so waiting a
+    // fixed 350ms before the very first edit could live-sync was a pure,
+    // pointless bug: type fast right after opening a page and the first
+    // keystrokes silently went nowhere.
+    try{ mapBlocksToDom(doc); injectPreviewHelpers(doc,f); }catch(e){}
+    // Client-hydrated routes (e.g. /igry/) can still restructure their DOM
+    // after mount, so re-map once more once hydration has had time to
+    // settle -- this is a safety net, not the primary path anymore.
     setTimeout(()=>{ try{ mapBlocksToDom(doc); injectPreviewHelpers(doc,f); }catch(e){} },350);
     // gentle scroll past header
     setTimeout(()=>{ try{const h=doc.querySelector('header');if(h)f.contentWindow.scrollTo({top:h.offsetHeight+8,behavior:'smooth'});}catch{} },400);
   }catch{}
 }
 window.onPvLoad=onPvLoad;
+
+// Self-healing lookup: if a block's mapped element is missing or was
+// detached from the document (a client-hydrated page re-rendered and
+// replaced its nodes after the last mapping), re-map once from the current
+// iframe doc before giving up. Without this, live-sync could silently go
+// dead partway through an edit session with no way to recover short of
+// switching pages and back.
+function getMappedEl(id){
+  let el=blockElMap[id];
+  if(el&&(el.set||(el.nodeType===1&&el.isConnected)))return el;
+  if(!currentPvDoc)return el;
+  try{ mapBlocksToDom(currentPvDoc); }catch{ return el; }
+  return blockElMap[id];
+}
 
 function mapBlocksToDom(doc){
   blockElMap={};
@@ -1909,13 +1934,13 @@ function syncToPreview(id,val){
   // href edits are tracked under "<blockId>_href" — route them to the anchor's
   // href attribute instead of its text content.
   if(id.endsWith('_href')){
-    const el=blockElMap[id.slice(0,-5)];
+    const el=getMappedEl(id.slice(0,-5));
     if(el&&el.nodeType===1&&el.tagName==='A'){
       try{el.setAttribute('href',val);el.classList.add('bf-edit-flash');setTimeout(()=>el.classList.remove('bf-edit-flash'),900);}catch{}
     }
     return;
   }
-  const el=blockElMap[id];if(!el)return;
+  const el=getMappedEl(id);if(!el)return;
   try{
     if(el.set){el.set(val);return;} // title setter
     if(el.nodeType===1){
@@ -1944,7 +1969,10 @@ function refreshPreview(){
   const f=$('#pvIframe');if(!f)return;
   f.classList.add('pv-refreshing');
   const src=f.src.split('?')[0];
-  setTimeout(()=>{f.src=src+'?t='+Date.now();},150);
+  // The 150ms wait here was pure dead time before the reload even started --
+  // it existed only so the "refreshing" fade class had a moment to apply,
+  // which a single deferred frame already guarantees.
+  setTimeout(()=>{f.src=src+'?t='+Date.now();},0);
 }
 
 // ── Drag handle ──
