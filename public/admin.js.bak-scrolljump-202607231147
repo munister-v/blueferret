@@ -1908,30 +1908,6 @@ async function selectPage(file, force=false){
 }
 window.selectPage=selectPage;
 
-// After a DOM rebuild the block list is re-created and textarea heights are
-// recomputed a frame later, so restoring a raw scrollTop pixel value lands on
-// the wrong block (everything above the edit may have changed height). Instead
-// anchor on a specific block id: keep THAT block at the same screen position it
-// held before. `anchorId` is the block the user was editing.
-function anchorPedScroll(anchorId, prevScreenY){
-  if(!anchorId)return;
-  let n=0;
-  const tick=()=>{
-    const nb=document.querySelector('.ped-body');
-    const el=nb&&nb.querySelector(`[data-id="${anchorId}"], [data-blk="${anchorId}"]`);
-    if(nb&&el){
-      const blkRect=el.getBoundingClientRect(), bodyRect=nb.getBoundingClientRect();
-      const curScreenY=blkRect.top-bodyRect.top;
-      const delta=curScreenY-prevScreenY;
-      if(Math.abs(delta)>1)nb.scrollTop+=delta;
-    }
-    if(++n<10)requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-  setTimeout(tick,120);
-  setTimeout(tick,280);
-}
-
 async function savePatchedPage(){
   const btn=$('#pedSaveBtn');if(btn)btn.disabled=true;
   
@@ -1976,12 +1952,6 @@ async function savePatchedPage(){
   if (!updates.length && (!reorderList || reorderList.length <= 1)){
     toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;
   }
-  // A pure text/href edit needs no DOM rebuild — rebuilding (renderPagesUI)
-  // recreates the whole list + iframe and flings the scroll far away, which
-  // is the "everything jumps on save" the user hit. Only structural changes
-  // (add / delete / reorder) actually need the list re-rendered.
-  const structural = deletedBlocks.size>0 || activeBlocks.some(b=>b.isNew)
-    || (reorderList.length>1 && reorderList.some((id,i)=>pageBlocks[i]&&pageBlocks[i].id!==id));
   try{
     const payload = { blocks: updates };
     if (reorderList && reorderList.length > 1) payload.reorder = reorderList;
@@ -1991,41 +1961,25 @@ async function savePatchedPage(){
     }else{
       toast(`Збережено (${res.changed} змін) ✓`,'ok');
     }
-
+    
+    const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
+    if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;
+    pageEdited={}; deletedBlocks.clear();
+    clearDraft(activePage);
+    // remember what was just saved — the preview reload below re-renders the
+    // REAL page (with hydration), so we can verify the visitor actually sees
+    // the new text, end-to-end
     pendingVerify={page:activePage,ts:Date.now(),texts:updates
       .filter(u=>!u.delete&&!u.isNew&&typeof u.newVal==='string')
       .map(u=>normTxt(stripHtml(u.newVal)).toLowerCase())
       .filter(t=>t.length>=8) };
-    clearDraft(activePage);
+    refreshPreview();
     const pg=pages.find(p=>p.file===activePage);if(pg)pg.mtime=Date.now();
-
-    if(structural){
-      // rebuild is unavoidable; anchor on the edited block so it stays put
-      const nbOld=document.querySelector('.ped-body');
-      const anchorId=(updates.find(u=>u.id&&!u.delete)||{}).id;
-      let prevScreenY=0;
-      if(nbOld&&anchorId){const el=nbOld.querySelector(`[data-id="${anchorId}"]`);
-        if(el)prevScreenY=el.getBoundingClientRect().top-nbOld.getBoundingClientRect().top;}
-      const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
-      if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;
-      pageEdited={}; deletedBlocks.clear();
-      refreshPreview();
-      renderPagesUI();
-      anchorPedScroll(anchorId, prevScreenY);
-    }else{
-      // in-place: no rebuild, no jump. Just commit values and clear edit state.
-      for(const u of updates){
-        const b=pageBlocks.find(x=>x.id===u.id);
-        if(!b)continue;
-        if(u.newVal!==undefined){b.value=u.newVal;b.origVal=u.newVal;}
-        if(u.newHref!==undefined)b.href=u.newHref;
-        const el=document.querySelector(`.blk[data-id="${u.id}"]`);
-        if(el)el.classList.remove('edited');
-      }
-      pageEdited={};
-      updateTabBadges();
-      refreshPreview();
-    }
+    // renderPagesUI rebuilds the whole editor DOM — without this the blocks
+    // list snaps back to the top after every save
+    const bodyEl=document.querySelector('.ped-body');const keepScroll=bodyEl?bodyEl.scrollTop:0;
+    renderPagesUI();
+    const nb=document.querySelector('.ped-body');if(nb)nb.scrollTop=keepScroll;
   }catch(e){toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
 }
