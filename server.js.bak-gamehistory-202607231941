@@ -699,22 +699,6 @@ const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,stat
   VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@stages,@links,@always_visible,@author,@bg_color,@accent_color,@hero_bg_url,@hero_logo_url,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
 const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,stages=@stages,links=@links,always_visible=@always_visible,author=@author,bg_color=@bg_color,accent_color=@accent_color,hero_bg_url=@hero_bg_url,hero_logo_url=@hero_logo_url,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
-const ghIns = db.prepare('INSERT INTO game_history(game_id,ts,snapshot) VALUES(?,?,?)');
-const ghAll = db.prepare('SELECT id,ts FROM game_history WHERE game_id=? ORDER BY ts DESC');
-const ghOne = db.prepare('SELECT * FROM game_history WHERE id=? AND game_id=?');
-const ghDel = db.prepare('DELETE FROM game_history WHERE id=?');
-const GAME_HISTORY_KEEP = 10;
-// Snapshot the game row BEFORE applying an update/delete — mirrors the page
-// editor's writeBackup rotation (same KEEP count), so a bad edit to a game
-// (wrong text, broken image url, accidental field wipe) is recoverable the
-// same way a page edit is.
-function snapshotGameHistory(id, row) {
-  try {
-    ghIns.run(id, Date.now(), JSON.stringify(row));
-    const rows = ghAll.all(id);
-    for (const old of rows.slice(GAME_HISTORY_KEEP)) ghDel.run(old.id);
-  } catch (e) { console.error('[blueferret-admin] game history snapshot failed:', e); }
-}
 
 function gameBody(b, ex={}) {
   const rawSlug = (b.slug||ex.slug||b.title||'').toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
@@ -756,7 +740,6 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   const data = gameBody(req.body||{}, ex);
   const c = gSlug.get(data.slug);
   if (c && c.id!==id) return res.status(409).json({error:'slug_exists'});
-  snapshotGameHistory(id, ex);
   gUpd.run({...data,id});
   if (ex.slug !== data.slug) removeGeneratedGamePage(ex.slug);
   writeGeneratedGamePage(gOne.get(id));
@@ -766,35 +749,6 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_update',{id,publishedAt});
   res.json({...gameRow(gOne.get(id)), publishedAt});
-});
-app.get('/api/admin/games/:id/history', requireAuth, (req, res) => {
-  const id = +req.params.id;
-  if (!gOne.get(id)) return res.status(404).json({error:'not_found'});
-  res.json({ history: ghAll.all(id) });
-});
-app.post('/api/admin/games/:id/restore', requireAuth, (req, res) => {
-  const id = +req.params.id, histId = +(req.body||{}).historyId;
-  const ex = gOne.get(id);
-  if (!ex) return res.status(404).json({error:'not_found'});
-  const snap = ghOne.get(histId, id);
-  if (!snap) return res.status(404).json({error:'history entry not found'});
-  let row; try { row = JSON.parse(snap.snapshot); } catch { return res.status(500).json({error:'corrupt snapshot'}); }
-  snapshotGameHistory(id, ex); // current state becomes recoverable too
-  const c = gSlug.get(row.slug);
-  if (c && c.id !== id) return res.status(409).json({error:'slug_exists', detail:'the historic slug is now used by another game'});
-  // the snapshot stores gallery/stages/links as JSON strings (raw DB shape);
-  // gameBody() expects arrays (the shape a real API request body sends) —
-  // parse them first or it silently falls back to the CURRENT (wrong) values
-  const restoreBody = { ...row, gallery: parseGallery(row.gallery), stages: parseStages(row.stages), links: parseGameLinks(row.links) };
-  gUpd.run({...gameBody(restoreBody, ex), id});
-  if (ex.slug !== row.slug) removeGeneratedGamePage(ex.slug);
-  writeGeneratedGamePage(gOne.get(id));
-  regenGamesCatalog();
-  syncGamesChunkVisibility();
-  syncGamesNavVisibility();
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'game_restore', { id, historyId: histId, publishedAt });
-  res.json({ ...gameRow(gOne.get(id)), publishedAt });
 });
 app.delete('/api/admin/games/:id', requireAuth, (req, res) => {
   const id=+req.params.id;
