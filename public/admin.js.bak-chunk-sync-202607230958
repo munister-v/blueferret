@@ -1802,11 +1802,7 @@ async function savePatchedPage(){
     pageEdited={}; deletedBlocks.clear();
     refreshPreview();
     const pg=pages.find(p=>p.file===activePage);if(pg)pg.mtime=Date.now();
-    // renderPagesUI rebuilds the whole editor DOM — without this the blocks
-    // list snaps back to the top after every save
-    const bodyEl=document.querySelector('.ped-body');const keepScroll=bodyEl?bodyEl.scrollTop:0;
     renderPagesUI();
-    const nb=document.querySelector('.ped-body');if(nb)nb.scrollTop=keepScroll;
   }catch(e){toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
 }
@@ -1840,10 +1836,6 @@ window.changeZoom=changeZoom;
 
 let blockElMap={}; // block.id -> DOM element in iframe
 function normTxt(s){return String(s||'').replace(/\s+/g,' ').trim();}
-// block values are inner HTML — strip tags/entities so the text-content
-// fallback in mapBlocksToDom can still match blocks with inline markup
-// (hydrated pages lose data-bf-id, so the fallback is all they have)
-function stripHtml(s){const d=document.createElement('div');d.innerHTML=String(s||'');return d.textContent||'';}
 
 let currentPvDoc=null; // last-mapped iframe document, used to self-heal blockElMap on demand
 
@@ -1905,7 +1897,7 @@ function mapBlocksToDom(doc){
     if(el){usedEls.add(el);el.__bf=b.id;blockElMap[b.id]=el;continue;}
     // fallback heuristic for unmarked legacy elements
     const tag=b.type; // h1/h2/h3/p/a/span/img/li
-    const want=normTxt(stripHtml(b.value));
+    const want=normTxt(b.value);
     el=candidates.find(e=>{
       if(usedEls.has(e)) return false;
       if(e.tagName.toLowerCase()!==tag) return false;

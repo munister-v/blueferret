@@ -517,49 +517,6 @@ function syncIgryHeroChunk() {
   try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
 }
 
-// Generic version of the igry hero fix, for ALL text edits on client-hydrated
-// pages (home included): most visible copy is also baked into the Next.js
-// chunks as plain JSX strings, so after hydration React re-renders the stale
-// chunk text over the freshly edited HTML — the edit looks like it "didn't
-// save". After each page-patch we take every plain-text change (old → new)
-// and rewrite the same literal string inside the chunks, then rehash/relink
-// the renamed files exactly like syncIgryHeroChunk does.
-function safeTextPairs(pairs) {
-  // keep only plain-text, unambiguous replacements
-  return pairs.filter(p =>
-    p.oldVal && p.newVal && p.oldVal !== p.newVal &&
-    p.oldVal.length >= 4 &&
-    !/[<>"\\]/.test(p.oldVal) && !/[<>"\\]/.test(p.newVal));
-}
-function syncChunkTexts(pairs) {
-  const safe = safeTextPairs(pairs);
-  if (!safe.length) return;
-  const root = path.join(SITE_ROOT, '_next', 'static', 'chunks');
-  const stack = [root];
-  while (stack.length) {
-    const dir = stack.pop();
-    let items; try { items = fs.readdirSync(dir); } catch { continue; }
-    for (const it of items) {
-      const full = path.join(dir, it); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { stack.push(full); continue; }
-      if (!it.endsWith('.js')) continue;
-      let content; try { content = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      let dirty = false;
-      for (const p of safe) {
-        if (content.includes(p.oldVal)) { content = content.split(p.oldVal).join(p.newVal); dirty = true; }
-      }
-      if (!dirty) continue;
-      const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
-      const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + `-${hash}.js`;
-      if (newName === it) { writeAtomic(full, content); continue; }
-      writeAtomic(path.join(dir, newName), content);
-      try { fs.unlinkSync(full); } catch {}
-      relinkChunkEverywhere(it, newName);
-    }
-  }
-  try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
-}
-
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
@@ -1188,8 +1145,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   writeBackup(full);
   const $ = cheerio.load(html, { decodeEntities: false });
   let changed = 0;
-  const textPairs = []; // old → new plain-text edits, mirrored into JS chunks below
-
+  
   for (const b of blocks) {
     if (!b.id) continue;
     if (b.id.startsWith('seo_')) {
@@ -1242,10 +1198,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     
     if (b.newVal != null && b.origVal !== b.newVal) {
       if (b.type === 'img') el.attr('src', encodeHtmlEnts(b.newVal));
-      else {
-        el.html(b.newVal);
-        textPairs.push({ oldVal: b.origVal, newVal: b.newVal });
-      }
+      else el.html(b.newVal);
       changed++;
     }
     
@@ -1268,15 +1221,8 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   }
 
   if (changed > 0) {
-    // The edited copy also lives in the inline RSC flight data
-    // (self.__next_f scripts) that hydration re-renders from — cheerio only
-    // updated the DOM element, so replace any remaining occurrences of the
-    // old string across the serialized page (they can only be in scripts now).
-    let outHtml = $.html();
-    for (const p of safeTextPairs(textPairs)) outHtml = outHtml.split(p.oldVal).join(p.newVal);
-    writeAtomic(full, outHtml);
+    writeAtomic(full, $.html());
     if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
-    if (textPairs.length) { try { syncChunkTexts(textPairs); } catch(e){} }
     const publishedAt = bumpPublishedAt();
     audit(req.ip, 'page_patch', {path: rel, changed, publishedAt});
     res.json({ok: true, changed, publishedAt});
