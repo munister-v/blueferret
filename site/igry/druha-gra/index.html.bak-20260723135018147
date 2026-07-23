@@ -130,7 +130,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
     
       <div class="gp-kicker">Анонс</div><h1 class="gp-hero-title" data-bf-id="bf_385382a2">Друга гра</h1>
     
-    <p class="gp-hero-sub" data-bf-id="bf_ad661b6a">Кожен хід - нова історія -</p>
+    <p class="gp-hero-sub" data-bf-id="bf_ad661b6a">Кожен хід - нова історія</p>
     
       <a class="gp-btn-s" href="#passport" data-bf-id="bf_94339a10">Дізнатися більше ↓</a>
     
