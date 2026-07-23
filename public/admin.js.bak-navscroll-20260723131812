@@ -1379,11 +1379,6 @@ async function renderPages(){
   renderPagesUI();
 }
 function renderPagesUI(){
-  // Preserve the left page-list scroll across the rebuild. Without this, a
-  // structural save (or switching pages) rebuilds #mainContent and resets the
-  // nav to the top — so if you're editing a page far down the list, it looks
-  // like it "jumps back to Головна" every time. Capture before, restore after.
-  const _navScroll=document.querySelector('.pages-nav')?.scrollTop||0;
   const gr=gPages(pages);
   const sideHtml=Object.entries(gr).map(([sec,g])=>{
     const isKik=sec==='kik', isIgry=sec==='igry';
@@ -1484,9 +1479,6 @@ function renderPagesUI(){
   $('#mainContent').style.padding='0';
   // rows use onclick="selectPage(...)" directly
   updateTabBadges();
-  // restore left-list scroll so the rebuild doesn't fling it back to Головна
-  const _nav=document.querySelector('.pages-nav');
-  if(_nav&&_navScroll)_nav.scrollTop=_navScroll;
   setTimeout(()=>$$('.blk textarea').forEach(t=>{autoResize(t);}),100);
   // restore edited values
   for(const[id,val] of Object.entries(pageEdited)){

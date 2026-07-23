@@ -1,16 +1,16 @@
 <!DOCTYPE html><html lang="uk" data-bf-generated-game="true"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Друга гра | Blue Ferret</title>
+<title>Друга гра! | Blue Ferret</title>
 <meta name="description" content="Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.">
 <link rel="canonical" href="https://blueferret.com.ua/igry/druha-gra/">
-<meta property="og:title" content="Друга гра | Blue Ferret">
+<meta property="og:title" content="Друга гра! | Blue Ferret">
 <meta property="og:description" content="Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.">
 <meta property="og:url" content="https://blueferret.com.ua/igry/druha-gra/">
 <meta property="og:type" content="article">
 <meta property="og:image" content="https://blueferret.com.ua/images/placeholder-game.svg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Друга гра | Blue Ferret">
+<meta name="twitter:title" content="Друга гра! | Blue Ferret">
 <meta name="twitter:image" content="https://blueferret.com.ua/images/placeholder-game.svg">
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -121,16 +121,16 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 <section class="gp-hero">
   <div class="gp-hero-bg">
     
-      <img src="https://blueferret.com.ua/images/placeholder-game.svg" alt="Друга гра" loading="eager" data-bf-id="bf_e3ac29eb">
+      <img src="https://blueferret.com.ua/images/placeholder-game.svg" alt="Друга гра!" loading="eager" data-bf-id="bf_e3ac29eb">
     
   </div>
   <div class="gp-hero-overlay"></div>
   
   <div class="gp-hero-body rv">
     
-      <div class="gp-kicker">Анонс</div><h1 class="gp-hero-title" data-bf-id="bf_385382a2">Друга гра</h1>
+      <div class="gp-kicker">Анонс</div><h1 class="gp-hero-title" data-bf-id="bf_385382a2">Друга гра!</h1>
     
-    <p class="gp-hero-sub" data-bf-id="bf_ad661b6a">Кожен хід - нова історія</p>
+    <p class="gp-hero-sub" data-bf-id="bf_ad661b6a">Кожен хід - нова історія!</p>
     
       <a class="gp-btn-s" href="#passport" data-bf-id="bf_94339a10">Дізнатися більше ↓</a>
     
@@ -159,7 +159,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
     <div class="gp-about-grid">
       <div class="gp-about-visual rv">
         <div class="gp-3d-box">
-          <img src="/images/placeholder-game.svg" alt="Друга гра" loading="lazy" data-bf-id="bf_09a1a02a">
+          <img src="/images/placeholder-game.svg" alt="Друга гра!" loading="lazy" data-bf-id="bf_09a1a02a">
         </div>
       </div>
       

@@ -1379,11 +1379,6 @@ async function renderPages(){
   renderPagesUI();
 }
 function renderPagesUI(){
-  // Preserve the left page-list scroll across the rebuild. Without this, a
-  // structural save (or switching pages) rebuilds #mainContent and resets the
-  // nav to the top — so if you're editing a page far down the list, it looks
-  // like it "jumps back to Головна" every time. Capture before, restore after.
-  const _navScroll=document.querySelector('.pages-nav')?.scrollTop||0;
   const gr=gPages(pages);
   const sideHtml=Object.entries(gr).map(([sec,g])=>{
     const isKik=sec==='kik', isIgry=sec==='igry';
@@ -1465,13 +1460,12 @@ function renderPagesUI(){
         <div class="edit-mode-bar">
           <span class="edit-mode-dot"></span>
           <strong>Редагування сторінки</strong>
-          <span style="opacity:.7">— зміни застосовуються на сайті одразу після «Зберегти»</span>
+          <span style="opacity:.7">— редагуйте блоки зліва, прев'ю оновиться після «Зберегти»</span>
         </div>
         <div class="ped-toolbar">
           <span class="ped-filename">/${activePage}</span>
           <span id="unsaved-badge" class="unsaved-badge" style="font-size:10px"></span>
           <div style="margin-left:auto;display:flex;gap:6px">
-            <a class="btn btn-sm" href="/${activePage.replace(/\/?index\.html$/,'')}" target="_blank" rel="noopener" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px;text-decoration:none" title="Відкрити цю сторінку на сайті">↗ На сайті</a>
             <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px" onclick="showPageHistory()" title="Історія версій цієї сторінки">🕘 Історія</button>
             <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px" onclick="closePagesEditor()" title="Закрити (Esc)">✕</button>
             <button class="btn btn-sm" id="pedSaveBtn" onclick="savePatchedPage()" style="background:var(--bf);color:#fff;padding:6px 14px;box-shadow:0 2px 10px rgba(0,159,227,.35)" title="Зберегти (Cmd+S)">💾 Зберегти</button>
@@ -1480,13 +1474,41 @@ function renderPagesUI(){
         ${edHtml||'<div class="ped-empty"><div class="big">📄</div><div>Немає блоків на цій сторінці</div></div>'}
       `:`<div class="ped-empty"><div class="big">📄</div><div style="font-size:15px;font-weight:700;color:var(--txt);margin-bottom:6px">Виберіть сторінку</div><div style="font-size:13px">Оберіть зі списку зліва</div></div>`}
     </div>
+    <!-- drag handle -->
+    <div class="drag-handle" id="pvDragHandle" title="Тягніть щоб змінити розмір"></div>
+    <!-- preview -->
+    <div class="pages-preview" id="pagesPreview">
+      ${pvSrc?`
+        <div class="pv-bar">
+          <span style="font-size:14px">👁</span>
+          <span class="pv-url" style="cursor:pointer;transition:.15s" onclick="window.open('${pvSrc.split('?')[0]}','_blank')" title="Відкрити в новій вкладці">blueferret.com.ua${pvSrc.split('?')[0]}</span>
+          <div class="dev-bar">
+            <button class="dev-btn on" data-dev="desktop" onclick="setDevice('desktop')" title="Desktop">🖥</button>
+            <button class="dev-btn" data-dev="tablet" onclick="setDevice('tablet')" title="Tablet (768px)">📱</button>
+            <button class="dev-btn" data-dev="mobile" onclick="setDevice('mobile')" title="Mobile (390px)">📱</button>
+          </div>
+          <div class="zoom-ctrl">
+            <button class="zoom-btn" onclick="changeZoom(-10)">−</button>
+            <span class="zoom-val" id="zoomVal">100%</span>
+            <button class="zoom-btn" onclick="changeZoom(+10)">+</button>
+          </div>
+          <button class="btn btn-sm" onclick="refreshPreview()" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.1);flex-shrink:0" title="Оновити (Cmd+R)">↻</button>
+          <button class="btn btn-sm" onclick="window.open('${pvSrc.split('?')[0]}','_blank')" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.08);flex-shrink:0" title="Відкрити в новій вкладці">↗</button>
+        </div>
+        <div class="pv-frame-wrap desktop" id="pvFrameWrap">
+          <div class="pv-zoom-wrap" id="pvZoomWrap" style="width:100%;height:100%">
+            <iframe id="pvIframe" src="${pvSrc}" style="width:100%;height:100%;border:none" onload="onPvLoad()"></iframe>
+          </div>
+        </div>
+      `:`<div class="pv-placeholder"><div style="font-size:48px;margin-bottom:16px">🖥</div><div style="font-size:14px;font-weight:600;color:rgba(255,255,255,.4)">Виберіть сторінку</div><div style="font-size:12px;color:rgba(255,255,255,.25);margin-top:6px">Прев'ю з'явиться тут</div></div>`}
+    </div>
   </div>`;
   $('#mainContent').style.padding='0';
   // rows use onclick="selectPage(...)" directly
+  initDragHandle();
   updateTabBadges();
-  // restore left-list scroll so the rebuild doesn't fling it back to Головна
-  const _nav=document.querySelector('.pages-nav');
-  if(_nav&&_navScroll)_nav.scrollTop=_navScroll;
+  if(pvDevice!=='desktop')setDevice(pvDevice);
+  if(pvZoom!==100)applyZoom();
   setTimeout(()=>$$('.blk textarea').forEach(t=>{autoResize(t);}),100);
   // restore edited values
   for(const[id,val] of Object.entries(pageEdited)){
@@ -1962,35 +1984,15 @@ async function savePatchedPage(){
     // reshuffle cross-container blocks on some pages)
     if (pageReordered && reorderList && reorderList.length > 1) payload.reorder = reorderList;
     const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`, payload);
+    if(res.integrity&&res.integrity.length){
+      toast(`⚠ Збережено, але знайдено ${res.integrity.length} битих посилань на JS-файли — повідомте розробника`,'er');
+    }else{
+      toast(`Збережено (${res.changed} змін) ✓`,'ok');
+    }
 
     clearDraft(activePage);
     pageReordered=false;
     const pg=pages.find(p=>p.file===activePage);if(pg)pg.mtime=Date.now();
-
-    // GUARANTEE the edit reached the site: re-read the page straight from the
-    // served file on disk (the server re-parses it) and confirm every value we
-    // sent is actually there now. This is the whole point — no preview to
-    // eyeball, just a hard check that the change landed.
-    const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
-    const freshMap={};
-    if(fresh&&Array.isArray(fresh.blocks))for(const b of fresh.blocks)freshMap[b.id]=b;
-    let verifyFail=0;
-    for(const u of updates){
-      if(u.delete){ if(freshMap[u.id])verifyFail++; continue; }
-      if(u.isNew)continue; // server assigns new ids to new blocks — skip strict match
-      if(u.newVal!==undefined){
-        const got=freshMap[u.id];
-        if(!got || normTxt(stripHtml(got.value))!==normTxt(stripHtml(u.newVal)))verifyFail++;
-      }
-    }
-
-    if(res.integrity&&res.integrity.length){
-      toast(`⚠ Збережено, але ${res.integrity.length} битих посилань на JS — повідомте розробника`,'er');
-    }else if(verifyFail>0){
-      toast(`⚠ Збережено, але ${verifyFail} змін не підтвердились на сайті — перевірте вручну`,'er');
-    }else{
-      toast(`✓ Застосовано на сайті (${res.changed} змін)`,'ok');
-    }
 
     if(structural){
       // rebuild is unavoidable; anchor on the edited block so it stays put
@@ -1999,8 +2001,10 @@ async function savePatchedPage(){
       let prevScreenY=0;
       if(nbOld&&anchorId){const el=nbOld.querySelector(`[data-id="${anchorId}"]`);
         if(el)prevScreenY=el.getBoundingClientRect().top-nbOld.getBoundingClientRect().top;}
+      const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
       if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;
       pageEdited={}; deletedBlocks.clear();
+      refreshPreview(true);
       renderPagesUI();
       anchorPedScroll(anchorId, prevScreenY);
     }else{
@@ -2015,6 +2019,7 @@ async function savePatchedPage(){
       }
       pageEdited={};
       updateTabBadges();
+      refreshPreview(true);
     }
   }catch(e){toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}

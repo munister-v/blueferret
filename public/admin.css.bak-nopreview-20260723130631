@@ -298,7 +298,7 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .p-row-nested .p-path{font-weight:600;color:rgba(255,255,255,.5);font-size:11.5px}
 .p-row-nested .p-ico{font-size:11px;opacity:.7}
 /* editor */
-.pages-editor{flex:1;background:var(--bg);display:flex;flex-direction:column;min-width:0}
+.pages-editor{flex:0 0 440px;background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;transition:flex-basis .25s ease}
 .pages-editor.collapsed{flex-basis:0;overflow:hidden}
 /* sticky toolbar */
 .ped-toolbar{padding:10px 14px;background:var(--dark2);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -315,8 +315,6 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .ped-tab.has-changes .tab-dot{display:block}
 .ped-tab.has-changes .tab-cnt{display:none}
 .ped-body{flex:1;padding:14px 16px;overflow-y:auto;overflow-anchor:none}
-/* preview column removed — keep the now-full-width editor readable */
-.ped-body>*{max-width:820px;margin-left:auto;margin-right:auto}
 .ped-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 20px;text-align:center;color:var(--txt-m)}
 .ped-empty .big{font-size:42px;margin-bottom:12px}
 /* search */
