@@ -2,10 +2,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Третя гра | Blue Ferret</title>
-<meta name="description" content="Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети!">
+<meta name="description" content="Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети.">
 <link rel="canonical" href="https://blueferret.com.ua/igry/tretya-gra/">
 <meta property="og:title" content="Третя гра | Blue Ferret">
-<meta property="og:description" content="Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети!">
+<meta property="og:description" content="Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети.">
 <meta property="og:url" content="https://blueferret.com.ua/igry/tretya-gra/">
 <meta property="og:type" content="article">
 <meta property="og:image" content="https://blueferret.com.ua/images/placeholder-game.svg">
@@ -130,7 +130,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
     
       <div class="gp-kicker">Анонс</div><h1 class="gp-hero-title" data-bf-id="bf_7f252ad2">Третя гра</h1>
     
-    <p class="gp-hero-sub" data-bf-id="bf_4468ddf9">Обʼєднайся з друзями!</p>
+    <p class="gp-hero-sub" data-bf-id="bf_4468ddf9">Обʼєднайся з друзями</p>
     
       <a class="gp-btn-s" href="#passport" data-bf-id="bf_dfecec05">Дізнатися більше ↓</a>
     
@@ -145,8 +145,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 <section class="gp-section" id="passport" style="background:rgba(0,0,0,0.2)">
   <div class="gp-inner">
     <div class="rv text-center" style="text-align:center;margin-bottom:40px">
-      <p class="gp-eyebrow" data-bf-id="bf_1138b65f">Про гру!</p>
-      <h2 class="gp-stitle" data-bf-id="bf_0dccb5a0">Паспорт пригоди!</h2>
+      <p class="gp-eyebrow" data-bf-id="bf_1138b65f">Про гру</p>
+      <h2 class="gp-stitle" data-bf-id="bf_0dccb5a0">Паспорт пригоди</h2>
       <p style="color:rgba(255,255,255,0.4);max-width:600px;margin:0 auto" data-bf-id="bf_2ac0294f">Коротко про формат гри, щоб одразу зрозуміти, чого чекати.</p>
     </div>
     
@@ -167,7 +167,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
         <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6" style="background:rgba(255,255,255,0.05);color:var(--accent);border:1px solid rgba(255,255,255,0.1)" data-bf-id="bf_e08a2c83">Анонс</span>
         <h3 class="gp-stitle" style="font-size:28px" data-bf-id="bf_10dd0ec9">Що за гра?</h3>
         <div style="width:100%;height:1px;background:rgba(255,255,255,0.1);margin-bottom:24px"></div>
-        <div class="gp-desc"><p data-bf-id="bf_f618545b">Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети!</p></div>
+        <div class="gp-desc"><p data-bf-id="bf_f618545b">Кооперативна гра для всієї родини. Разом подолайте випробування, розгадайте загадки та досягніть спільної мети.</p></div>
         
         <div class="gp-actions">
           
