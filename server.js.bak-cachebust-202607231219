@@ -1676,34 +1676,9 @@ app.use((err, _req, res, next) => {
 });
 
 // ---------- SPA ----------
-// Cache-bust admin assets by content mtime. Without this, /admin.js and
-// /admin.css are cached by the browser/Cloudflare as plain static files and
-// deploys never reach the user (they keep running the old admin JS). Serving
-// the shell HTML ourselves (no-store) with a per-file ?v=<mtime> query means
-// a new deploy = a new URL = a guaranteed fresh fetch.
-function assetVer(rel){
-  try{ return Math.floor(fs.statSync(path.join(__dirname,'public',rel)).mtimeMs).toString(36); }
-  catch{ return Date.now().toString(36); }
-}
-// explicit no-store for the admin JS/CSS themselves (belt-and-suspenders,
-// runs before express.static so it wins)
-app.get(['/admin.js','/admin.css'], (req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  next();
-});
 app.use(express.static(path.join(__dirname, 'public')));
-app.get(['/admin','/admin/','/admin/*'], (_req, res) => {
-  let html;
-  try{ html = fs.readFileSync(path.join(__dirname,'public','index.html'),'utf8'); }
-  catch{ return res.sendFile(path.join(__dirname,'public','index.html')); }
-  html = html.replace('href="/admin.css"', `href="/admin.css?v=${assetVer('admin.css')}"`)
-             .replace('src="/admin.js"',   `src="/admin.js?v=${assetVer('admin.js')}"`);
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(html);
-});
+app.get(['/admin','/admin/','/admin/*'], (_req, res) =>
+  res.sendFile(path.join(__dirname,'public','index.html')));
 app.get('/api/health', (_req, res) => {
   let dbOk = false, uploadsOk = false;
   try { db.prepare('SELECT 1').get(); dbOk = true; } catch {}

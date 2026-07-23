@@ -1138,7 +1138,7 @@ async function duplicatePage(file){
 }
 window.deletePage=deletePage; window.duplicatePage=duplicatePage;
 
-let pedTab='content', pedSearch='', pageReordered=false;
+let pedTab='content', pedSearch='';
 
 // Reordering only ever swapped entries in the pageBlocks array (which
 // controls the payload sent on save) -- the live preview kept showing the
@@ -1336,7 +1336,6 @@ function switchPedTab(tab){
               }
             }
             pageBlocks = newPageBlocks;
-            pageReordered = true; // only now should a save send a reorder payload
             updateTabBadges();
           }
         }
@@ -1974,20 +1973,18 @@ async function savePatchedPage(){
   }
 
   const reorderList = activeBlocks.map(b => b.id);
-  if (!updates.length && !pageReordered){
+  if (!updates.length && (!reorderList || reorderList.length <= 1)){
     toast('Немає змін для збереження','i');if(btn)btn.disabled=false;return;
   }
   // A pure text/href edit needs no DOM rebuild — rebuilding (renderPagesUI)
   // recreates the whole list + iframe and flings the scroll far away, which
   // is the "everything jumps on save" the user hit. Only structural changes
   // (add / delete / reorder) actually need the list re-rendered.
-  const structural = deletedBlocks.size>0 || activeBlocks.some(b=>b.isNew) || pageReordered;
+  const structural = deletedBlocks.size>0 || activeBlocks.some(b=>b.isNew)
+    || (reorderList.length>1 && reorderList.some((id,i)=>pageBlocks[i]&&pageBlocks[i].id!==id));
   try{
     const payload = { blocks: updates };
-    // only send reorder when the user actually dragged blocks — otherwise the
-    // server re-runs its reorder pass on every save (wasteful, and it can
-    // reshuffle cross-container blocks on some pages)
-    if (pageReordered && reorderList && reorderList.length > 1) payload.reorder = reorderList;
+    if (reorderList && reorderList.length > 1) payload.reorder = reorderList;
     const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`, payload);
     if(res.integrity&&res.integrity.length){
       toast(`⚠ Збережено, але знайдено ${res.integrity.length} битих посилань на JS-файли — повідомте розробника`,'er');
@@ -1995,8 +1992,11 @@ async function savePatchedPage(){
       toast(`Збережено (${res.changed} змін) ✓`,'ok');
     }
 
+    pendingVerify={page:activePage,ts:Date.now(),texts:updates
+      .filter(u=>!u.delete&&!u.isNew&&typeof u.newVal==='string')
+      .map(u=>normTxt(stripHtml(u.newVal)).toLowerCase())
+      .filter(t=>t.length>=8) };
     clearDraft(activePage);
-    pageReordered=false;
     const pg=pages.find(p=>p.file===activePage);if(pg)pg.mtime=Date.now();
 
     if(structural){
@@ -2009,7 +2009,7 @@ async function savePatchedPage(){
       const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
       if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;
       pageEdited={}; deletedBlocks.clear();
-      refreshPreview(true);
+      refreshPreview();
       renderPagesUI();
       anchorPedScroll(anchorId, prevScreenY);
     }else{
@@ -2024,7 +2024,7 @@ async function savePatchedPage(){
       }
       pageEdited={};
       updateTabBadges();
-      refreshPreview(true);
+      refreshPreview();
     }
   }catch(e){toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
@@ -2066,9 +2066,23 @@ function stripHtml(s){const d=document.createElement('div');d.innerHTML=String(s
 
 let currentPvDoc=null; // last-mapped iframe document, used to self-heal blockElMap on demand
 
-// When a reload is a post-save refresh (not the first open of a page), keep
-// the preview where the user was instead of yanking it to the top / header.
-let pvRestoreScroll=null;
+// set by savePatchedPage; consumed by onPvLoad to verify the freshly saved
+// texts survive hydration on the real page
+let pendingVerify=null;
+
+function verifySavedTexts(doc){
+  if(!pendingVerify||pendingVerify.page!==activePage||Date.now()-pendingVerify.ts>30000){pendingVerify=null;return;}
+  const texts=pendingVerify.texts;pendingVerify=null;
+  if(!texts.length)return;
+  let body='';
+  try{body=normTxt(doc.body.innerText).toLowerCase();}catch{return;}
+  const missing=texts.filter(t=>!body.includes(t));
+  if(missing.length){
+    toast(`⚠ ${missing.length===1?'Збережений текст не видно':'Деякі збережені тексти не видно'} на сторінці після завантаження — можливий розсинхрон із JS-бандлом`,'er');
+  }else{
+    toast('Перевірено: зміни видно на сторінці ✓','ok');
+  }
+}
 
 function onPvLoad(){
   const f=$('#pvIframe');if(!f)return;
@@ -2086,15 +2100,11 @@ function onPvLoad(){
     // after mount, so re-map once more once hydration has had time to
     // settle -- this is a safety net, not the primary path anymore.
     setTimeout(()=>{ try{ mapBlocksToDom(doc); injectPreviewHelpers(doc,f); }catch(e){} },350);
-    if(pvRestoreScroll!=null){
-      // post-save reload: put the preview back where the user was, not at the top
-      const y=pvRestoreScroll; pvRestoreScroll=null;
-      const restore=()=>{try{f.contentWindow.scrollTo(0,y);}catch{}};
-      restore();setTimeout(restore,120);setTimeout(restore,350);
-    }else{
-      // first open of a page: gentle scroll past the header
-      setTimeout(()=>{ try{const h=doc.querySelector('header');if(h)f.contentWindow.scrollTo({top:h.offsetHeight+8,behavior:'smooth'});}catch{} },400);
-    }
+    // gentle scroll past header
+    setTimeout(()=>{ try{const h=doc.querySelector('header');if(h)f.contentWindow.scrollTo({top:h.offsetHeight+8,behavior:'smooth'});}catch{} },400);
+    // end-to-end check: wait for hydration to settle, then confirm the texts
+    // we just saved are what the visitor actually sees
+    setTimeout(()=>{ try{ verifySavedTexts(doc); }catch{} },1400);
   }catch{}
 }
 window.onPvLoad=onPvLoad;
@@ -2228,9 +2238,8 @@ function syncToPreview(id,val){
   }catch{}
 }
 
-function refreshPreview(preserveScroll){
+function refreshPreview(){
   const f=$('#pvIframe');if(!f)return;
-  if(preserveScroll){try{pvRestoreScroll=f.contentWindow.scrollY||0;}catch{pvRestoreScroll=null;}}
   f.classList.add('pv-refreshing');
   const src=f.src.split('?')[0];
   // The 150ms wait here was pure dead time before the reload even started --
