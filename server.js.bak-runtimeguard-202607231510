@@ -1614,33 +1614,6 @@ app.get('/api/public/kik', (_req, res) => {
 });
 
 const RUNTIME_JS = `(function(){
-  // Defense in depth: this script live-reloads the PUBLIC site when content
-  // is published. It must never run inside the admin CMS itself — every save
-  // bumps publishedAt, so if this were injected on /admin it would reload the
-  // whole admin app ~1.5s after every save (nginx sub_filter injected it there
-  // by mistake once; fixed at the nginx layer too, this is the backstop).
-  if(location.pathname.indexOf('/admin')===0)return;
-  // Reveal-animation glitch fix: the "whileInView" fade/slide-up cards (React
-  // source lost, can't rebuild — see the nginx sub_filter opacity:0 override
-  // right above this script) run as native WAAPI animations via
-  // Element.animate(), not plain inline styles, so the CSS !important
-  // override can't touch them. On a fast mobile scroll/swipe the
-  // IntersectionObserver behind whileInView can re-fire and RESTART a
-  // card's fade-in after the user has already scrolled past it, so a quick
-  // glance/screenshot catches it frozen at some partial opacity, looking
-  // like broken/overlapping content. Finite (one-shot) reveal animations are
-  // jumped straight to their end state instead of playing; infinite
-  // decorative loops (sparkles, the dashed section connector — iterations
-  // is null/Infinity there) are left alone so they keep animating normally.
-  try{
-    var origAnimate=Element.prototype.animate;
-    Element.prototype.animate=function(keyframes,options){
-      var anim=origAnimate.call(this,keyframes,options);
-      var iters=options&&(typeof options==='object'?options.iterations:undefined);
-      if(iters===1||iters===undefined){ try{anim.finish();}catch(e){} }
-      return anim;
-    };
-  }catch(e){}
   function apply(s){try{
     if(!s)return;
     var a=s.appearance||{},b=s.banner||{},m=s.maintenance||{},ig=s.integrations||{},g=s.general||{};
