@@ -1238,7 +1238,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
       <div class="blk-head" style="margin-bottom:6px">
         <div class="blk-ico ${b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
         <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
-        ${b.desynced?`<button onclick="forceSyncBlock('${esc(b.id)}')" title="Текст цього блоку відрізняється від вбудованого в JS-бандл — відвідувач може бачити стару версію. Натисніть, щоб синхронізувати бандл із цим текстом." style="font-size:9.5px;color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:6px;padding:2px 7px;margin-left:6px;white-space:nowrap;cursor:pointer">⚠ синхронізувати</button>`:''}
+        ${b.desynced?`<span title="Текст цього блоку може відрізнятися від вбудованого в JS-бандл — після завантаження сторінки відвідувач інколи бачить іншу версію. Якщо на сайті після оновлення показується не цей текст — потрібна ручна синхронізація бандла." style="font-size:9.5px;color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:2px 7px;margin-left:6px;white-space:nowrap;cursor:help">⚠ несинхр.</span>`:''}
         <div class="blk-actions">${actionControls}</div>
       </div>
       ${inputHtml}
@@ -1428,7 +1428,6 @@ function renderPagesUI(){
           <span class="ped-filename">/${activePage}</span>
           <span id="unsaved-badge" class="unsaved-badge" style="font-size:10px"></span>
           <div style="margin-left:auto;display:flex;gap:6px">
-            <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px" onclick="showPageHistory()" title="Історія версій цієї сторінки">🕘 Історія</button>
             <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px" onclick="closePagesEditor()" title="Закрити (Esc)">✕</button>
             <button class="btn btn-sm" id="pedSaveBtn" onclick="savePatchedPage()" style="background:var(--bf);color:#fff;padding:6px 14px;box-shadow:0 2px 10px rgba(0,159,227,.35)" title="Зберегти (Cmd+S)">💾 Зберегти</button>
           </div>
@@ -1741,65 +1740,6 @@ async function saveSiteContent(){
 window.saveSiteContent=saveSiteContent;
 window.renderSiteText=renderSiteText;
 
-// ── force-sync a desynced block into the JS bundle ──
-async function forceSyncBlock(id){
-  try{
-    const r=await api('POST','/api/admin/block-sync',{path:activePage,id});
-    if(r.ok){
-      toast(`Бандл синхронізовано (${r.results.length} заміна/и) ✓`,'ok');
-      await selectPage(activePage,true); // refresh badges
-      refreshPreview();
-    }else{
-      toast('Не знайдено старої версії в бандлі — можливо, блок і так синхронний','i');
-      await selectPage(activePage,true);
-    }
-  }catch(e){toast('Помилка синхронізації: '+e.message,'er');}
-}
-window.forceSyncBlock=forceSyncBlock;
-
-// ── page version history ──
-async function showPageHistory(){
-  if(!activePage) return;
-  let list=[];
-  try{const r=await api('GET',`/api/admin/page-backups?path=${encodeURIComponent(activePage)}`);list=r.backups||[];}
-  catch(e){toast('Помилка: '+e.message,'er');return;}
-  const old=document.getElementById('bf-history-modal');if(old)old.remove();
-  const fmt=ts=>`${ts.slice(6,8)}.${ts.slice(4,6)}.${ts.slice(0,4)} ${ts.slice(8,10)}:${ts.slice(10,12)}:${ts.slice(12,14)}`;
-  const wrap=document.createElement('div');
-  wrap.id='bf-history-modal';
-  wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center';
-  wrap.innerHTML=`<div style="background:var(--card,#101826);border:1px solid var(--glass-border,rgba(255,255,255,.1));border-radius:14px;max-width:440px;width:92%;max-height:70vh;overflow-y:auto;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-    <div style="display:flex;align-items:center;margin-bottom:12px">
-      <b style="font-size:14px">🕘 Історія: /${esc(activePage)}</b>
-      <button onclick="document.getElementById('bf-history-modal').remove()" style="margin-left:auto;background:none;border:none;color:inherit;font-size:16px;cursor:pointer">✕</button>
-    </div>
-    ${list.length?list.map(b=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--glass-border,rgba(255,255,255,.08));border-radius:8px;margin-bottom:6px">
-        <span style="font-size:12.5px">${fmt(b.ts)}</span>
-        <span style="font-size:10.5px;opacity:.55">${(b.size/1024).toFixed(0)} КБ</span>
-        <button class="btn btn-sm" style="margin-left:auto;padding:4px 10px;font-size:11px;background:rgba(0,159,227,.15);border:1px solid rgba(0,159,227,.4);color:var(--bf,#009fe3);border-radius:6px;cursor:pointer" onclick="restorePageBackup('${esc(b.name)}')">↩ Відновити</button>
-      </div>`).join('')
-    :'<div style="opacity:.6;font-size:13px;padding:10px 0">Резервних копій ще немає — вони зʼявляються після кожного збереження.</div>'}
-    <div style="font-size:11px;opacity:.55;margin-top:8px">Перед відновленням поточна версія теж зберігається в історію. Зберігаються останні 10 копій.</div>
-  </div>`;
-  wrap.addEventListener('click',e=>{if(e.target===wrap)wrap.remove();});
-  document.body.appendChild(wrap);
-}
-window.showPageHistory=showPageHistory;
-
-async function restorePageBackup(name){
-  if(!confirm('Відновити цю версію сторінки? Поточна версія збережеться в історію.'))return;
-  try{
-    const r=await api('POST','/api/admin/page-restore',{path:activePage,name});
-    if(r.integrity&&r.integrity.length) toast(`⚠ Відновлено, але є ${r.integrity.length} битих посилань — повідомте розробника`,'er');
-    else toast('Версію відновлено ✓','ok');
-    const m=document.getElementById('bf-history-modal');if(m)m.remove();
-    await selectPage(activePage,true);
-    refreshPreview();
-  }catch(e){toast('Помилка: '+e.message,'er');}
-}
-window.restorePageBackup=restorePageBackup;
-
 async function selectPage(file, force=false){
   if(activePage===file && !force) return;
   activePage=file; pageBlocks=[]; pageEdited={}; deletedBlocks.clear();
@@ -1856,11 +1796,7 @@ async function savePatchedPage(){
     const payload = { blocks: updates };
     if (reorderList && reorderList.length > 1) payload.reorder = reorderList;
     const res=await api('PATCH',`/api/admin/page-patch?path=${encodeURIComponent(activePage)}`, payload);
-    if(res.integrity&&res.integrity.length){
-      toast(`⚠ Збережено, але знайдено ${res.integrity.length} битих посилань на JS-файли — повідомте розробника`,'er');
-    }else{
-      toast(`Збережено (${res.changed} змін) ✓`,'ok');
-    }
+    toast(`Збережено (${res.changed} змін) ✓`,'ok');
     
     const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
     if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;

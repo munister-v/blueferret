@@ -6,7 +6,6 @@ const fs      = require('fs');
 const multer  = require('multer');
 const ejs     = require('ejs');
 const Database = require('better-sqlite3');
-const vm      = require('vm');
 
 const PORT      = parseInt(process.env.PORT || '4100', 10);
 const HOST      = process.env.HOST || '127.0.0.1';
@@ -20,7 +19,7 @@ fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 fs.mkdirSync(UPLOADS, { recursive: true });
 
 const { db, getSetting, setSetting, audit } = require('./src/db');
-const { writeAtomic, writeBackup, listBackups } = require('./src/utils');
+const { writeAtomic, writeBackup } = require('./src/utils');
 function bumpPublishedAt() {
   const g = Object.assign({}, DEFAULTS.general, getSetting('general', {}));
   g.publishedAt = Date.now();
@@ -507,8 +506,6 @@ function syncIgryHeroChunk() {
       if (subtitle && obj.subtitle !== subtitle) { obj.subtitle = subtitle; dirty = true; }
       if (!dirty) continue;
       content = content.replace(objRe, JSON.stringify(obj));
-      try { assertValidJs(content, it); }
-      catch (e) { audit('system', 'chunk_sync_refused', { file: it, error: e.message }); continue; }
       const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
       const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + `-${hash}.js`;
       if (newName === it) { writeAtomic(full, content); continue; }
@@ -527,66 +524,6 @@ function syncIgryHeroChunk() {
 // save". After each page-patch we take every plain-text change (old → new)
 // and rewrite the same literal string inside the chunks, then rehash/relink
 // the renamed files exactly like syncIgryHeroChunk does.
-// Global publish guard: any chunk write that would produce syntactically
-// invalid JS takes the whole site down (layout-*.js is on every page), so
-// refuse to publish it instead. See the 2026-07-19 apostrophe incident.
-function assertValidJs(content, label) {
-  try { new vm.Script(content); }
-  catch (e) { throw new Error(`refusing to publish invalid JS in ${label}: ${e.message}`); }
-}
-
-// Concatenated text of every live chunk, cached briefly — used to flag blocks
-// whose saved text is NOT baked into the client bundle (hydration would show
-// something else). Cheap early-warning against future desync regressions.
-let _chunksBlobCache = { at: 0, text: '' };
-function chunksBlob() {
-  if (Date.now() - _chunksBlobCache.at < 30000) return _chunksBlobCache.text;
-  const parts = [];
-  const stack = [path.join(SITE_ROOT, '_next', 'static', 'chunks')];
-  while (stack.length) {
-    const dir = stack.pop();
-    let items; try { items = fs.readdirSync(dir); } catch { continue; }
-    for (const it of items) {
-      const full = path.join(dir, it); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { stack.push(full); continue; }
-      if (it.endsWith('.js') && !it.includes('.bak')) {
-        try { parts.push(fs.readFileSync(full, 'utf8')); } catch {}
-      }
-    }
-  }
-  _chunksBlobCache = { at: Date.now(), text: parts.join('\n') };
-  return _chunksBlobCache.text;
-}
-
-// Integrity check: every chunk a page references must exist on disk. A broken
-// ref = ChunkLoadError = dead page (or dead site if it's the layout chunk).
-// Ran after every save; also exposed as an endpoint for the dashboard.
-function verifyChunkRefs() {
-  const missing = [];
-  let pages = 0;
-  (function walk(d) {
-    let items; try { items = fs.readdirSync(d); } catch { return; }
-    for (const f of items) {
-      if (f.startsWith('.') || f === '_next' || f === 'uploads' || f === 'cdn-cgi') continue;
-      const full = path.join(d, f); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { walk(full); continue; }
-      if (!f.endsWith('.html')) continue;
-      pages++;
-      let h; try { h = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      for (const m of h.matchAll(/_next\/static\/chunks\/[\w./-]+?\.js/g)) {
-        const ref = m[0];
-        if (!fs.existsSync(path.join(SITE_ROOT, ref))) {
-          missing.push({ page: full.slice(SITE_ROOT.length), ref });
-        }
-      }
-    }
-  })(SITE_ROOT);
-  // dedupe
-  const seen = new Set();
-  const uniq = missing.filter(x => { const k = x.page + '|' + x.ref; if (seen.has(k)) return false; seen.add(k); return true; });
-  return { pages, missing: uniq };
-}
-
 function safeTextPairs(pairs) {
   // keep only plain-text, unambiguous replacements
   return pairs.filter(p =>
@@ -596,9 +533,7 @@ function safeTextPairs(pairs) {
 }
 function syncChunkTexts(pairs) {
   const safe = safeTextPairs(pairs);
-  if (!safe.length) return { files: 0, matched: 0 };
-  let filesPatched = 0;
-  const matchedPairs = new Set();
+  if (!safe.length) return;
   const root = path.join(SITE_ROOT, '_next', 'static', 'chunks');
   const stack = [root];
   while (stack.length) {
@@ -608,36 +543,12 @@ function syncChunkTexts(pairs) {
       const full = path.join(dir, it); let st; try { st = fs.statSync(full); } catch { continue; }
       if (st.isDirectory()) { stack.push(full); continue; }
       if (!it.endsWith('.js')) continue;
-      const original = (() => { try { return fs.readFileSync(full, 'utf8'); } catch { return null; } })();
-      if (original == null) continue;
-      // Apostrophes: text inside JSON.parse('...') single-quoted wrappers is
-      // stored \'-escaped; plain JSX strings store it raw. Try the plain
-      // replacement first; if the file stops being valid JS, redo it with the
-      // \'-escaped form (the 2026-07-19 incident, now handled automatically).
-      const esc = s => s.replace(/'/g, "\\'");
-      const applyPairs = escapeNewInPlainCtx => {
-        let c = original, hit = false;
-        for (const p of safe) {
-          const eo = esc(p.oldVal), en = esc(p.newVal);
-          if (eo !== p.oldVal && c.includes(eo)) { c = c.split(eo).join(en); hit = true; matchedPairs.add(p.oldVal); }
-          if (c.includes(p.oldVal)) {
-            c = c.split(p.oldVal).join(escapeNewInPlainCtx ? en : p.newVal);
-            hit = true; matchedPairs.add(p.oldVal);
-          }
-        }
-        return hit ? c : null;
-      };
-      let content = null;
-      for (const escapeNew of [false, true]) {
-        const attempt = applyPairs(escapeNew);
-        if (attempt == null) break; // no match in this file at all
-        try { assertValidJs(attempt, it); content = attempt; break; }
-        catch (e) {
-          if (escapeNew) audit('system', 'chunk_sync_refused', { file: it, error: e.message });
-        }
+      let content; try { content = fs.readFileSync(full, 'utf8'); } catch { continue; }
+      let dirty = false;
+      for (const p of safe) {
+        if (content.includes(p.oldVal)) { content = content.split(p.oldVal).join(p.newVal); dirty = true; }
       }
-      if (content == null || content === original) continue;
-      filesPatched++;
+      if (!dirty) continue;
       const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
       const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + `-${hash}.js`;
       if (newName === it) { writeAtomic(full, content); continue; }
@@ -647,8 +558,6 @@ function syncChunkTexts(pairs) {
     }
   }
   try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
-  _chunksBlobCache.at = 0; // invalidate desync-detector cache
-  return { files: filesPatched, matched: matchedPairs.size, total: safe.length };
 }
 
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
@@ -1213,7 +1122,6 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
   const newName=`${prefix}-${hash}.js`;
   const newPath=path.join(sc.bundle.dir,newName);
   try{
-    assertValidJs(newContent, newName); // never publish a chunk that would crash the whole site
     writeAtomic(newPath,newContent);
     if(newName!==oldName) fs.unlinkSync(sc.bundle.file);
     // update references across all HTML
@@ -1264,35 +1172,6 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
     const html = fs.readFileSync(full, 'utf8');
     const ext = extractBlocks(html);
     if (ext.newHtml !== html) writeAtomic(full, ext.newHtml);
-    // flag plain-text blocks whose value is neither in the client bundle nor
-    // repeated in the page's own scripts (flight data) — hydration may revert
-    // them; the editor shows a warning badge so it's visible before it bites
-    try {
-      const blob = chunksBlob();
-      for (const b of ext.blocks) {
-        if (b.type === 'seo' || b.type === 'img') continue;
-        const v = (b.value || '');
-        if (v.length < 20 || /[<>&]/.test(v)) continue; // short/markup: too ambiguous
-        // chunks store apostrophes escaped inside JSON.parse('...') strings
-        const variants = [v, v.replace(/'/g, "\\'"), v.replace(/'/g, "\\\\'")];
-        if (variants.some(x => blob.includes(x))) continue;         // baked-in copy matches
-        if (html.split(v).length - 1 >= 2) continue;                // flight data matches
-        // flag ONLY when the bundle clearly contains a DIFFERENT variant of
-        // this text (same beginning, different tail) — texts that aren't in
-        // the bundle at all are server-rendered and can't be reverted
-        const prefix = v.slice(0, 25);
-        const idx = (() => {
-          let i = blob.indexOf(prefix);
-          if (i < 0) i = blob.indexOf(prefix.replace(/'/g, "\\'"));
-          return i;
-        })();
-        if (idx < 0) continue;
-        // template strings with {placeholder}s legitimately differ from the
-        // substituted DOM text — not a divergence
-        if (/\{\w+\}/.test(blob.slice(idx, idx + v.length + 60))) continue;
-        b.desynced = true;
-      }
-    } catch {}
     res.json({ blocks: ext.blocks });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
@@ -1307,22 +1186,6 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   
   let html = fs.readFileSync(full, 'utf8');
   writeBackup(full);
-  // Flight-data sync must happen BEFORE cheerio touches the DOM: replacing
-  // old→new on the raw page catches the RSC flight scripts, and doing it
-  // first means the DOM element still holds the OLD text — so a newVal that
-  // contains oldVal (e.g. a word appended) can't be double-inserted.
-  const prePairs = safeTextPairs((blocks || [])
-    .filter(b => b && b.id && !b.isNew && !b.delete && b.newVal != null && b.origVal != null
-                 && b.origVal !== b.newVal && b.type !== 'img')
-    .map(b => ({ oldVal: b.origVal, newVal: b.newVal })));
-  const preHtml = html;
-  for (const p of prePairs) html = html.split(p.oldVal).join(p.newVal);
-  // sanity: the global replace must never change page structure
-  if ((html.match(/data-bf-id=/g) || []).length !== (preHtml.match(/data-bf-id=/g) || []).length
-      || !html.includes('</html>')) {
-    audit(req.ip, 'flight_replace_refused', { path: rel });
-    html = preHtml;
-  }
   const $ = cheerio.load(html, { decodeEntities: false });
   let changed = 0;
   const textPairs = []; // old → new plain-text edits, mirrored into JS chunks below
@@ -1409,122 +1272,17 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     // (self.__next_f scripts) that hydration re-renders from — cheerio only
     // updated the DOM element, so replace any remaining occurrences of the
     // old string across the serialized page (they can only be in scripts now).
-    // (flight-data occurrences were already replaced on the raw page above,
-    // before cheerio — see prePairs)
-    writeAtomic(full, $.html());
+    let outHtml = $.html();
+    for (const p of safeTextPairs(textPairs)) outHtml = outHtml.split(p.oldVal).join(p.newVal);
+    writeAtomic(full, outHtml);
     if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
-    let chunkSync = null;
-    if (textPairs.length) { try { chunkSync = syncChunkTexts(textPairs); } catch(e){ chunkSync = {error: e.message}; } }
-    // post-save integrity: a rename gone wrong must be visible immediately
-    let integrity = null;
-    try {
-      const v = verifyChunkRefs();
-      if (v.missing.length) { integrity = v.missing; audit('system', 'integrity_missing_refs', { after: 'page_patch', missing: v.missing.slice(0, 10) }); }
-    } catch {}
+    if (textPairs.length) { try { syncChunkTexts(textPairs); } catch(e){} }
     const publishedAt = bumpPublishedAt();
-    audit(req.ip, 'page_patch', {path: rel, changed, publishedAt, chunkSync});
-    res.json({ok: true, changed, publishedAt, integrity});
+    audit(req.ip, 'page_patch', {path: rel, changed, publishedAt});
+    res.json({ok: true, changed, publishedAt});
   } else {
     res.json({ok: true, changed: 0});
   }
-});
-
-// ── integrity, history, force-sync ──
-app.get('/api/admin/integrity', requireAuth, (_req, res) => {
-  try { res.json(verifyChunkRefs()); } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// list timestamped backups of a page (newest first)
-app.get('/api/admin/page-backups', requireAuth, (req, res) => {
-  const rel = req.query.path;
-  if (!rel || rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full = path.join(PAGES_ROOT, rel);
-  if (!full.startsWith(PAGES_ROOT)) return res.status(403).json({error:'forbidden'});
-  res.json({ backups: listBackups(full) });
-});
-
-// restore a page from one of its backups (current version is backed up first)
-app.post('/api/admin/page-restore', requireAuth, (req, res) => {
-  const { path: rel, name } = req.body || {};
-  if (!rel || rel.includes('..') || !rel.endsWith('.html')) return res.status(400).json({error:'invalid'});
-  if (!name || !/^[\w.-]+\.bak-\d{14,17}$/.test(name)) return res.status(400).json({error:'bad backup name'});
-  const full = path.join(PAGES_ROOT, rel);
-  const bak = path.join(path.dirname(full), name);
-  if (!full.startsWith(PAGES_ROOT) || !bak.startsWith(PAGES_ROOT)) return res.status(403).json({error:'forbidden'});
-  if (!fs.existsSync(bak)) return res.status(404).json({error:'backup not found'});
-  if (path.basename(name).indexOf(path.basename(full) + '.bak-') !== 0) return res.status(400).json({error:'backup belongs to another file'});
-  writeBackup(full);
-  fs.copyFileSync(bak, full);
-  // Old snapshots may reference chunk names that were renamed since (every
-  // content save rehashes chunks) — remap any now-missing ref to the current
-  // file with the same prefix in the same directory, or the restored page
-  // would 404 its own JS.
-  let relinked = 0;
-  try {
-    let h = fs.readFileSync(full, 'utf8');
-    const refs = [...new Set([...h.matchAll(/_next\/static\/chunks\/[\w./-]+?\.js/g)].map(m => m[0]))];
-    for (const ref of refs) {
-      if (fs.existsSync(path.join(SITE_ROOT, ref))) continue;
-      const dir = path.dirname(ref), base = path.basename(ref);
-      const prefix = base.replace(/-[0-9a-f]{8,}\.js$/i, '');
-      if (prefix === base) continue;
-      let candidates = [];
-      try {
-        candidates = fs.readdirSync(path.join(SITE_ROOT, dir))
-          .filter(f => f.startsWith(prefix + '-') && f.endsWith('.js') && !f.includes('.bak'));
-      } catch {}
-      if (candidates.length === 1) {
-        h = h.split(base).join(candidates[0]);
-        relinked++;
-      }
-    }
-    if (relinked) writeAtomic(full, h);
-  } catch {}
-  let integrity = null;
-  try { const v = verifyChunkRefs(); if (v.missing.length) integrity = v.missing; } catch {}
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'page_restore', { path: rel, from: name, relinked, publishedAt });
-  res.json({ ok: true, relinked, integrity, publishedAt });
-});
-
-// force-sync one desynced block: find the stale variant baked in the chunks
-// (same detection as the editor badge) and replace it with the current DOM
-// text, going through the guarded syncChunkTexts pipeline
-app.post('/api/admin/block-sync', requireAuth, (req, res) => {
-  const { path: rel, id } = req.body || {};
-  if (!rel || rel.includes('..') || !/^bf_\w+$/.test(id || '')) return res.status(400).json({error:'invalid'});
-  const full = path.join(PAGES_ROOT, rel);
-  if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  const $ = cheerio.load(fs.readFileSync(full, 'utf8'), { decodeEntities: false });
-  const el = $(`[data-bf-id="${id}"]`);
-  if (!el.length) return res.status(404).json({error:'block not found'});
-  const v = decodeHtmlEnts(el.text()).trim();
-  if (v.length < 20 || /[<>&"\\]/.test(v)) return res.status(400).json({error:'block text not safely syncable'});
-  const blob = chunksBlob();
-  const prefix = v.slice(0, 25);
-  const results = [];
-  // find each distinct stale variant: prefix..closing JSON quote
-  let from = 0, guard = 0;
-  while (guard++ < 10) {
-    const i = blob.indexOf(prefix, from);
-    if (i < 0) break;
-    from = i + prefix.length;
-    // expand to the enclosing JS string: forward to the first unescaped " or '
-    let j = i;
-    while (j < blob.length && j - i < 500) {
-      const ch = blob[j];
-      if ((ch === '"' || ch === "'") && blob[j-1] !== '\\') break;
-      j++;
-    }
-    const stale = blob.slice(i, j).replace(/\\'/g, "'");
-    if (!stale || stale === v || stale.length < 20 || /\{\w+\}/.test(stale)) continue;
-    const r = syncChunkTexts([{ oldVal: stale, newVal: v }]);
-    results.push({ stale: stale.slice(0, 120), ...r });
-  }
-  if (!results.length) return res.json({ ok: false, reason: 'no stale variant found in chunks' });
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'block_force_sync', { path: rel, id, results, publishedAt });
-  res.json({ ok: true, results, publishedAt });
 });
 
 app.get('/api/admin/pages/*', requireAuth, (req, res) => {

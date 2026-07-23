@@ -20,7 +20,7 @@ fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 fs.mkdirSync(UPLOADS, { recursive: true });
 
 const { db, getSetting, setSetting, audit } = require('./src/db');
-const { writeAtomic, writeBackup, listBackups } = require('./src/utils');
+const { writeAtomic, writeBackup } = require('./src/utils');
 function bumpPublishedAt() {
   const g = Object.assign({}, DEFAULTS.general, getSetting('general', {}));
   g.publishedAt = Date.now();
@@ -556,35 +556,6 @@ function chunksBlob() {
   }
   _chunksBlobCache = { at: Date.now(), text: parts.join('\n') };
   return _chunksBlobCache.text;
-}
-
-// Integrity check: every chunk a page references must exist on disk. A broken
-// ref = ChunkLoadError = dead page (or dead site if it's the layout chunk).
-// Ran after every save; also exposed as an endpoint for the dashboard.
-function verifyChunkRefs() {
-  const missing = [];
-  let pages = 0;
-  (function walk(d) {
-    let items; try { items = fs.readdirSync(d); } catch { return; }
-    for (const f of items) {
-      if (f.startsWith('.') || f === '_next' || f === 'uploads' || f === 'cdn-cgi') continue;
-      const full = path.join(d, f); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { walk(full); continue; }
-      if (!f.endsWith('.html')) continue;
-      pages++;
-      let h; try { h = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      for (const m of h.matchAll(/_next\/static\/chunks\/[\w./-]+?\.js/g)) {
-        const ref = m[0];
-        if (!fs.existsSync(path.join(SITE_ROOT, ref))) {
-          missing.push({ page: full.slice(SITE_ROOT.length), ref });
-        }
-      }
-    }
-  })(SITE_ROOT);
-  // dedupe
-  const seen = new Set();
-  const uniq = missing.filter(x => { const k = x.page + '|' + x.ref; if (seen.has(k)) return false; seen.add(k); return true; });
-  return { pages, missing: uniq };
 }
 
 function safeTextPairs(pairs) {
@@ -1415,116 +1386,12 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
     let chunkSync = null;
     if (textPairs.length) { try { chunkSync = syncChunkTexts(textPairs); } catch(e){ chunkSync = {error: e.message}; } }
-    // post-save integrity: a rename gone wrong must be visible immediately
-    let integrity = null;
-    try {
-      const v = verifyChunkRefs();
-      if (v.missing.length) { integrity = v.missing; audit('system', 'integrity_missing_refs', { after: 'page_patch', missing: v.missing.slice(0, 10) }); }
-    } catch {}
     const publishedAt = bumpPublishedAt();
     audit(req.ip, 'page_patch', {path: rel, changed, publishedAt, chunkSync});
-    res.json({ok: true, changed, publishedAt, integrity});
+    res.json({ok: true, changed, publishedAt});
   } else {
     res.json({ok: true, changed: 0});
   }
-});
-
-// ── integrity, history, force-sync ──
-app.get('/api/admin/integrity', requireAuth, (_req, res) => {
-  try { res.json(verifyChunkRefs()); } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// list timestamped backups of a page (newest first)
-app.get('/api/admin/page-backups', requireAuth, (req, res) => {
-  const rel = req.query.path;
-  if (!rel || rel.includes('..')) return res.status(400).json({error:'invalid'});
-  const full = path.join(PAGES_ROOT, rel);
-  if (!full.startsWith(PAGES_ROOT)) return res.status(403).json({error:'forbidden'});
-  res.json({ backups: listBackups(full) });
-});
-
-// restore a page from one of its backups (current version is backed up first)
-app.post('/api/admin/page-restore', requireAuth, (req, res) => {
-  const { path: rel, name } = req.body || {};
-  if (!rel || rel.includes('..') || !rel.endsWith('.html')) return res.status(400).json({error:'invalid'});
-  if (!name || !/^[\w.-]+\.bak-\d{14,17}$/.test(name)) return res.status(400).json({error:'bad backup name'});
-  const full = path.join(PAGES_ROOT, rel);
-  const bak = path.join(path.dirname(full), name);
-  if (!full.startsWith(PAGES_ROOT) || !bak.startsWith(PAGES_ROOT)) return res.status(403).json({error:'forbidden'});
-  if (!fs.existsSync(bak)) return res.status(404).json({error:'backup not found'});
-  if (path.basename(name).indexOf(path.basename(full) + '.bak-') !== 0) return res.status(400).json({error:'backup belongs to another file'});
-  writeBackup(full);
-  fs.copyFileSync(bak, full);
-  // Old snapshots may reference chunk names that were renamed since (every
-  // content save rehashes chunks) — remap any now-missing ref to the current
-  // file with the same prefix in the same directory, or the restored page
-  // would 404 its own JS.
-  let relinked = 0;
-  try {
-    let h = fs.readFileSync(full, 'utf8');
-    const refs = [...new Set([...h.matchAll(/_next\/static\/chunks\/[\w./-]+?\.js/g)].map(m => m[0]))];
-    for (const ref of refs) {
-      if (fs.existsSync(path.join(SITE_ROOT, ref))) continue;
-      const dir = path.dirname(ref), base = path.basename(ref);
-      const prefix = base.replace(/-[0-9a-f]{8,}\.js$/i, '');
-      if (prefix === base) continue;
-      let candidates = [];
-      try {
-        candidates = fs.readdirSync(path.join(SITE_ROOT, dir))
-          .filter(f => f.startsWith(prefix + '-') && f.endsWith('.js') && !f.includes('.bak'));
-      } catch {}
-      if (candidates.length === 1) {
-        h = h.split(base).join(candidates[0]);
-        relinked++;
-      }
-    }
-    if (relinked) writeAtomic(full, h);
-  } catch {}
-  let integrity = null;
-  try { const v = verifyChunkRefs(); if (v.missing.length) integrity = v.missing; } catch {}
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'page_restore', { path: rel, from: name, relinked, publishedAt });
-  res.json({ ok: true, relinked, integrity, publishedAt });
-});
-
-// force-sync one desynced block: find the stale variant baked in the chunks
-// (same detection as the editor badge) and replace it with the current DOM
-// text, going through the guarded syncChunkTexts pipeline
-app.post('/api/admin/block-sync', requireAuth, (req, res) => {
-  const { path: rel, id } = req.body || {};
-  if (!rel || rel.includes('..') || !/^bf_\w+$/.test(id || '')) return res.status(400).json({error:'invalid'});
-  const full = path.join(PAGES_ROOT, rel);
-  if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  const $ = cheerio.load(fs.readFileSync(full, 'utf8'), { decodeEntities: false });
-  const el = $(`[data-bf-id="${id}"]`);
-  if (!el.length) return res.status(404).json({error:'block not found'});
-  const v = decodeHtmlEnts(el.text()).trim();
-  if (v.length < 20 || /[<>&"\\]/.test(v)) return res.status(400).json({error:'block text not safely syncable'});
-  const blob = chunksBlob();
-  const prefix = v.slice(0, 25);
-  const results = [];
-  // find each distinct stale variant: prefix..closing JSON quote
-  let from = 0, guard = 0;
-  while (guard++ < 10) {
-    const i = blob.indexOf(prefix, from);
-    if (i < 0) break;
-    from = i + prefix.length;
-    // expand to the enclosing JS string: forward to the first unescaped " or '
-    let j = i;
-    while (j < blob.length && j - i < 500) {
-      const ch = blob[j];
-      if ((ch === '"' || ch === "'") && blob[j-1] !== '\\') break;
-      j++;
-    }
-    const stale = blob.slice(i, j).replace(/\\'/g, "'");
-    if (!stale || stale === v || stale.length < 20 || /\{\w+\}/.test(stale)) continue;
-    const r = syncChunkTexts([{ oldVal: stale, newVal: v }]);
-    results.push({ stale: stale.slice(0, 120), ...r });
-  }
-  if (!results.length) return res.json({ ok: false, reason: 'no stale variant found in chunks' });
-  const publishedAt = bumpPublishedAt();
-  audit(req.ip, 'block_force_sync', { path: rel, id, results, publishedAt });
-  res.json({ ok: true, results, publishedAt });
 });
 
 app.get('/api/admin/pages/*', requireAuth, (req, res) => {
