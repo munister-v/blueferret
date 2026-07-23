@@ -101,7 +101,7 @@ async function render(){
   if(['dashboard','pages','media','audit'].includes(activeTab)) el.innerHTML=renderSkeleton();
   try{
     switch(activeTab){
-      case'dashboard':el.innerHTML=await renderDash();setTimeout(()=>{try{checkSiteHealth();}catch{}},50);break;
+      case'dashboard':el.innerHTML=await renderDash();break;
       case'games':el.innerHTML=renderGamesList();break;
       case'pages':await renderPages();break;
       case'media':await renderMedia();break;
@@ -143,12 +143,6 @@ async function renderDash(){
     upload:      {ico:'🖼',bg:'rgba(75,178,114,.1)',   label:'Файл завантажено'},
     media_delete:{ico:'🗑',bg:'rgba(239,68,68,.1)',    label:'Файл видалено'},
     password_change:{ico:'🔐',bg:'rgba(99,102,241,.1)',label:'Пароль змінено'},
-    page_restore:{ico:'🕘',bg:'rgba(0,159,227,.1)',    label:'Версію сторінки відновлено'},
-    block_force_sync:{ico:'🔄',bg:'rgba(251,191,36,.1)',label:'Блок синхронізовано з бандлом'},
-    integrity_watchdog:{ico:'🔴',bg:'rgba(239,68,68,.12)',label:'УВАГА: биті посилання на JS'},
-    integrity_missing_refs:{ico:'🔴',bg:'rgba(239,68,68,.12)',label:'УВАГА: биті посилання після збереження'},
-    chunk_sync_refused:{ico:'🛡',bg:'rgba(239,68,68,.1)',label:'Захист: відхилено зламаний JS'},
-    content_save:{ico:'🌐',bg:'rgba(0,159,227,.1)',    label:'Тексти сайту збережено'},
   };
   const feedItems=auditRows.slice(0,6).map(r=>{
     const cfg=ACT_CFG[r.action]||{ico:'📋',bg:'#f1f5f9',label:r.action};
@@ -165,11 +159,6 @@ async function renderDash(){
     <div class="sc bl"><div class="n">${st.games}</div><div class="l">Ігор</div><div class="trend">опубліковано</div></div>
     <div class="sc"><div class="n">${st.drafts}</div><div class="l">Чернеток</div></div>
     <div class="sc am"><div class="n">${st.uploads}</div><div class="l">Медіафайлів</div></div>
-    <div class="sc" id="bf-health-card" style="cursor:pointer" onclick="checkSiteHealth(true)" title="Клікніть, щоб перевірити ще раз">
-      <div class="n" id="bf-health-ico" style="font-size:22px">⏳</div>
-      <div class="l">Здоровʼя сайту</div>
-      <div class="trend" id="bf-health-txt">перевірка…</div>
-    </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:18px">
     <div class="card" style="margin:0">
@@ -187,26 +176,6 @@ async function renderDash(){
     </div>
   </div>`;
 }
-
-// ── site health (integrity) on dashboard ──
-async function checkSiteHealth(manual){
-  const ico=document.getElementById('bf-health-ico'),txt=document.getElementById('bf-health-txt');
-  if(!ico)return;
-  if(manual){ico.textContent='⏳';txt.textContent='перевірка…';}
-  try{
-    const r=await api('GET','/api/admin/integrity');
-    if(r.missing&&r.missing.length){
-      ico.textContent='🔴';
-      txt.textContent=`${r.missing.length} битих посилань!`;
-      txt.style.color='#ef4444';
-    }else{
-      ico.textContent='🟢';
-      txt.textContent=`${r.pages} сторінок · все ок`;
-      txt.style.color='';
-    }
-  }catch(e){ico.textContent='⚪';txt.textContent='недоступно';}
-}
-window.checkSiteHealth=checkSiteHealth;
 
 // ── GAMES LIST ──
 function renderGamesList(){
@@ -1445,12 +1414,6 @@ function renderPagesUI(){
           + Нова
         </button>
       </div>
-      <div style="padding:6px 10px 2px">
-        <input type="text" id="pgGlobalSearch" placeholder="🔎 Знайти текст на сайті…" value="${esc(pgSearchQ)}"
-          oninput="pgGlobalSearchInput(this.value)"
-          style="width:100%;padding:7px 10px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--txt);outline:none">
-        <div id="pgSearchResults"></div>
-      </div>
       ${sideHtml}
     </div>
     <!-- editor -->
@@ -1540,30 +1503,6 @@ function execCmdLink(){
 }
 window.execCmdLink=execCmdLink;
 
-// ── global "where is this text" search ──
-let pgSearchQ='',pgSearchTimer=null;
-function pgGlobalSearchInput(v){
-  pgSearchQ=v;
-  clearTimeout(pgSearchTimer);
-  const box=document.getElementById('pgSearchResults');
-  if(!v||v.trim().length<3){if(box)box.innerHTML='';return;}
-  pgSearchTimer=setTimeout(async()=>{
-    const box=document.getElementById('pgSearchResults');if(!box)return;
-    box.innerHTML='<div style="font-size:11px;opacity:.5;padding:6px 2px">Пошук…</div>';
-    try{
-      const r=await api('GET','/api/admin/search-text?q='+encodeURIComponent(v.trim()));
-      const rs=r.results||[];
-      box.innerHTML=rs.length?rs.map(x=>`
-        <div onclick="pgSearchQ='';selectPage('${esc(x.file)}')" style="cursor:pointer;padding:7px 9px;margin-top:5px;background:rgba(0,159,227,.07);border:1px solid rgba(0,159,227,.2);border-radius:8px">
-          <div style="font-size:11.5px;font-weight:700;color:var(--bf)">${esc(x.path==='/'?'Головна':x.path)}${x.count>1?` <span style="opacity:.6;font-weight:400">· ${x.count}×</span>`:''}</div>
-          <div style="font-size:10.5px;opacity:.65;margin-top:2px;line-height:1.45">${esc(x.snippet)}</div>
-        </div>`).join('')
-      :'<div style="font-size:11px;opacity:.5;padding:6px 2px">Нічого не знайдено</div>';
-    }catch(e){box.innerHTML='<div style="font-size:11px;color:#ef4444;padding:6px 2px">Помилка пошуку</div>';}
-  },350);
-}
-window.pgGlobalSearchInput=pgGlobalSearchInput;
-
 function markEdited(id){
   const el=document.querySelector(`[data-blk="${id}"]`);
   if(!el)return;
@@ -1578,42 +1517,6 @@ function markEdited(id){
   autoResize(el);
   // live preview sync
   syncToPreview(id,val);
-  saveDraftDebounced();
-}
-
-// ── local draft autosave: survive a crashed/closed browser tab ──
-let draftTimer=null;
-function saveDraftDebounced(){
-  clearTimeout(draftTimer);
-  draftTimer=setTimeout(()=>{
-    try{
-      if(!activePage)return;
-      if(Object.keys(pageEdited).length===0){localStorage.removeItem('bf_draft:'+activePage);return;}
-      localStorage.setItem('bf_draft:'+activePage,JSON.stringify({ts:Date.now(),edited:pageEdited}));
-    }catch{}
-  },600);
-}
-function clearDraft(page){try{localStorage.removeItem('bf_draft:'+page);}catch{}}
-function maybeRestoreDraft(page){
-  let d=null;
-  try{d=JSON.parse(localStorage.getItem('bf_draft:'+page)||'null');}catch{}
-  if(!d||!d.edited||!Object.keys(d.edited).length)return;
-  if(Date.now()-d.ts>72*3600*1000){clearDraft(page);return;} // stale after 3 days
-  // only offer edits that still differ from the saved block values
-  const meaningful={};
-  for(const[id,val]of Object.entries(d.edited)){
-    const b=pageBlocks.find(x=>x.id===id||id.startsWith(x.id+'_'));
-    if(b&&(id.endsWith('_href')?val!==b.href:val!==b.value))meaningful[id]=val;
-  }
-  if(!Object.keys(meaningful).length){clearDraft(page);return;}
-  const when=new Date(d.ts).toLocaleString('uk-UA',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'});
-  if(confirm(`Знайдено незбережену чернетку цієї сторінки (${when}, ${Object.keys(meaningful).length} змін). Відновити?`)){
-    pageEdited=meaningful;
-    renderPagesUI();
-    toast('Чернетку відновлено — не забудьте зберегти','i');
-  }else{
-    clearDraft(page);
-  }
 }
 function updateCharCounter(id,val){
   const cnt=$(`#cc_${CSS.escape(id)}`);if(!cnt)return;
@@ -1830,8 +1733,7 @@ async function saveSiteContent(){
       const last=/^\d+$/.test(parts.at(-1))?+parts.at(-1):parts.at(-1);o[last]=c.value;
     });
     siteEdited={};
-    if(r.integrity&&r.integrity.length) toast(`⚠ Збережено, але знайдено ${r.integrity.length} битих посилань на JS — повідомте розробника`,'er');
-    else toast(`Збережено ${r.applied} змін ✓`,'ok');
+    toast(`Збережено ${r.applied} змін ✓`,'ok');
     renderSiteText();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
@@ -1900,11 +1802,9 @@ window.restorePageBackup=restorePageBackup;
 
 async function selectPage(file, force=false){
   if(activePage===file && !force) return;
-  if(!force&&activePage&&hasUnsavedPageEdits()&&!confirm('Є незбережені зміни на цій сторінці — перейти без збереження?'))return;
   activePage=file; pageBlocks=[]; pageEdited={}; deletedBlocks.clear();
   try{const res=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(file)}`);pageBlocks=res.blocks||[];}catch{}
   renderPagesUI();
-  if(!force)setTimeout(()=>{try{maybeRestoreDraft(file);}catch{}},150);
 }
 window.selectPage=selectPage;
 
@@ -1965,14 +1865,6 @@ async function savePatchedPage(){
     const fresh=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(activePage)}`).catch(()=>null);
     if(fresh&&Array.isArray(fresh.blocks))pageBlocks=fresh.blocks;
     pageEdited={}; deletedBlocks.clear();
-    clearDraft(activePage);
-    // remember what was just saved — the preview reload below re-renders the
-    // REAL page (with hydration), so we can verify the visitor actually sees
-    // the new text, end-to-end
-    pendingVerify={page:activePage,ts:Date.now(),texts:updates
-      .filter(u=>!u.delete&&!u.isNew&&typeof u.newVal==='string')
-      .map(u=>normTxt(stripHtml(u.newVal)).toLowerCase())
-      .filter(t=>t.length>=8) };
     refreshPreview();
     const pg=pages.find(p=>p.file===activePage);if(pg)pg.mtime=Date.now();
     // renderPagesUI rebuilds the whole editor DOM — without this the blocks
@@ -2020,24 +1912,6 @@ function stripHtml(s){const d=document.createElement('div');d.innerHTML=String(s
 
 let currentPvDoc=null; // last-mapped iframe document, used to self-heal blockElMap on demand
 
-// set by savePatchedPage; consumed by onPvLoad to verify the freshly saved
-// texts survive hydration on the real page
-let pendingVerify=null;
-
-function verifySavedTexts(doc){
-  if(!pendingVerify||pendingVerify.page!==activePage||Date.now()-pendingVerify.ts>30000){pendingVerify=null;return;}
-  const texts=pendingVerify.texts;pendingVerify=null;
-  if(!texts.length)return;
-  let body='';
-  try{body=normTxt(doc.body.innerText).toLowerCase();}catch{return;}
-  const missing=texts.filter(t=>!body.includes(t));
-  if(missing.length){
-    toast(`⚠ ${missing.length===1?'Збережений текст не видно':'Деякі збережені тексти не видно'} на сторінці після завантаження — можливий розсинхрон із JS-бандлом`,'er');
-  }else{
-    toast('Перевірено: зміни видно на сторінці ✓','ok');
-  }
-}
-
 function onPvLoad(){
   const f=$('#pvIframe');if(!f)return;
   f.classList.remove('pv-refreshing');f.classList.add('pv-refreshed');
@@ -2056,9 +1930,6 @@ function onPvLoad(){
     setTimeout(()=>{ try{ mapBlocksToDom(doc); injectPreviewHelpers(doc,f); }catch(e){} },350);
     // gentle scroll past header
     setTimeout(()=>{ try{const h=doc.querySelector('header');if(h)f.contentWindow.scrollTo({top:h.offsetHeight+8,behavior:'smooth'});}catch{} },400);
-    // end-to-end check: wait for hydration to settle, then confirm the texts
-    // we just saved are what the visitor actually sees
-    setTimeout(()=>{ try{ verifySavedTexts(doc); }catch{} },1400);
   }catch{}
 }
 window.onPvLoad=onPvLoad;
@@ -2250,12 +2121,8 @@ document.addEventListener('keydown',e=>{
     if(pv){pv.style.display=pv.style.display==='none'?'':'none';}
   }
 });
-function hasUnsavedPageEdits(){
-  return (pageEdited&&Object.keys(pageEdited).length>0)||deletedBlocks.size>0||pageBlocks.some(b=>b.isNew);
-}
 function closePagesEditor(){
-  if(hasUnsavedPageEdits()&&!confirm('Є незбережені зміни — закрити без збереження?'))return;
-  activePage=null;pageBlocks=[];pageEdited={};deletedBlocks.clear();
+  activePage=null;pageBlocks=[];pageEdited={};
   $('#mainContent').style.padding='22px';
   renderPagesUI();
 }

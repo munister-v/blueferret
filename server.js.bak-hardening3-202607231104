@@ -444,8 +444,6 @@ function syncGamesChunkVisibility() {
       if (!condRe.test(content)) continue;
       if (content.match(condRe)[0] === newCond) continue;
       content = content.replace(condRe, newCond);
-      try { assertValidJs(content, it); }
-      catch (e) { audit('system', 'chunk_sync_refused', { file: it, error: e.message }); continue; }
       const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
       const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + `-${hash}.js`;
       if (newName === it) { writeAtomic(full, content); continue; }
@@ -1233,14 +1231,9 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
     })(SITE_ROOT);
     // best-effort SELinux restore
     try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
-    let integrity = null;
-    try {
-      const v = verifyChunkRefs();
-      if (v.missing.length) { integrity = v.missing; audit('system', 'integrity_missing_refs', { after: 'content_save', missing: v.missing.slice(0, 10) }); }
-    } catch {}
     const publishedAt = bumpPublishedAt();
     audit(req.ip,'content_save',{applied,bundle:newName,htmlChanged,publishedAt});
-    res.json({ok:true, applied, bundle:newName, htmlChanged, publishedAt, integrity});
+    res.json({ok:true, applied, bundle:newName, htmlChanged, publishedAt});
   }catch(e){
     res.status(500).json({error:e.message});
   }
@@ -1436,34 +1429,6 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   }
 });
 
-// ── global text search across pages ──
-// "Where do I edit this sentence?" — find which page contains a given text.
-app.get('/api/admin/search-text', requireAuth, (req, res) => {
-  const q = String(req.query.q || '').trim().toLowerCase();
-  if (q.length < 3) return res.json({ results: [] });
-  const results = [];
-  for (const p of listPages()) {
-    try {
-      const html = fs.readFileSync(path.join(PAGES_ROOT, p.file), 'utf8');
-      // visible text only: strip scripts/styles/tags, decode entities
-      const text = decodeHtmlEnts(
-        html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ')
-            .replace(/<[^>]+>/g, ' ')
-      ).replace(/\s+/g, ' ');
-      const idx = text.toLowerCase().indexOf(q);
-      if (idx < 0) continue;
-      const from = Math.max(0, idx - 40);
-      results.push({
-        file: p.file, path: p.path,
-        snippet: (from > 0 ? '…' : '') + text.slice(from, idx + q.length + 60) + '…',
-        count: text.toLowerCase().split(q).length - 1
-      });
-      if (results.length >= 20) break;
-    } catch {}
-  }
-  res.json({ results });
-});
-
 // ── integrity, history, force-sync ──
 app.get('/api/admin/integrity', requireAuth, (_req, res) => {
   try { res.json(verifyChunkRefs()); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1581,14 +1546,9 @@ app.put('/api/admin/pages/*', requireAuth, (req, res) => {
   writeBackup(full);
   writeAtomic(full, content);
   if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
-  let integrity = null;
-  try {
-    const v = verifyChunkRefs();
-    if (v.missing.length) { integrity = v.missing; audit('system', 'integrity_missing_refs', { after: 'page_edit', missing: v.missing.slice(0, 10) }); }
-  } catch {}
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'page_edit',{path:rel,publishedAt});
-  res.json({ok:true,publishedAt,integrity});
+  res.json({ok:true,publishedAt});
 });
 
 // ---------- public ----------
@@ -1711,19 +1671,6 @@ const server = app.listen(PORT, HOST, () => {
       console.log('[blueferret-admin] games catalog and game pages regenerated on boot');
     } catch(e) { console.error('[blueferret-admin] regen error:', e); }
   }, 1000);
-  // integrity watchdog: broken chunk refs = dead pages; check on boot and
-  // every 6h, log to audit only when something is actually wrong
-  const integrityWatch = () => {
-    try {
-      const v = verifyChunkRefs();
-      if (v.missing.length) {
-        audit('system', 'integrity_watchdog', { missing: v.missing.slice(0, 10), total: v.missing.length });
-        console.error('[blueferret-admin] INTEGRITY: broken chunk refs:', v.missing.slice(0, 5));
-      }
-    } catch {}
-  };
-  setTimeout(integrityWatch, 5000);
-  setInterval(integrityWatch, 6 * 3600 * 1000);
 });
 
 function shutdown(signal) {

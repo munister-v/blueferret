@@ -1436,34 +1436,6 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   }
 });
 
-// ── global text search across pages ──
-// "Where do I edit this sentence?" — find which page contains a given text.
-app.get('/api/admin/search-text', requireAuth, (req, res) => {
-  const q = String(req.query.q || '').trim().toLowerCase();
-  if (q.length < 3) return res.json({ results: [] });
-  const results = [];
-  for (const p of listPages()) {
-    try {
-      const html = fs.readFileSync(path.join(PAGES_ROOT, p.file), 'utf8');
-      // visible text only: strip scripts/styles/tags, decode entities
-      const text = decodeHtmlEnts(
-        html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ')
-            .replace(/<[^>]+>/g, ' ')
-      ).replace(/\s+/g, ' ');
-      const idx = text.toLowerCase().indexOf(q);
-      if (idx < 0) continue;
-      const from = Math.max(0, idx - 40);
-      results.push({
-        file: p.file, path: p.path,
-        snippet: (from > 0 ? '…' : '') + text.slice(from, idx + q.length + 60) + '…',
-        count: text.toLowerCase().split(q).length - 1
-      });
-      if (results.length >= 20) break;
-    } catch {}
-  }
-  res.json({ results });
-});
-
 // ── integrity, history, force-sync ──
 app.get('/api/admin/integrity', requireAuth, (_req, res) => {
   try { res.json(verifyChunkRefs()); } catch (e) { res.status(500).json({ error: e.message }); }
