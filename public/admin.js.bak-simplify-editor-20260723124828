@@ -1169,7 +1169,7 @@ function moveBlockUp(id) {
     const temp = pageBlocks[idx];
     pageBlocks[idx] = pageBlocks[idx - 1];
     pageBlocks[idx - 1] = temp;
-    pageReordered = true;
+    syncReorderToPreview(id, pageBlocks[idx].id);
     switchPedTab(pedTab);
   }
 }
@@ -1179,7 +1179,7 @@ function moveBlockDown(id) {
     const temp = pageBlocks[idx];
     pageBlocks[idx] = pageBlocks[idx + 1];
     pageBlocks[idx + 1] = temp;
-    pageReordered = true;
+    syncReorderToPreview(id, pageBlocks[idx].id);
     switchPedTab(pedTab);
   }
 }
@@ -1459,8 +1459,8 @@ function renderPagesUI(){
       ${activePage?`
         <div class="edit-mode-bar">
           <span class="edit-mode-dot"></span>
-          <strong>Редагування сторінки</strong>
-          <span style="opacity:.7">— редагуйте блоки зліва, прев'ю оновиться після «Зберегти»</span>
+          <strong>Режим редагування</strong>
+          <span style="opacity:.7">— клікніть текст у превʼю щоб перейти до поля</span>
         </div>
         <div class="ped-toolbar">
           <span class="ped-filename">/${activePage}</span>
@@ -1577,9 +1577,8 @@ function markEdited(id){
   updateCharCounter(id,val);
   updateTabBadges();
   autoResize(el);
-  // NOTE: no live preview DOM mutation. The preview is a plain read-only pane
-  // that reloads on Save (see savePatchedPage → refreshPreview). This is the
-  // "normal editor" the fragile two-way live-sync used to fight against.
+  // live preview sync
+  syncToPreview(id,val);
   saveDraftDebounced();
 }
 
@@ -1636,14 +1635,20 @@ function resetField(id){
 }
 
 const deletedBlocks=new Set();
+function livePreviewSetDeleted(id,deleted){
+  const el=getMappedEl(id);
+  if(el&&el.nodeType===1)el.style.opacity=deleted?'0.15':'';
+}
 function deleteBlock(id){
   if(confirm('Видалити цей блок зі сторінки?')){
     deletedBlocks.add(id);
+    livePreviewSetDeleted(id,true);
     switchPedTab(pedTab);
   }
 }
 function restoreBlock(id){
   deletedBlocks.delete(id);
+  livePreviewSetDeleted(id,false);
   switchPedTab(pedTab);
 }
 window.restoreBlock=restoreBlock;
@@ -2070,8 +2075,17 @@ function onPvLoad(){
   f.classList.remove('pv-refreshing');f.classList.add('pv-refreshed');
   try{
     const doc=f.contentDocument;if(!doc)return;
-    // Plain read-only preview: no element mapping, no click-to-edit injection,
-    // no live DOM mutation. Just handle scroll position after (re)load.
+    currentPvDoc=doc;
+    // Map immediately -- most pages are plain server-rendered HTML and are
+    // already queryable the instant the iframe fires load, so waiting a
+    // fixed 350ms before the very first edit could live-sync was a pure,
+    // pointless bug: type fast right after opening a page and the first
+    // keystrokes silently went nowhere.
+    try{ mapBlocksToDom(doc); injectPreviewHelpers(doc,f); }catch(e){}
+    // Client-hydrated routes (e.g. /igry/) can still restructure their DOM
+    // after mount, so re-map once more once hydration has had time to
+    // settle -- this is a safety net, not the primary path anymore.
+    setTimeout(()=>{ try{ mapBlocksToDom(doc); injectPreviewHelpers(doc,f); }catch(e){} },350);
     if(pvRestoreScroll!=null){
       // post-save reload: put the preview back where the user was, not at the top
       const y=pvRestoreScroll; pvRestoreScroll=null;
