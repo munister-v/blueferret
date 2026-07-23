@@ -1876,31 +1876,11 @@ async function selectPage(file, force=false){
   if(activePage===file && !force) return;
   if(!force&&activePage&&hasUnsavedPageEdits()&&!confirm('Є незбережені зміни на цій сторінці — перейти без збереження?'))return;
   activePage=file; pageBlocks=[]; pageEdited={}; deletedBlocks.clear();
-  try{ localStorage.setItem('bf_lastPage', file); }catch{}
   try{const res=await api('GET',`/api/admin/page-extract?path=${encodeURIComponent(file)}`);pageBlocks=res.blocks||[];}catch{}
   renderPagesUI();
   if(!force)setTimeout(()=>{try{maybeRestoreDraft(file);}catch{}},150);
 }
 window.selectPage=selectPage;
-
-// The admin page (activePage etc.) is plain in-memory JS state — nothing
-// persists it. Users hitting a full browser reload right after Save (Cmd+R
-// out of habit, or any other full navigation to /admin — nginx access.log
-// shows this happens routinely) land back on "Виберіть сторінку" with the
-// page they were just editing forgotten, looking exactly like the edit was
-// lost. Re-opening the last edited page on boot turns that dead end into a
-// seamless resume.
-async function restoreLastPageIfAny(){
-  if(activeTab!=='pages'||activePage)return;
-  let file=null;
-  try{ file=localStorage.getItem('bf_lastPage'); }catch{}
-  if(!file)return;
-  try{
-    pages=await api('GET','/api/admin/pages');
-  }catch{return;}
-  if(!pages.find(p=>p.file===file))return; // page renamed/deleted since
-  await selectPage(file, true);
-}
 
 // After a DOM rebuild the block list is re-created and textarea heights are
 // recomputed a frame later, so restoring a raw scrollTop pixel value lands on
@@ -2294,7 +2274,6 @@ function hasUnsavedPageEdits(){
 function closePagesEditor(){
   if(hasUnsavedPageEdits()&&!confirm('Є незбережені зміни — закрити без збереження?'))return;
   activePage=null;pageBlocks=[];pageEdited={};deletedBlocks.clear();
-  try{ localStorage.removeItem('bf_lastPage'); }catch{}
   $('#mainContent').style.padding='22px';
   renderPagesUI();
 }
@@ -2636,7 +2615,6 @@ async function boot(){
     [S,games,kik]=await Promise.all([api('GET','/api/admin/settings'),api('GET','/api/admin/games'),api('GET','/api/admin/kik')]);
     activeTab=loadTab();
     showApp();render();
-    if(activeTab==='pages')setTimeout(()=>{restoreLastPageIfAny().catch(()=>{});},250);
   }catch(e){
     showLogin();
     const err=$('#loginErr');if(err)err.textContent=e.message||'CMS тимчасово недоступна';
