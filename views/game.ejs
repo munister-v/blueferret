@@ -207,12 +207,23 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 </div>
 <script>
 (function(){
+  var els=document.querySelectorAll('.rv');
   var io=new IntersectionObserver(function(es){
     es.forEach(function(e){
       if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);}
     });
   },{threshold:.15,rootMargin:'0px 0px -50px 0px'});
-  document.querySelectorAll('.rv').forEach(function(el){io.observe(el);});
+  els.forEach(function(el){io.observe(el);});
+  // Fallback: IntersectionObserver callbacks are deprioritized/frozen by the
+  // browser while the tab is backgrounded (visibilityState "hidden"), and can
+  // also simply fail to fire on some devices/slow loads. A permanently
+  // opacity:0 section (title, stats, description all invisible) reads as a
+  // broken page, so force everything visible after 1.2s regardless of
+  // whether the observer ever ran.
+  setTimeout(function(){
+    els.forEach(function(el){ el.classList.add('vis'); });
+    io.disconnect();
+  },1200);
 })();
 </script>
 <script src="/api/public/runtime.js" defer></script>
