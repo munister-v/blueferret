@@ -456,45 +456,6 @@ function syncGamesChunkVisibility() {
   }
   try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
 }
-
-// The site nav's "Наші ігри" dropdown (shared layout chunk, every page) has
-// its OWN separate hardcoded single-slug condition — `hidden:"trymaysia"!==
-// e.slug` — baked in during the original migration when trymaysia was the
-// only real game. Every other game (druha-gra, tretya-gra, any future one)
-// was permanently hidden from the nav regardless of status, independent of
-// the catalog-page whitelist above. Reuses the same `always_visible` DB flag
-// so one admin toggle ("Показувати як активну картку") controls visibility
-// consistently in both the catalog and the nav dropdown.
-function syncGamesNavVisibility() {
-  const root = path.join(SITE_ROOT, '_next', 'static', 'chunks');
-  const condRe = /hidden:(?:"[^"]*"!==e\.slug|!\[[^\]]*\]\.includes\(e\.slug\))/;
-  const visibleSlugs = gAll.all().filter(r => (r.always_visible==null?1:r.always_visible)).map(r => r.slug);
-  const newCond = `hidden:!${JSON.stringify(visibleSlugs)}.includes(e.slug)`;
-  const stack = [root];
-  while (stack.length) {
-    const dir = stack.pop();
-    let items; try { items = fs.readdirSync(dir); } catch { continue; }
-    for (const it of items) {
-      const full = path.join(dir, it); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { stack.push(full); continue; }
-      if (!it.endsWith('.js')) continue;
-      let content; try { content = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      if (!condRe.test(content)) continue;
-      if (content.match(condRe)[0] === newCond) continue;
-      content = content.replace(condRe, newCond);
-      try { assertValidJs(content, it); }
-      catch (e) { audit('system', 'chunk_sync_refused', { file: it, error: e.message }); continue; }
-      const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
-      const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + `-${hash}.js`;
-      if (newName === it) { writeAtomic(full, content); continue; }
-      writeAtomic(path.join(dir, newName), content);
-      try { fs.unlinkSync(full); } catch {}
-      relinkChunkEverywhere(it, newName);
-    }
-  }
-  try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
-}
-
 function relinkChunkEverywhere(oldName, newName) {
   (function walk(d) {
     let items; try { items = fs.readdirSync(d); } catch { return; }
@@ -729,7 +690,6 @@ app.post('/api/admin/games', requireAuth, (req, res) => {
   writeGeneratedGamePage(gOne.get(info.lastInsertRowid));
   regenGamesCatalog();
   syncGamesChunkVisibility();
-  syncGamesNavVisibility();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_create',{id:info.lastInsertRowid,slug:data.slug,publishedAt});
   res.status(201).json({...gameRow(gOne.get(info.lastInsertRowid)), publishedAt});
@@ -745,7 +705,6 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   writeGeneratedGamePage(gOne.get(id));
   regenGamesCatalog();
   syncGamesChunkVisibility();
-  syncGamesNavVisibility();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_update',{id,publishedAt});
   res.json({...gameRow(gOne.get(id)), publishedAt});
@@ -757,8 +716,6 @@ app.delete('/api/admin/games/:id', requireAuth, (req, res) => {
   removeGeneratedGamePage(ex.slug);
   gDel.run(id);
   regenGamesCatalog();
-  syncGamesChunkVisibility();
-  syncGamesNavVisibility();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_delete',{id,publishedAt});
   res.json({ok:true,publishedAt});
@@ -1786,8 +1743,6 @@ const server = app.listen(PORT, HOST, () => {
       for (const row of allGames) {
         writeGeneratedGamePage(row);
       }
-      syncGamesChunkVisibility();
-      syncGamesNavVisibility();
       console.log('[blueferret-admin] games catalog and game pages regenerated on boot');
     } catch(e) { console.error('[blueferret-admin] regen error:', e); }
   }, 1000);
