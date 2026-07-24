@@ -689,7 +689,7 @@ function syncChunkTexts(pairs) {
   }
   try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
   _chunksBlobCache.at = 0; // invalidate desync-detector cache
-  return { files: filesPatched, matched: matchedPairs.size, total: safe.length };
+  return { files: filesPatched, matched: matchedPairs.size, total: safe.length, matchedVals: [...matchedPairs] };
 }
 
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
@@ -1271,6 +1271,88 @@ function setByPath(obj,pathStr,val){
   o[last]=val; return true;
 }
 
+// Re-serialize the dictionary back into its chunk, cache-bust the filename and
+// relink every HTML that referenced it. The blob sits inside a JS
+// single-quoted string literal (JSON.parse('...')), so a bare apostrophe in any
+// field (very common in Ukrainian, e.g. "Зв'яжіться") would terminate that
+// string early and corrupt the chunk — escape it the same way jsToJson()
+// un-escapes it on read. Throws if the result would not be valid JS.
+function writeSiteContent(sc){
+  const newBlob=JSON.stringify(sc.obj).replace(/'/g,"\\'");
+  const oldContent=sc.bundle.content;
+  const newContent=oldContent.slice(0,sc.loc.start)+newBlob+oldContent.slice(sc.loc.end);
+  const oldName=sc.bundle.name;                    // e.g. 6398-abc.js
+  const prefix=oldName.split('-')[0];              // 6398
+  const hash=crypto.createHash('sha256').update(newContent).digest('hex').slice(0,16);
+  const newName=`${prefix}-${hash}.js`;
+  assertValidJs(newContent, newName); // never publish a chunk that would crash the whole site
+  writeAtomic(path.join(sc.bundle.dir,newName),newContent);
+  if(newName!==oldName) fs.unlinkSync(sc.bundle.file);
+  let htmlChanged=0;
+  (function walk(d){
+    for(const f of fs.readdirSync(d)){
+      if(f.startsWith('.')||f==='_next'||f==='uploads'||f==='cdn-cgi') continue;
+      const full=path.join(d,f), st=fs.statSync(full);
+      if(st.isDirectory()) walk(full);
+      else if(f==='index.html'){
+        let h=fs.readFileSync(full,'utf8');
+        if(h.includes(oldName)){ h=h.split(oldName).join(newName); writeAtomic(full,h); htmlChanged++; }
+      }
+    }
+  })(SITE_ROOT);
+  // best-effort SELinux restore
+  try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+  _chunksBlobCache.at = 0;
+  return { bundle:newName, htmlChanged };
+}
+
+// Match a dictionary template against a rendered string, recovering what each
+// {slot} stood for. Returns null when the template does not describe the text.
+function matchTemplate(tpl, rendered){
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const keys=[]; let src='^', last=0;
+  for(const m of tpl.matchAll(/\{(\w+)\}/g)){
+    src += esc(tpl.slice(last, m.index)) + '([\\s\\S]*?)';
+    keys.push(m[1]); last = m.index + m[0].length;
+  }
+  src += esc(tpl.slice(last)) + '$';
+  let m; try { m = new RegExp(src).exec(rendered); } catch { return null; }
+  return m ? keys.map((k,i)=>({ key:k, value:m[i+1] })) : null;
+}
+
+// Not every visible string is baked into the chunks as a literal: the
+// site-content dictionary stores some as templates with {slot}s (e.g.
+// "…чого чекати від «{name}»."), so the rendered text a page editor sees
+// matches nothing literally and syncChunkTexts silently does nothing. Map the
+// old rendered text back onto its template, re-apply the slots to the new text,
+// and rewrite the template instead. Refuses rather than guessing whenever a
+// slot cannot be placed unambiguously in the new text.
+function syncSiteContentTemplate(oldRendered, newRendered){
+  if(!oldRendered || !newRendered || oldRendered === newRendered) return null;
+  const sc = readSiteContent(); if(!sc) return null;
+  const hits=[];
+  (function walk(o, p){
+    if(typeof o === 'string'){
+      if(!/\{\w+\}/.test(o)) return;
+      const slots = matchTemplate(o, oldRendered);
+      if(slots) hits.push({ path:p, slots });
+      return;
+    }
+    if(o && typeof o === 'object') for(const k of Object.keys(o)) walk(o[k], p ? p+'.'+k : k);
+  })(sc.obj, '');
+  if(!hits.length) return null;
+  if(hits.length > 1) return { ok:false, reason:'ambiguous', paths:hits.map(h=>h.path) };
+  const { path:p, slots } = hits[0];
+  let newTpl = newRendered;
+  for(const s of slots){
+    if(!s.value) return { ok:false, reason:'slot_empty', slot:s.key, path:p };
+    if(newTpl.split(s.value).length !== 2) return { ok:false, reason:'slot_lost', slot:s.key, value:s.value, path:p };
+    newTpl = newTpl.split(s.value).join('{'+s.key+'}');
+  }
+  if(!setByPath(sc.obj, p, newTpl)) return { ok:false, reason:'write_failed', path:p };
+  return { ok:true, path:p, template:newTpl, ...writeSiteContent(sc) };
+}
+
 app.get('/api/admin/site-content', requireAuth, (_req,res)=>{
   const sc=readSiteContent();
   if(!sc) return res.status(404).json({error:'content bundle not found'});
@@ -1289,39 +1371,8 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
     }
   }
   if(!applied) return res.json({ok:true, applied:0});
-  // Re-serialize. The blob sits inside a JS single-quoted string literal
-  // (JSON.parse('...')), so a bare apostrophe in any field (very common in
-  // Ukrainian text, e.g. "Зв'яжіться") would terminate that string early and
-  // corrupt the whole chunk — escape it the same way jsToJson() un-escapes
-  // it on read.
-  const newBlob=JSON.stringify(sc.obj).replace(/'/g,"\\'");
-  const oldContent=sc.bundle.content;
-  const newContent=oldContent.slice(0,sc.loc.start)+newBlob+oldContent.slice(sc.loc.end);
-  // cache-bust: rename bundle with fresh hash, update all HTML refs
-  const oldName=sc.bundle.name;                    // e.g. 6398-abc.js
-  const prefix=oldName.split('-')[0];              // 6398
-  const hash=crypto.createHash('sha256').update(newContent).digest('hex').slice(0,16);
-  const newName=`${prefix}-${hash}.js`;
-  const newPath=path.join(sc.bundle.dir,newName);
   try{
-    assertValidJs(newContent, newName); // never publish a chunk that would crash the whole site
-    writeAtomic(newPath,newContent);
-    if(newName!==oldName) fs.unlinkSync(sc.bundle.file);
-    // update references across all HTML
-    let htmlChanged=0;
-    (function walk(d){
-      for(const f of fs.readdirSync(d)){
-        if(f.startsWith('.')||f==='_next'||f==='uploads'||f==='cdn-cgi') continue;
-        const full=path.join(d,f), st=fs.statSync(full);
-        if(st.isDirectory()) walk(full);
-        else if(f==='index.html'){
-          let h=fs.readFileSync(full,'utf8');
-          if(h.includes(oldName)){ h=h.split(oldName).join(newName); writeAtomic(full,h); htmlChanged++; }
-        }
-      }
-    })(SITE_ROOT);
-    // best-effort SELinux restore
-    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+    const { bundle:newName, htmlChanged } = writeSiteContent(sc);
     let integrity = null;
     try {
       const v = verifyChunkRefs();
@@ -1509,8 +1560,19 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     // before cheerio — see prePairs)
     writeAtomic(full, $.html());
     if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
-    let chunkSync = null;
-    if (textPairs.length) { try { chunkSync = syncChunkTexts(textPairs); } catch(e){ chunkSync = {error: e.message}; } }
+    let chunkSync = null, templateSync = null;
+    if (textPairs.length) {
+      try { chunkSync = syncChunkTexts(textPairs); } catch(e){ chunkSync = {error: e.message}; }
+      // Anything the chunks had no literal copy of may still be a
+      // site-content template rendered with a {slot} filled in.
+      const matched = new Set((chunkSync && chunkSync.matchedVals) || []);
+      for (const p of textPairs) {
+        if (matched.has(p.oldVal)) continue;
+        let r; try { r = syncSiteContentTemplate(p.oldVal, p.newVal); }
+        catch(e){ r = { ok:false, reason:'error', error:e.message }; }
+        if (r) (templateSync ||= []).push(r);
+      }
+    }
     // post-save integrity: a rename gone wrong must be visible immediately
     let integrity = null;
     try {
@@ -1518,8 +1580,8 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
       if (v.missing.length) { integrity = v.missing; audit('system', 'integrity_missing_refs', { after: 'page_patch', missing: v.missing.slice(0, 10) }); }
     } catch {}
     const publishedAt = bumpPublishedAt();
-    audit(req.ip, 'page_patch', {path: rel, changed, publishedAt, chunkSync});
-    res.json({ok: true, changed, publishedAt, integrity});
+    audit(req.ip, 'page_patch', {path: rel, changed, publishedAt, chunkSync, templateSync});
+    res.json({ok: true, changed, publishedAt, integrity, templateSync});
   } else {
     res.json({ok: true, changed: 0});
   }
@@ -1627,6 +1689,7 @@ app.post('/api/admin/block-sync', requireAuth, (req, res) => {
   const blob = chunksBlob();
   const prefix = v.slice(0, 25);
   const results = [];
+  let templatePath = null;
   // find each distinct stale variant: prefix..closing JSON quote
   let from = 0, guard = 0;
   while (guard++ < 10) {
@@ -1641,11 +1704,21 @@ app.post('/api/admin/block-sync', requireAuth, (req, res) => {
       j++;
     }
     const stale = blob.slice(i, j).replace(/\\'/g, "'");
-    if (!stale || stale === v || stale.length < 20 || /\{\w+\}/.test(stale)) continue;
+    if (!stale || stale === v || stale.length < 20) continue;
+    // A {slot} template can't be rewritten from the rendered text alone (the
+    // slot values are unrecoverable here) — name the dictionary key instead so
+    // the editor can send the user to 🌐 Тексти сайту rather than fail mutely.
+    if (/\{\w+\}/.test(stale)) {
+      if (!templatePath) { const sc = readSiteContent(); if (sc) (function walk(o,p){
+        if (typeof o === 'string') { if (o === stale) templatePath = p; return; }
+        if (o && typeof o === 'object') for (const k of Object.keys(o)) walk(o[k], p ? p+'.'+k : k);
+      })(sc.obj,''); }
+      continue;
+    }
     const r = syncChunkTexts([{ oldVal: stale, newVal: v }]);
     results.push({ stale: stale.slice(0, 120), ...r });
   }
-  if (!results.length) return res.json({ ok: false, reason: 'no stale variant found in chunks' });
+  if (!results.length) return res.json({ ok: false, reason: templatePath ? 'managed_template' : 'no stale variant found in chunks', templatePath });
   const publishedAt = bumpPublishedAt();
   audit(req.ip, 'block_force_sync', { path: rel, id, results, publishedAt });
   res.json({ ok: true, results, publishedAt });
