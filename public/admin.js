@@ -14,6 +14,7 @@ const NAV=[
   {g:'Огляд',items:[{id:'dashboard',ico:'📊',l:'Дашборд'}]},
   {g:'Контент',items:[
     {id:'games',ico:'🎲',l:'Ігри'},
+    {id:'kikprojects',ico:'🚀',l:'КІК проєкти'},
     {id:'pages',ico:'📄',l:'Сторінки'},
     {id:'media',ico:'🖼',l:'Медіа'},
   ]},
@@ -103,6 +104,7 @@ async function render(){
     switch(activeTab){
       case'dashboard':el.innerHTML=await renderDash();setTimeout(()=>{try{checkSiteHealth();}catch{}},50);break;
       case'games':el.innerHTML=renderGamesList();break;
+      case'kikprojects':await renderKikProjects();break;
       case'pages':await renderPages();break;
       case'media':await renderMedia();break;
       case'security':el.innerHTML=renderSecurity();break;
@@ -919,6 +921,176 @@ async function deleteKik(id){
 }
 function backToKik(){editingKik=null;const el=$('#mainContent');if(el)el.style.padding='22px';activeTab='kik';render();}
 window.openKikEditor=openKikEditor;window.saveKik=saveKik;window.deleteKik=deleteKik;window.backToKik=backToKik;
+
+// ── KIK PROJECT CARDS (/kik/proekty/) ──
+// Edits the array baked into the route chunk, not the (unused) kik_projects
+// table. Everything is staged in memory and pushed as one full-state PUT, so
+// reorder + hide + edit in any combination is a single atomic publish.
+let kp={list:[],hidden:[],dirty:false,openId:null,err:[]};
+const KP_STATUS=[['active','Збір коштів'],['preparing','Підготовка'],['complete','Завершено']];
+const KP_LIM={name:[2,72],shortDescription:[10,260],statusLabel:[2,36],updatePreview:[10,220]};
+const KP_LABEL={name:'Назва',shortDescription:'Опис на картці',statusLabel:'Підпис статусу',updatePreview:'Текст оновлення'};
+
+async function renderKikProjects(){
+  const el=$('#mainContent');
+  if(!kp.loaded){
+    const d=await api('GET','/api/admin/kik-projects');
+    kp={list:d.projects||[],hidden:d.hidden||[],dirty:false,openId:null,err:[],loaded:true};
+  }
+  el.innerHTML=kpMarkup();
+  kpBindSort();
+}
+function kpPct(p){return p.goal>0?Math.min(100,Math.round(p.raised/p.goal*100)):0;}
+function kpRow(p,hidden){
+  const pct=kpPct(p),open=kp.openId===p.id;
+  return `<div class="kp-row${open?' open':''}" data-id="${esc(p.id)}">
+    <div class="kp-head">
+      ${hidden?'':'<span class="kp-drag" title="Перетягніть, щоб змінити порядок">⠿</span>'}
+      <div class="kp-thumb">${p.coverImage?`<img src="${esc(p.coverImage)}" onerror="this.style.display='none'">`:''}</div>
+      <div class="kp-main">
+        <div class="kp-name">${esc(p.name)}</div>
+        <div class="kp-meta">
+          <span class="badge ${p.status==='active'?'b-g':p.status==='preparing'?'b-s':'b-r'}">${esc(p.statusLabel)}</span>
+          <span>${fmtM(p.raised)} / ${fmtM(p.goal)} ₴ · ${pct}%</span>
+          <span>Оновлено ${esc(p.lastUpdate)}</span>
+        </div>
+        <div class="pg"><span style="width:${pct}%"></span></div>
+      </div>
+      <div class="kp-acts">
+        <button class="btn btn-g btn-sm" onclick="kpToggleEdit('${jsq(p.id)}')">${open?'Згорнути':'✏️ Редагувати'}</button>
+        <button class="btn btn-sm ${hidden?'btn-k':'btn-g'}" onclick="kpSetVisible('${jsq(p.id)}',${hidden?'true':'false'})">${hidden?'👁 Показати':'🙈 Сховати'}</button>
+      </div>
+    </div>
+    ${open?kpForm(p):''}
+  </div>`;
+}
+function kpField(p,key,label,type){
+  const lim=KP_LIM[key],v=p[key]??'';
+  const len=String(v).trim().length;
+  const bad=lim&&(len<lim[0]||len>lim[1]);
+  const counter=lim?`<span class="kp-cnt${bad?' bad':''}" data-cnt="${key}">${len}/${lim[1]}</span>`:'';
+  const input=type==='area'
+    ? `<textarea rows="3" oninput="kpEdit('${jsq(p.id)}','${key}',this.value,true)">${esc(v)}</textarea>`
+    : `<input type="${type||'text'}" value="${esc(v)}" oninput="kpEdit('${jsq(p.id)}','${key}',this.value,true)">`;
+  return `<label class="kp-f"><span>${label}${counter}</span>${input}</label>`;
+}
+function kpForm(p){
+  return `<div class="kp-form">
+    ${kpField(p,'name','Назва')}
+    ${kpField(p,'shortDescription','Опис на картці','area')}
+    <div class="kp-grid">
+      <label class="kp-f"><span>Статус</span><select onchange="kpEdit('${jsq(p.id)}','status',this.value)">
+        ${KP_STATUS.map(([v,l])=>`<option value="${v}"${p.status===v?' selected':''}>${l}</option>`).join('')}
+      </select></label>
+      ${kpField(p,'statusLabel','Підпис статусу на картці')}
+      ${kpField(p,'raised','Зібрано, ₴','number')}
+      ${kpField(p,'goal','Ціль, ₴','number')}
+      ${kpField(p,'lastUpdate','Дата оновлення','date')}
+      ${kpField(p,'link','Посилання на проєкт')}
+    </div>
+    ${kpField(p,'updatePreview','Текст оновлення','area')}
+    ${kpField(p,'coverImage','Обкладинка (шлях на сайті)')}
+  </div>`;
+}
+function kpMarkup(){
+  const rows=kp.list.length?kp.list.map(p=>kpRow(p,false)).join('')
+    :`<div class="kp-empty">Усі проєкти приховані — сторінка покаже порожню сітку.</div>`;
+  const hid=kp.hidden.length?`<div class="card" style="margin-top:16px">
+      <div class="ch"><div><div class="ct">🙈 Приховані (${kp.hidden.length})</div>
+      <div class="cs">Не показуються на сайті й не рахуються в лічильниках. Дані збережені — можна повернути будь-коли.</div></div></div>
+      <div class="kp-list">${kp.hidden.map(p=>kpRow(p,true)).join('')}</div>
+    </div>`:'';
+  const errs=kp.err.length?`<div class="kp-errs">${kp.err.map(e=>`<div>• ${esc(e)}</div>`).join('')}</div>`:'';
+  return `<div class="card">
+    <div class="ch">
+      <div><div class="ct">🚀 КІК проєкти</div>
+      <div class="cs">Картки на сторінці «Проєкти». Перетягніть ⠿, щоб змінити порядок. Зміни застосуються після публікації.</div></div>
+      <button class="btn btn-k btn-sm" id="kpSave" onclick="kpSave()" ${kp.dirty?'':'disabled'}>${kp.dirty?'💾 Опублікувати зміни':'Змін немає'}</button>
+    </div>
+    ${errs}
+    <div class="kp-list" id="kpList">${rows}</div>
+  </div>${hid}`;
+}
+function kpFind(id){return kp.list.find(x=>x.id===id)||kp.hidden.find(x=>x.id===id);}
+function kpEdit(id,key,val,keepFocus){
+  const p=kpFind(id);if(!p)return;
+  p[key]=(key==='raised'||key==='goal')?Number(val||0):val;
+  kp.dirty=true;
+  const btn=$('#kpSave');
+  if(btn){btn.disabled=false;btn.textContent='💾 Опублікувати зміни';}
+  if(!keepFocus){kpRerender();return;}
+  // Typing must never re-render the form under the cursor (it would drop focus
+  // and the caret) — patch only the bits that depend on the edited value.
+  const row=document.querySelector(`.kp-row[data-id="${CSS.escape(id)}"]`);
+  if(!row)return;
+  const pct=kpPct(p);
+  const meta=row.querySelector('.kp-meta');
+  if(meta&&meta.children[1])meta.children[1].textContent=`${fmtM(p.raised)} / ${fmtM(p.goal)} ₴ · ${pct}%`;
+  const bar=row.querySelector('.pg span');if(bar)bar.style.width=pct+'%';
+  if(key==='name'){const n=row.querySelector('.kp-name');if(n)n.textContent=p.name;}
+  if(key==='statusLabel'){const b=row.querySelector('.kp-meta .badge');if(b)b.textContent=p.statusLabel;}
+  const lim=KP_LIM[key];
+  if(lim){
+    const cnt=row.querySelector(`.kp-cnt[data-cnt="${key}"]`);
+    if(cnt){
+      const len=String(p[key]??'').trim().length;
+      cnt.textContent=`${len}/${lim[1]}`;
+      cnt.classList.toggle('bad',len<lim[0]||len>lim[1]);
+    }
+  }
+}
+function kpToggleEdit(id){kp.openId=kp.openId===id?null:id;kpRerender();}
+function kpSetVisible(id,show){
+  const from=show?kp.hidden:kp.list, to=show?kp.list:kp.hidden;
+  const i=from.findIndex(x=>x.id===id);if(i<0)return;
+  to.push(from.splice(i,1)[0]);
+  kp.dirty=true;kp.openId=null;kpRerender();
+}
+function kpRerender(){$('#mainContent').innerHTML=kpMarkup();kpBindSort();}
+function kpBindSort(){
+  const list=$('#kpList');
+  if(window._kpSortable){window._kpSortable.destroy();window._kpSortable=null;}
+  if(list&&window.Sortable){
+    window._kpSortable=new Sortable(list,{animation:150,handle:'.kp-drag',ghostClass:'sortable-ghost',
+      onEnd(){
+        const order=[...list.querySelectorAll('.kp-row')].map(el=>el.dataset.id);
+        kp.list.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));
+        kp.dirty=true;kpRerender();
+      }});
+  }
+}
+// Mirrors the server-side validator so the obvious mistakes are caught before
+// a round trip; the server still re-checks everything.
+function kpValidate(){
+  const e=[];
+  const all=[...kp.list.map(p=>[p,'']),...kp.hidden.map(p=>[p,' (прихований)'])];
+  for(const [p,tag] of all){
+    const w=`«${p.name||p.id}»${tag}`;
+    for(const [k,[min,max]] of Object.entries(KP_LIM)){
+      const len=String(p[k]??'').trim().length;
+      if(len<min||len>max)e.push(`${w}: «${KP_LABEL[k]}» — ${len} символів, треба ${min}–${max}`);
+    }
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(p.lastUpdate||'')))e.push(`${w}: дата оновлення у форматі РРРР-ММ-ДД`);
+    if(!/^\/[^\s]*$/.test(String(p.link||''))||String(p.link).startsWith('//'))e.push(`${w}: посилання має починатись з «/»`);
+    if(Number(p.goal)<Number(p.raised))e.push(`${w}: ціль менша за зібрану суму`);
+  }
+  return e;
+}
+async function kpSave(){
+  kp.err=kpValidate();
+  if(kp.err.length){kpRerender();toast('Виправте помилки перед публікацією','er');return;}
+  const btn=$('#kpSave');if(btn){btn.disabled=true;btn.textContent='Публікую…';}
+  try{
+    const r=await api('PUT','/api/admin/kik-projects',{projects:kp.list,hidden:kp.hidden});
+    kp.dirty=false;kp.err=[];
+    toast(`Опубліковано: ${r.visible} на сайті, ${r.hidden} приховано`,'ok');
+    kpRerender();
+  }catch(err){
+    if(err.message==='unauth')return;
+    kp.err=[err.message];kpRerender();toast(err.message,'er');
+  }
+}
+window.kpEdit=kpEdit;window.kpToggleEdit=kpToggleEdit;window.kpSetVisible=kpSetVisible;window.kpSave=kpSave;
 
 // ── SETTINGS ──
 function renderSettings(id){

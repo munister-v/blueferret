@@ -506,3 +506,28 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .bulk-bar.show{display:flex}
 .blk-ico { cursor: grab; }
 .blk-ico:active { cursor: grabbing; }
+
+/* ── KIK project cards manager ── */
+.kp-list{display:flex;flex-direction:column;gap:10px;padding:4px 0}
+.kp-row{border:1px solid var(--bd);border-radius:12px;background:var(--dark3);overflow:hidden}
+.kp-row.open{border-color:var(--kik)}
+.kp-head{display:flex;align-items:center;gap:12px;padding:10px 12px}
+.kp-drag{cursor:grab;color:var(--txt-m);font-size:16px;line-height:1;user-select:none;padding:4px}
+.kp-drag:active{cursor:grabbing}
+.kp-thumb{width:56px;height:38px;border-radius:7px;overflow:hidden;background:var(--dark4,#161c26);flex-shrink:0}
+.kp-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.kp-main{flex:1;min-width:0}
+.kp-name{font-weight:700;font-size:14px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kp-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--txt-m)}
+.kp-acts{display:flex;gap:8px;flex-shrink:0}
+.kp-form{border-top:1px solid var(--bd);padding:14px 12px;display:flex;flex-direction:column;gap:12px}
+.kp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.kp-f{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--txt-m)}
+.kp-f>span{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.kp-f input,.kp-f textarea,.kp-f select{width:100%;background:var(--dark2,#11161f);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;color:var(--txt);font:inherit;font-size:13px}
+.kp-f textarea{resize:vertical;min-height:62px;line-height:1.5}
+.kp-f input:focus,.kp-f textarea:focus,.kp-f select:focus{outline:none;border-color:var(--kik)}
+.kp-cnt{font-size:10.5px;color:var(--txt-m);font-variant-numeric:tabular-nums}
+.kp-cnt.bad{color:var(--red);font-weight:700}
+.kp-errs{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:#fca5a5;display:flex;flex-direction:column;gap:4px}
+.kp-empty{text-align:center;padding:30px;color:var(--txt-m);font-size:13px}

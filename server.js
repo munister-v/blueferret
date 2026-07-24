@@ -827,7 +827,16 @@ function kikBody(b, ex={}) {
     sort_order:+(b.sort_order??ex.sort_order??0), t:Date.now() };
 }
 
+// DISABLED (2026-07-24). This rewrote the whole <main> of /kik/proekty/ from
+// the kik_projects table — but that table has always been empty, and the real
+// page is client-rendered from a JSON array baked into the route chunk (see
+// the KIK PROJECT CARDS section). The first ever save in the old DB-backed KIK
+// editor would therefore have replaced six live projects with an empty grid.
+// The chunk-backed /api/admin/kik-projects endpoints are the supported path;
+// this generator is kept only so the old routes keep responding.
+const REGEN_KIK_CATALOG_DISABLED = true;
 function regenKikCatalog() {
+  if (REGEN_KIK_CATALOG_DISABLED) return;
   const kikIndexFile = path.join(SITE_DIR, 'kik', 'proekty', 'index.html');
   if (!fs.existsSync(kikIndexFile)) return;
 
@@ -1294,7 +1303,11 @@ function writeSiteContent(sc){
       if(f.startsWith('.')||f==='_next'||f==='uploads'||f==='cdn-cgi') continue;
       const full=path.join(d,f), st=fs.statSync(full);
       if(st.isDirectory()) walk(full);
-      else if(f==='index.html'){
+      // .endsWith('.html') rather than an exact 'index.html' match: parked
+      // pages (index.bf-hidden.html) must keep tracking bundle renames too,
+      // or they come back referencing a chunk that no longer exists. The
+      // .bak-<timestamp> backups are unaffected — they do not end in .html.
+      else if(f.endsWith('.html')){
         let h=fs.readFileSync(full,'utf8');
         if(h.includes(oldName)){ h=h.split(oldName).join(newName); writeAtomic(full,h); htmlChanged++; }
       }
@@ -1383,6 +1396,367 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
     res.json({ok:true, applied, bundle:newName, htmlChanged, publishedAt, integrity});
   }catch(e){
     res.status(500).json({error:e.message});
+  }
+});
+
+// ════════════════════════════════════════════════════════
+//  KIK PROJECT CARDS (/kik/proekty/)
+//  The live source of truth is a JSON.parse('[…]') array baked into the route
+//  chunk — NOT the kik_projects table, which is empty and whose
+//  regenKikCatalog() would have replaced the whole page (see the no-op note
+//  on that function). The array is parsed at runtime through a strict Zod
+//  schema, so a single unknown key or out-of-range value blanks the page on
+//  hydration. Every write is therefore checked against a port of that schema
+//  first, and "hidden" is expressed by removing the item from the array
+//  (adding a flag would violate .strict()) — which also makes the "N проєктів
+//  / N активних" counters, computed from array length, agree with what is
+//  actually on the page.
+// ════════════════════════════════════════════════════════
+const KIK_HIDDEN_KEY = 'kikHidden';
+// Parked pages keep a .html name on purpose: every chunk-relink walker in this
+// file keys off .endsWith('.html'), so a page parked for weeks still gets its
+// chunk references rewritten as bundles are rehashed. Park it as .bak-style
+// instead and restoring it would resurrect refs to long-deleted chunks —
+// ChunkLoadError, blank page.
+const kikParkedPath = live => live.replace(/\.html$/, '.bf-hidden.html');
+const KIK_STATUSES = ['active','preparing','complete'];
+// mirrors the schema's placeholder-text refinement
+const KIK_PLACEHOLDERS = new Set(['-','--','...','test','testing','lorem','lorem ipsum','todo','tbd','n/a','na','none']);
+const KIK_SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function locateKikArray(js){
+  const marker = "JSON.parse('";
+  let from = 0;
+  for(;;){
+    const i = js.indexOf(marker, from);
+    if(i < 0) return null;
+    const start = i + marker.length;
+    let k = start;
+    while(k < js.length){
+      if(js[k] === '\\'){ k += 2; continue; }
+      if(js[k] === "'") break;
+      k++;
+    }
+    from = k + 1;
+    let arr; try { arr = JSON.parse(jsToJson(js.slice(start, k))); } catch { continue; }
+    if(Array.isArray(arr) && arr.length &&
+       arr.every(o => o && typeof o === 'object' && 'updatePreview' in o && 'goal' in o))
+      return { start, end: k, arr };
+  }
+}
+function readKikProjects(){
+  const dir = path.join(SITE_ROOT,'_next','static','chunks','app','kik','proekty');
+  let files; try { files = fs.readdirSync(dir); } catch { return null; }
+  for(const f of files){
+    if(!f.endsWith('.js')) continue;
+    const full = path.join(dir,f);
+    let t; try { t = fs.readFileSync(full,'utf8'); } catch { continue; }
+    const loc = locateKikArray(t);
+    if(loc) return { file:full, name:f, dir, content:t, loc, arr:loc.arr };
+  }
+  return null;
+}
+function writeKikProjects(bundle, arr){
+  const blob = JSON.stringify(arr).replace(/'/g,"\\'");
+  const newContent = bundle.content.slice(0,bundle.loc.start) + blob + bundle.content.slice(bundle.loc.end);
+  const oldName = bundle.name;
+  const prefix = oldName.replace(/-[0-9a-f]{8,}\.js$/i,'');
+  const hash = crypto.createHash('sha256').update(newContent).digest('hex').slice(0,16);
+  const newName = `${prefix}-${hash}.js`;
+  assertValidJs(newContent, newName);
+  writeAtomic(path.join(bundle.dir,newName), newContent);
+  if(newName !== oldName) fs.unlinkSync(bundle.file);
+  let htmlChanged = 0;
+  (function walk(d){
+    for(const f of fs.readdirSync(d)){
+      if(f.startsWith('.')||f==='_next'||f==='uploads'||f==='cdn-cgi') continue;
+      const full=path.join(d,f), st=fs.statSync(full);
+      if(st.isDirectory()) walk(full);
+      else if(f.endsWith('.html')){
+        let h=fs.readFileSync(full,'utf8');
+        if(h.includes(oldName)){ h=h.split(oldName).join(newName); writeAtomic(full,h); htmlChanged++; }
+      }
+    }
+  })(SITE_ROOT);
+  try{ execFileSync('restorecon',['-R',path.join(SITE_ROOT,'_next')],{stdio:'ignore',timeout:15000}); }catch{}
+  _chunksBlobCache.at = 0;
+  return { bundle:newName, htmlChanged };
+}
+
+// Port of the runtime Zod schema. Deliberately strict in the same places: it
+// is the only thing standing between a typo in the admin form and a blank
+// /kik/proekty/ for every visitor.
+function validateKikProject(p, idx){
+  const e = [], where = `Проєкт #${idx+1}`;
+  const txt = (v, min, max, label) => {
+    if(typeof v !== 'string'){ e.push(`${where}: «${label}» — очікується текст`); return ''; }
+    const t = v.trim();
+    if(t.length < min || t.length > max) e.push(`${where}: «${label}» — ${t.length} символів, дозволено ${min}–${max}`);
+    else if(KIK_PLACEHOLDERS.has(t.toLowerCase())) e.push(`${where}: «${label}» — текст-заглушка не дозволений`);
+    return t;
+  };
+  const num = (v, label) => {
+    const n = Number(v);
+    if(!Number.isFinite(n) || n < 0){ e.push(`${where}: «${label}» — має бути числом ≥ 0`); return 0; }
+    return n;
+  };
+  const out = {
+    id: String(p.id ?? '').trim(),
+    name: txt(p.name, 2, 72, 'Назва'),
+    shortDescription: txt(p.shortDescription, 10, 260, 'Опис'),
+    status: p.status,
+    statusLabel: txt(p.statusLabel, 2, 36, 'Підпис статусу'),
+    raised: num(p.raised, 'Зібрано'),
+    goal: num(p.goal, 'Ціль'),
+    currency: p.currency || 'UAH',
+    lastUpdate: String(p.lastUpdate ?? '').trim(),
+    updatePreview: txt(p.updatePreview, 10, 220, 'Текст оновлення'),
+    link: String(p.link ?? '').trim(),
+  };
+  if(!KIK_SLUG_RE.test(out.id)) e.push(`${where}: ідентифікатор «${out.id}» — лише малі латинські літери, цифри й дефіси`);
+  if(!KIK_STATUSES.includes(out.status)) e.push(`${where}: статус має бути одним із: ${KIK_STATUSES.join(', ')}`);
+  if(out.currency !== 'UAH') e.push(`${where}: валюта підтримується лише UAH`);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(out.lastUpdate)) e.push(`${where}: дата оновлення — формат РРРР-ММ-ДД`);
+  else {
+    const [y,m,d] = out.lastUpdate.split('-').map(Number);
+    const dt = new Date(Date.UTC(y,m-1,d));
+    if(dt.getUTCFullYear()!==y || dt.getUTCMonth()!==m-1 || dt.getUTCDate()!==d)
+      e.push(`${where}: дата оновлення не існує`);
+  }
+  if(!/^\/[^\s]*$/.test(out.link) || out.link.startsWith('//'))
+    e.push(`${where}: посилання має починатись з «/» і не містити пробілів`);
+  if(out.goal < out.raised) e.push(`${where}: «Ціль» не може бути меншою за «Зібрано»`);
+  // coverImage is optional, but when present must be a site-relative path
+  const cover = typeof p.coverImage === 'string' ? p.coverImage.trim() : '';
+  if(cover){
+    if(!/^\/[^\s]*$/.test(cover) || cover.startsWith('//')) e.push(`${where}: обкладинка має бути шляхом на сайті («/images/…»)`);
+    else out.coverImage = cover;
+  }
+  // support tiers are carried through untouched — not editable here, and
+  // re-serialising them is the only way they could get corrupted
+  if(p.support !== undefined) out.support = p.support;
+  return { out, errors: e };
+}
+
+// Each project also has statically prerendered pages (/kik/proekty/<n>/ and
+// its /pidtrymaty/) that were built with the values frozen in — they do not
+// read the catalog array at runtime. Their copy lives twice inside the same
+// file: once in the DOM and once in the RSC flight data hydration replays
+// from, so a plain replacement over the file updates both at once. Scoped to
+// the one project's own files, so a bad pair can never reach another page.
+function kikMoney(n){ return new Intl.NumberFormat('uk-UA',{maximumFractionDigits:0}).format(n)+' ₴'; }
+function kikDate(iso){ const [y,m,d]=String(iso).split('-'); return `${d}.${m}.${y}`; }
+function kikPctExact(p){ return String(p.goal>0?Math.min(100,p.raised/p.goal*100):0); }
+function kikPctRound(p){ return String(p.goal>0?Math.round(Math.min(100,p.raised/p.goal*100)):0); }
+
+function syncKikProjectPages(oldP, newP){
+  if(!oldP || !newP) return null;
+  const rel = String(oldP.link||'').replace(/^\/+/,'');
+  if(!rel || rel.includes('..')) return null;
+  const dir = path.join(PAGES_ROOT, rel);
+  if(!dir.startsWith(PAGES_ROOT) || !fs.existsSync(dir)) return null;
+
+  // Text that is safe to swap verbatim. statusLabel is deliberately absent:
+  // "Збір коштів" is also a stage name in the page's own timeline, so
+  // replacing it would rewrite unrelated markup.
+  const safe = s => typeof s === 'string' && s.length >= 3 && !/["<>\\]/.test(s);
+  const pairs = [], namePairs = [];
+  const addText = (a,b,into) => { if(safe(a)&&safe(b)&&a!==b) (into||pairs).push([a,b]); };
+  addText(oldP.name, newP.name, namePairs);
+  addText(oldP.shortDescription, newP.shortDescription);
+  addText(oldP.updatePreview, newP.updatePreview);
+  if(oldP.lastUpdate !== newP.lastUpdate) pairs.push([kikDate(oldP.lastUpdate), kikDate(newP.lastUpdate)]);
+  // Amounts and percentages MUST carry their delimiters. A bare "0 ₴" is a
+  // substring of "95 000 ₴", so an unanchored swap rewrites the goal too and
+  // yields "95 0030 000 ₴". In the DOM these are text nodes fenced by > and <;
+  // in the flight payload they are whole JSON strings fenced by escaped quotes.
+  for(const k of ['raised','goal']){
+    if(Number(oldP[k]) === Number(newP[k])) continue;
+    const a = kikMoney(oldP[k]), b = kikMoney(newP[k]);
+    pairs.push([`\\"${a}\\"`, `\\"${b}\\"`]);                                        // flight: the whole JSON string
+    pairs.push([`>${a.replace(/ /g,"&nbsp;")}<`, `>${b.replace(/ /g,"&nbsp;")}<`]); // DOM: the whole text node
+  }
+  const oR = kikPctRound(oldP), nR = kikPctRound(newP);
+  if(oR !== nR){
+    pairs.push([`>${oR}<!-- -->%`, `>${nR}<!-- -->%`]); // DOM
+    pairs.push([`,${oR},\\"%\\"`, `,${nR},\\"%\\"`]);   // flight
+  }
+  const oE = kikPctExact(oldP), nE = kikPctExact(newP);
+  if(oE !== nE){
+    pairs.push([`width:${oE}%`, `width:${nE}%`]);               // DOM progress bar
+    pairs.push([`\\"width\\":\\"${oE}%\\"`, `\\"width\\":\\"${nE}%\\"`]); // flight
+  }
+
+  // …including the copies parked away while the project is hidden, otherwise
+  // editing a hidden project would silently leave stale values to reappear on
+  // the day it is shown again.
+  const detail = path.join(dir,'index.html');
+  const support = path.join(dir,'pidtrymaty','index.html');
+  const targets = [
+    { file: detail,                   use: pairs.concat(namePairs) },
+    { file: kikParkedPath(detail),    use: pairs.concat(namePairs) },
+    { file: support,                  use: namePairs },  // only the name is shown there
+    { file: kikParkedPath(support),   use: namePairs },
+  ];
+  const touched = [];
+  for(const t of targets){
+    if(!t.use.length || !fs.existsSync(t.file)) continue;
+    let h; try { h = fs.readFileSync(t.file,'utf8'); } catch { continue; }
+    const before = h;
+    let hits = 0;
+    for(const [a,b] of t.use){
+      const n = h.split(a).length - 1;
+      if(n){ h = h.split(a).join(b); hits += n; }
+    }
+    if(h !== before){
+      writeBackup(t.file);
+      writeAtomic(t.file, h);
+      touched.push({ page: t.file.slice(PAGES_ROOT.length), replacements: hits });
+    }
+  }
+  return touched.length ? touched : null;
+}
+
+// Hiding a card leaves its prerendered pages reachable by direct link, so park
+// the real page and serve a redirect stub in its place. Deliberately not an
+// nginx rule: that would mean the CMS reloading nginx as root on every publish
+// (and this server block already has form-wide sub_filters that are easy to
+// break). HTML here is served no-store, so the swap takes effect immediately.
+function kikRedirectStub(name){
+  return `<!DOCTYPE html><html lang="uk"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,follow">
+<title>Проєкт недоступний | KIK вдома</title>
+<meta http-equiv="refresh" content="0;url=/kik/proekty/">
+<!--bf-kik-hidden-stub-->
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;color:#0f172a;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-align:center;padding:24px}a{color:#4BB272;font-weight:600}</style>
+</head><body><div><p>${escapeHtml(name||'Проєкт')} зараз недоступний.</p>
+<p><a href="/kik/proekty/">Перейти до всіх проєктів →</a></p></div>
+<script>location.replace('/kik/proekty/');</script></body></html>`;
+}
+function kikPageFiles(project){
+  const rel = String(project.link||'').replace(/^\/+/,'');
+  if(!rel || rel.includes('..')) return [];
+  const dir = path.join(PAGES_ROOT, rel);
+  if(!dir.startsWith(PAGES_ROOT)) return [];
+  return [path.join(dir,'index.html'), path.join(dir,'pidtrymaty','index.html')];
+}
+function kikSetPagesHidden(project, hide){
+  const done = [];
+  for(const live of kikPageFiles(project)){
+    const parked = kikParkedPath(live);
+    try{
+      if(hide){
+        if(fs.existsSync(parked) || !fs.existsSync(live)) continue; // already hidden
+        fs.renameSync(live, parked);
+        writeAtomic(live, kikRedirectStub(project.name));
+        done.push({ page: live.slice(PAGES_ROOT.length), state:'hidden' });
+      } else {
+        if(!fs.existsSync(parked)) continue;                        // already visible
+        try { fs.unlinkSync(live); } catch {}
+        fs.renameSync(parked, live);
+        done.push({ page: live.slice(PAGES_ROOT.length), state:'restored' });
+      }
+    }catch(err){ done.push({ page: live.slice(PAGES_ROOT.length), error: err.message }); }
+  }
+  if(done.length){ try{ execFileSync('restorecon',['-R',path.join(PAGES_ROOT,'kik')],{stdio:'ignore',timeout:15000}); }catch{} }
+  return done;
+}
+
+app.get('/api/admin/kik-projects', requireAuth, (_req,res)=>{
+  const b = readKikProjects();
+  if(!b) return res.status(404).json({error:'kik projects bundle not found'});
+  res.json({ projects: b.arr, hidden: getSetting(KIK_HIDDEN_KEY, []), bundle: b.name });
+});
+
+// Full desired state in one call: the visible list in display order plus the
+// parked list. Idempotent, so the UI never has to sequence hide/reorder/edit.
+app.put('/api/admin/kik-projects', requireAuth, (req,res)=>{
+  const { projects, hidden } = req.body || {};
+  if(!Array.isArray(projects) || !Array.isArray(hidden))
+    return res.status(400).json({error:'projects and hidden must be arrays'});
+  if(!projects.length && !hidden.length)
+    return res.status(400).json({error:'nothing to save'});
+  const b = readKikProjects();
+  if(!b) return res.status(404).json({error:'kik projects bundle not found'});
+
+  const errors = [], visible = [], parked = [];
+  const seen = new Set();
+  projects.forEach((p,i)=>{
+    const { out, errors:errs } = validateKikProject(p,i);
+    errors.push(...errs);
+    if(seen.has(out.id)) errors.push(`Дублікат ідентифікатора «${out.id}»`);
+    seen.add(out.id);
+    visible.push(out);
+  });
+  // Hidden entries are validated too: they are restored verbatim later, and a
+  // broken one parked today would break the page on the day it is shown again.
+  hidden.forEach((p,i)=>{
+    const { out, errors:errs } = validateKikProject(p,i);
+    errors.push(...errs.map(m=>m.replace('Проєкт #','Прихований проєкт #')));
+    if(seen.has(out.id)) errors.push(`Дублікат ідентифікатора «${out.id}»`);
+    seen.add(out.id);
+    parked.push(out);
+  });
+  if(errors.length) return res.status(400).json({error:'validation', details:errors});
+
+  // Snapshot the pre-save state first: setSetting() below overwrites the
+  // parked list, and the page sync needs the values as they were.
+  const prev = new Map();
+  for(const p of b.arr) prev.set(p.id, p);
+  for(const p of getSetting(KIK_HIDDEN_KEY, [])) if(!prev.has(p.id)) prev.set(p.id, p);
+
+  // A renamed project usually has its old name quoted inside its own reward
+  // tiers ("Класична комплектація «Острів скарбів»"). The prerendered support
+  // page picks the rename up via the text sync below, so leave the tiers alone
+  // and the stored data would silently disagree with what visitors read.
+  for(const p of [...visible, ...parked]){
+    const before = prev.get(p.id);
+    if(!before || !p.support || before.name === p.name) continue;
+    if(!before.name || /["<>\\]/.test(before.name) || /["<>\\]/.test(p.name)) continue;
+    const swap = s => (typeof s === 'string' && s.includes(before.name)) ? s.split(before.name).join(p.name) : s;
+    const tiers = (p.support.tiers||[]).map(t=>{
+      const desc = swap(t.description), title = swap(t.title);
+      // stay inside the schema's own length limits, else skip that string
+      return { ...t,
+        title: (title.trim().length>=2 && title.trim().length<=64) ? title : t.title,
+        description: (desc.trim().length>=8 && desc.trim().length<=300) ? desc : t.description };
+    });
+    p.support = { ...p.support, tiers };
+  }
+
+  try{
+    const r = writeKikProjects(b, visible);
+    setSetting(KIK_HIDDEN_KEY, parked);
+    // Bring each project's own prerendered pages in line with the new values.
+    // "Previous" spans both lists: a project can be edited while hidden.
+    // Enforce the desired page state rather than diffing against the previous
+    // one: every step is idempotent, so this also repairs any drift left by an
+    // interrupted publish. Restore first so the text sync lands on the real
+    // page, then park what should stay hidden — with the fresh values in it.
+    const pageState = [];
+    for(const p of visible) pageState.push(...kikSetPagesHidden(p, false));
+
+    const pageSync = [];
+    for(const p of [...visible, ...parked]){
+      const before = prev.get(p.id);
+      if(!before) continue;
+      let t; try { t = syncKikProjectPages(before, p); }
+      catch(err){ pageSync.push({ id:p.id, error:err.message }); continue; }
+      if(t) pageSync.push({ id:p.id, pages:t });
+    }
+
+    for(const p of parked) pageState.push(...kikSetPagesHidden(p, true));
+    let integrity = null;
+    try {
+      const v = verifyChunkRefs();
+      if(v.missing.length){ integrity = v.missing; audit('system','integrity_missing_refs',{after:'kik_projects_save',missing:v.missing.slice(0,10)}); }
+    } catch {}
+    const publishedAt = bumpPublishedAt();
+    audit(req.ip,"kik_projects_save",{visible:visible.length,hidden:parked.length,bundle:r.bundle,publishedAt,pageSync,pageState});
+    res.json({ ok:true, ...r, visible:visible.length, hidden:parked.length, publishedAt, integrity, pageSync, pageState });
+  }catch(err){
+    res.status(500).json({error:err.message});
   }
 });
 
