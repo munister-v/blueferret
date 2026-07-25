@@ -503,43 +503,6 @@ function syncGamesNavVisibility() {
   try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
 }
 
-// The [slug] game page chunk hard-truncates a stage's `content` to 170 chars
-// + "…" client-side, independent of whatever the admin actually saved and
-// independent of the server-rendered static markup (which shows it in full).
-// Since hydration replaces the SSR'd stage cards with this component's own
-// render, the truncation is what visitors actually see regardless of how
-// long the description field really is. No length cap exists elsewhere for
-// this field, so the fix removes the cap instead of just raising it.
-function fixStageDescriptionTruncation() {
-  const root = path.join(SITE_ROOT, '_next', 'static', 'chunks');
-  const needle = 'i.content&&i.content.length>170?`${i.content.slice(0,170)}…`:i.content';
-  const replacement = 'i.content';
-  const stack = [root];
-  while (stack.length) {
-    const dir = stack.pop();
-    let items; try { items = fs.readdirSync(dir); } catch { continue; }
-    for (const it of items) {
-      const full = path.join(dir, it); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { stack.push(full); continue; }
-      if (!it.endsWith('.js')) continue;
-      let content; try { content = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      if (!content.includes(needle)) continue;
-      const occurrences = content.split(needle).length - 1;
-      if (occurrences !== 1) { audit('system', 'chunk_sync_refused', { file: it, reason: 'ambiguous_occurrences', occurrences }); continue; }
-      content = content.split(needle).join(replacement);
-      try { assertValidJs(content, it); }
-      catch (e) { audit('system', 'chunk_sync_refused', { file: it, error: e.message }); continue; }
-      const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
-      const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + `-${hash}.js`;
-      if (newName === it) { writeAtomic(full, content); continue; }
-      writeAtomic(path.join(dir, newName), content);
-      try { fs.unlinkSync(full); } catch {}
-      relinkChunkEverywhere(it, newName);
-    }
-  }
-  try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
-}
-
 function relinkChunkEverywhere(oldName, newName) {
   (function walk(d) {
     let items; try { items = fs.readdirSync(d); } catch { return; }
@@ -2331,7 +2294,6 @@ const server = app.listen(PORT, HOST, () => {
       }
       syncGamesChunkVisibility();
       syncGamesNavVisibility();
-      fixStageDescriptionTruncation();
       console.log('[blueferret-admin] games catalog and game pages regenerated on boot');
     } catch(e) { console.error('[blueferret-admin] regen error:', e); }
   }, 1000);

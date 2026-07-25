@@ -969,35 +969,11 @@ function kpField(p,key,label,type){
   const len=String(v).trim().length;
   const bad=lim&&(len<lim[0]||len>lim[1]);
   const counter=lim?`<span class="kp-cnt${bad?' bad':''}" data-cnt="${key}">${len}/${lim[1]}</span>`:'';
-  if(type==='img'){
-    const inputId=`kpimg_${p.id}_${key}`;
-    return `<label class="kp-f"><span>${label}</span>
-      <div class="img-pick">
-        <input type="text" id="${inputId}" value="${esc(v)}" placeholder="/images/..." oninput="kpImgInput('${jsq(p.id)}','${key}','${inputId}')">
-        <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('${inputId}',()=>kpImgInput('${jsq(p.id)}','${key}','${inputId}'))">📁</button>
-      </div>
-      ${v?`<img id="${inputId}_thumb" class="img-thumb" src="${esc(v)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="${inputId}_thumb">Немає зображення</div>`}
-    </label>`;
-  }
   const input=type==='area'
     ? `<textarea rows="3" oninput="kpEdit('${jsq(p.id)}','${key}',this.value,true)">${esc(v)}</textarea>`
     : `<input type="${type||'text'}" value="${esc(v)}" oninput="kpEdit('${jsq(p.id)}','${key}',this.value,true)">`;
   return `<label class="kp-f"><span>${label}${counter}</span>${input}</label>`;
 }
-function kpImgInput(id,key,inputId){
-  const el=document.getElementById(inputId);
-  const url=el?el.value:'';
-  kpEdit(id,key,url,true);
-  const th=document.getElementById(inputId+'_thumb');
-  if(th){
-    if(url) th.outerHTML=`<img id="${inputId}_thumb" class="img-thumb" src="${esc(url)}" onerror="this.style.display='none'">`;
-    else th.outerHTML=`<div class="img-thumb-empty" id="${inputId}_thumb">Немає зображення</div>`;
-  }
-  const row=document.querySelector(`.kp-row[data-id="${CSS.escape(id)}"]`);
-  const thumb=row&&row.querySelector('.kp-thumb');
-  if(thumb) thumb.innerHTML=url?`<img src="${esc(url)}" onerror="this.style.display='none'">`:'';
-}
-window.kpImgInput=kpImgInput;
 function kpForm(p){
   return `<div class="kp-form">
     ${kpField(p,'name','Назва')}
@@ -1013,7 +989,7 @@ function kpForm(p){
       ${kpField(p,'link','Посилання на проєкт')}
     </div>
     ${kpField(p,'updatePreview','Текст оновлення','area')}
-    ${kpField(p,'coverImage','Обкладинка','img')}
+    ${kpField(p,'coverImage','Обкладинка (шлях на сайті)')}
   </div>`;
 }
 function kpMarkup(){
