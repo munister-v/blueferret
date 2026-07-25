@@ -123,43 +123,6 @@
     });
   }
 
-  // ── Fail-safe reveal ──
-  // .bf-reveal hides content (opacity:0) and relies on the IntersectionObserver
-  // above to add .visible. If the observer never delivers, that content stays
-  // invisible forever. The real-world trigger is a page that loads in a
-  // BACKGROUND tab: while document.hidden is true the browser withholds IO
-  // callbacks. initAnimations() cannot rescue those elements because it
-  // explicitly skips anything already carrying .bf-reveal — so re-running it
-  // on tab focus (what visibilitychange used to do) left them hidden until a
-  // full reload.
-  function rescueStuckReveals() {
-    const stuck = document.querySelectorAll('.bf-reveal:not(.visible)');
-    if (!stuck.length) return;
-    const vh = window.innerHeight;
-    stuck.forEach(function (el) {
-      const r = el.getBoundingClientRect();
-      if (r.top < vh && r.bottom > 0) {
-        // On screen but still hidden: this element already missed its cue, so
-        // snap it in rather than starting a late fade. Clearing the transition
-        // also matters because CSS transitions are frozen while a tab is in the
-        // background — without this the element would keep computed opacity 0
-        // even after .visible is applied.
-        el.style.transition = 'none';
-        el.classList.add('visible');
-      } else {
-        io.observe(el); // below the fold — re-arm the observer for a normal reveal
-      }
-    });
-  }
-
-  // Scroll-driven backstop: keeps reveals working even if IO never fires at all.
-  let revealTick = false;
-  window.addEventListener('scroll', function () {
-    if (revealTick) return;
-    revealTick = true;
-    requestAnimationFrame(function () { rescueStuckReveals(); revealTick = false; });
-  }, { passive: true });
-
   // ── Mobile menu enhancements ──
   function enhanceMenu() {
     const nav = document.getElementById('mobile-site-nav');
@@ -427,8 +390,6 @@
 	      initMobileMenuFallback();
 	    }, 800);
 	    setTimeout(normalizeAuthorsCard, 1800);
-	    setTimeout(rescueStuckReveals, 1200);
-	    setTimeout(rescueStuckReveals, 3000);
 	  }
 
   // #30: Skip-to-content link
@@ -472,9 +433,7 @@
 
   // Re-run on visibility change (tab switch back)
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) return;
-    rescueStuckReveals();
-    setTimeout(function () { rescueStuckReveals(); initAnimations(); }, 100);
+    if (!document.hidden) setTimeout(initAnimations, 100);
   });
 
 })();
