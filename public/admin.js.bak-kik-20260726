@@ -929,7 +929,7 @@ window.openKikEditor=openKikEditor;window.saveKik=saveKik;window.deleteKik=delet
 let kp={list:[],hidden:[],dirty:false,openId:null,err:[]};
 const KP_STATUS=[['active','Збір коштів'],['preparing','Підготовка'],['complete','Завершено']];
 const KP_LIM={name:[2,72],shortDescription:[10,260],statusLabel:[2,36],updatePreview:[10,220]};
-const KP_LABEL={name:'Назва',shortDescription:'Опис проєкту',statusLabel:'Підпис статусу',updatePreview:'Текст оновлення'};
+const KP_LABEL={name:'Назва',shortDescription:'Опис на картці',statusLabel:'Підпис статусу',updatePreview:'Текст оновлення'};
 
 async function renderKikProjects(){
   const el=$('#mainContent');
@@ -958,9 +958,7 @@ function kpRow(p,hidden){
       </div>
       <div class="kp-acts">
         <button class="btn btn-g btn-sm" onclick="kpToggleEdit('${jsq(p.id)}')">${open?'Згорнути':'✏️ Редагувати'}</button>
-        <button class="btn btn-g btn-sm" onclick="kpDuplicate('${jsq(p.id)}')" title="Створити копію як новий прихований проєкт">⧉ Копія</button>
         <button class="btn btn-sm ${hidden?'btn-k':'btn-g'}" onclick="kpSetVisible('${jsq(p.id)}',${hidden?'true':'false'})">${hidden?'👁 Показати':'🙈 Сховати'}</button>
-        ${hidden?`<button class="btn btn-d btn-sm" onclick="kpDelete('${jsq(p.id)}')">Видалити</button>`:''}
       </div>
     </div>
     ${open?kpForm(p):''}
@@ -1003,7 +1001,7 @@ window.kpImgInput=kpImgInput;
 function kpForm(p){
   return `<div class="kp-form">
     ${kpField(p,'name','Назва')}
-    ${kpField(p,'shortDescription','Опис проєкту','area')}
+    ${kpField(p,'shortDescription','Опис на картці','area')}
     <div class="kp-grid">
       <label class="kp-f"><span>Статус</span><select onchange="kpEdit('${jsq(p.id)}','status',this.value)">
         ${KP_STATUS.map(([v,l])=>`<option value="${v}"${p.status===v?' selected':''}>${l}</option>`).join('')}
@@ -1031,56 +1029,13 @@ function kpMarkup(){
     <div class="ch">
       <div><div class="ct">🚀 КІК проєкти</div>
       <div class="cs">Картки на сторінці «Проєкти». Перетягніть ⠿, щоб змінити порядок. Зміни застосуються після публікації.</div></div>
-      <div class="kp-toolbar">
-        <button class="btn btn-g btn-sm" onclick="kpNew()">＋ Новий проєкт</button>
-        <button class="btn btn-k btn-sm" id="kpSave" onclick="kpSave()" ${kp.dirty?'':'disabled'}>${kp.dirty?'💾 Опублікувати зміни':'Змін немає'}</button>
-      </div>
+      <button class="btn btn-k btn-sm" id="kpSave" onclick="kpSave()" ${kp.dirty?'':'disabled'}>${kp.dirty?'💾 Опублікувати зміни':'Змін немає'}</button>
     </div>
     ${errs}
     <div class="kp-list" id="kpList">${rows}</div>
   </div>${hid}`;
 }
 function kpFind(id){return kp.list.find(x=>x.id===id)||kp.hidden.find(x=>x.id===id);}
-function kpNextId(){
-  const used=new Set([...kp.list,...kp.hidden].map(p=>String(p.id)));
-  let n=Math.max(0,...[...used].map(x=>/^\d+$/.test(x)?Number(x):0))+1;
-  while(used.has(String(n)))n++;
-  return String(n);
-}
-function kpSupportCopy(source,id,name){
-  if(!source?.support)return undefined;
-  const support=JSON.parse(JSON.stringify(source.support));
-  support.tiers=(support.tiers||[]).map((t,i)=>({
-    ...t,id:`${id}-tier-${i+1}`,
-    title:String(t.title||'').split(source.name).join(name),
-    description:String(t.description||'').split(source.name).join(name)
-  }));
-  return support;
-}
-function kpDraft(source,duplicate){
-  const id=kpNextId(),name=duplicate?`Копія: ${source.name}`.slice(0,72):'Новий KIK-проєкт';
-  return {id,_templateId:source.id,name,shortDescription:duplicate?source.shortDescription:'Додайте короткий опис нового проєкту збору.',
-    status:'preparing',statusLabel:'Підготовка',raised:0,goal:duplicate?Number(source.goal||100000):100000,
-    currency:'UAH',lastUpdate:new Date().toISOString().slice(0,10),
-    updatePreview:duplicate?'Копію проєкту підготовлено до нового запуску.':'Проєкт готується до запуску збору.',
-    coverImage:source.coverImage||'',link:`/kik/proekty/${id}`,support:kpSupportCopy(source,id,name)};
-}
-function kpNew(){
-  const source=kp.list[0]||kp.hidden[0];
-  if(!source){toast('Спочатку потрібен хоча б один проєкт-шаблон','er');return;}
-  const p=kpDraft(source,false);kp.hidden.unshift(p);kp.openId=p.id;kp.dirty=true;kpRerender();
-  toast('Новий проєкт створено як прихований чернетковий','i');
-}
-function kpDuplicate(id){
-  const source=kpFind(id);if(!source)return;
-  const p=kpDraft(source,true);kp.hidden.unshift(p);kp.openId=p.id;kp.dirty=true;kpRerender();
-  toast('Копію додано до прихованих проєктів','i');
-}
-function kpDelete(id){
-  const i=kp.hidden.findIndex(p=>p.id===id);if(i<0)return;
-  if(!confirm(`Видалити «${kp.hidden[i].name}» зі списку? Сторінки буде приховано й залишено на сервері для відновлення.`))return;
-  kp.hidden.splice(i,1);kp.openId=null;kp.dirty=true;kpRerender();
-}
 function kpEdit(id,key,val,keepFocus){
   const p=kpFind(id);if(!p)return;
   p[key]=(key==='raised'||key==='goal')?Number(val||0):val;
@@ -1141,9 +1096,6 @@ function kpValidate(){
     }
     if(!/^\d{4}-\d{2}-\d{2}$/.test(String(p.lastUpdate||'')))e.push(`${w}: дата оновлення у форматі РРРР-ММ-ДД`);
     if(!/^\/[^\s]*$/.test(String(p.link||''))||String(p.link).startsWith('//'))e.push(`${w}: посилання має починатись з «/»`);
-    if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(p.id||'')))e.push(`${w}: некоректний ідентифікатор`);
-    if(String(p.link)!==`/kik/proekty/${p.id}`)e.push(`${w}: посилання має бути /kik/proekty/${p.id}`);
-    if(p.coverImage&&(!/^\/[^\s]*$/.test(String(p.coverImage))||String(p.coverImage).startsWith('//')))e.push(`${w}: обкладинка має бути шляхом на сайті`);
     if(Number(p.goal)<Number(p.raised))e.push(`${w}: ціль менша за зібрану суму`);
   }
   return e;
@@ -1154,8 +1106,7 @@ async function kpSave(){
   const btn=$('#kpSave');if(btn){btn.disabled=true;btn.textContent='Публікую…';}
   try{
     const r=await api('PUT','/api/admin/kik-projects',{projects:kp.list,hidden:kp.hidden});
-    const d=await api('GET','/api/admin/kik-projects');
-    kp={list:d.projects||[],hidden:d.hidden||[],dirty:false,openId:null,err:[],loaded:true};
+    kp.dirty=false;kp.err=[];
     toast(`Опубліковано: ${r.visible} на сайті, ${r.hidden} приховано`,'ok');
     kpRerender();
   }catch(err){
@@ -1163,7 +1114,7 @@ async function kpSave(){
     kp.err=[err.message];kpRerender();toast(err.message,'er');
   }
 }
-window.kpEdit=kpEdit;window.kpToggleEdit=kpToggleEdit;window.kpSetVisible=kpSetVisible;window.kpNew=kpNew;window.kpDuplicate=kpDuplicate;window.kpDelete=kpDelete;window.kpSave=kpSave;
+window.kpEdit=kpEdit;window.kpToggleEdit=kpToggleEdit;window.kpSetVisible=kpSetVisible;window.kpSave=kpSave;
 
 // ── SETTINGS ──
 function renderSettings(id){
