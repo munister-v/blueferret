@@ -44,9 +44,8 @@ const DEFAULTS = {
   seo:          { defaultTitle: '', defaultDescription: '', ogImage: '', noindex: false },
   integrations: { headScripts: '', bodyScripts: '' },
   appearance:   { customCss: '' },
-  homepage:     { testimonialImage: '' },
 };
-const PUBLIC_KEYS   = ['general','maintenance','banner','appearance','integrations','contacts','homepage'];
+const PUBLIC_KEYS   = ['general','maintenance','banner','appearance','integrations','contacts'];
 const EDITABLE_KEYS = Object.keys(DEFAULTS);
 
 function fullSettings() {
@@ -1161,21 +1160,16 @@ function extractBlocks(html){
   const root = $('main').length ? $('main') : $('body');
   
   let idx = 0;
-  root.find('h1, h2, h3, p, a, span, img, li, div').each((_, el) => {
+  root.find('h1, h2, h3, p, a, span, img, li').each((_, el) => {
     const $el = $(el);
     if ($el.closest('script, style, svg, header, nav, footer').length > 0) return;
     // Generated-from-DB regions (game stages): re-rendered by writeGeneratedGamePage()
     // on every game save and pm2 boot, so any block-editor change here would silently
     // revert. Skipped BEFORE id assignment — these carry their own deterministic ids
     // from the generator, and handing out random ones would churn them each restart.
-    const existingId = $el.attr('data-bf-id') || '';
-    const stageEditable = /^bf_stg\d+_(title|label|desc)$/.test(existingId);
-    if ($el.closest('[data-bf-stages]').length > 0 && !stageEditable) return;
+    if ($el.closest('[data-bf-stages]').length > 0) return;
 
     const tag = el.tagName.toLowerCase();
-    // A few hand-built game sections use a leaf <div> for their copy instead
-    // of a paragraph. Only admit actual leaf text nodes, never layout divs.
-    if (tag === 'div' && !stageEditable && $el.children().length > 0) return;
     
     let id = $el.attr('data-bf-id');
     if (!id) {
@@ -1202,11 +1196,11 @@ function extractBlocks(html){
         const icon = tag === 'h1' ? 'H₁' : tag === 'h2' ? 'H₂' : 'H₃';
         add(id, tag, label, icon, text, idx++);
       }
-    } else if (tag === 'p' || tag === 'div') {
+    } else if (tag === 'p') {
       const innerHtml = $el.html() || '';
       const text = cleanInner(innerHtml);
       if (text && text.length >= 2 && text.length <= 1500) {
-        add(id, 'p', stageEditable ? 'Опис етапу' : 'Абзац тексту', '¶', text, idx++);
+        add(id, 'p', 'Абзац тексту', '¶', text, idx++);
       }
     } else if (tag === 'li') {
       const innerHtml = $el.html() || '';
@@ -1373,60 +1367,6 @@ function writeSiteContent(sc){
   try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
   _chunksBlobCache.at = 0;
   return { bundle:newName, htmlChanged };
-}
-
-// The home-page brand copy is embedded in the active app/page-*.js route
-// chunk, separately from the shared UI dictionary above. In particular, the
-// testimonial lives here; editing the shared dictionary cannot affect it.
-function readHomeContentBundle(){
-  const indexFile = path.join(SITE_ROOT, 'index.html');
-  let html; try { html = fs.readFileSync(indexFile, 'utf8'); } catch { return null; }
-  const ref = html.match(/_next\/static\/chunks\/app\/page-[\w-]+\.js/);
-  if(!ref) return null;
-  const file = path.join(SITE_ROOT, ref[0]);
-  let content; try { content = fs.readFileSync(file, 'utf8'); } catch { return null; }
-  const marker = "JSON.parse('";
-  let from = 0;
-  while(from < content.length){
-    const i = content.indexOf(marker, from); if(i < 0) break;
-    const start = i + marker.length; let k = start;
-    while(k < content.length){ if(content[k] === '\\'){ k += 2; continue; } if(content[k] === "'") break; k++; }
-    from = k + 1;
-    let obj; try { obj = JSON.parse(jsToJson(content.slice(start, k))); } catch { continue; }
-    if(obj && obj.brand && Array.isArray(obj.testimonial)) {
-      return { file, dir:path.dirname(file), name:path.basename(file), content, start, end:k, obj };
-    }
-  }
-  return null;
-}
-function writeHomeContentBundle(home){
-  const blob = JSON.stringify(home.obj).replace(/'/g,"\\'");
-  const content = home.content.slice(0,home.start) + blob + home.content.slice(home.end);
-  assertValidJs(content, home.name);
-  const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0,16);
-  const newName = home.name.replace(/-[0-9a-f]{8,}\.js$/i,'') + `-${hash}.js`;
-  writeAtomic(path.join(home.dir,newName), content);
-  if(newName !== home.name){ fs.unlinkSync(home.file); relinkChunkEverywhere(home.name,newName); }
-  try{ execFileSync('restorecon',['-R',path.join(SITE_ROOT,'_next')],{stdio:'ignore',timeout:15000}); }catch{}
-  _chunksBlobCache.at = 0;
-  return { bundle:newName };
-}
-function homeTestimonialFromDom($){
-  const icon = $('main svg.lucide-quote').first();
-  const card = icon.length ? icon.parent() : null;
-  const ps = card && card.length ? card.children('p') : null;
-  if(!ps || ps.length < 2) return null;
-  const quoteEl = ps.eq(0), authorEl = ps.eq(1);
-  const quote = decodeHtmlEnts(quoteEl.text()).trim()
-    .replace(/^\s*[“”"']\s*/, '').replace(/\s*[“”"']\s*$/, '').trim();
-  const byline = decodeHtmlEnts(authorEl.text()).trim().replace(/^\s*[–—-]\s*/, '');
-  const comma = byline.indexOf(',');
-  return {
-    quote, author: comma >= 0 ? byline.slice(0,comma).trim() : byline,
-    role: comma >= 0 ? byline.slice(comma+1).trim() : '',
-    quoteId: quoteEl.attr('data-bf-id') || '', authorId: authorEl.attr('data-bf-id') || '',
-    quoteEl, authorEl,
-  };
 }
 
 // Match a dictionary template against a rendered string, recovering what each
@@ -1895,31 +1835,6 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
     const html = fs.readFileSync(full, 'utf8');
     const ext = extractBlocks(html);
     if (ext.newHtml !== html) writeAtomic(full, ext.newHtml);
-    if (rel === 'index.html') {
-      const homeDom = cheerio.load(ext.newHtml, { decodeEntities:false });
-      const testimonial = homeTestimonialFromDom(homeDom);
-      if (testimonial) {
-        const hiddenIds = new Set([testimonial.quoteId, testimonial.authorId].filter(Boolean));
-        ext.blocks = ext.blocks.filter(b => !hiddenIds.has(b.id));
-        const virtualText = [
-          ['bf_home_testimonial_quote','p','Цитата',testimonial.quote],
-          ['bf_home_testimonial_author','span','Автор цитати',testimonial.author],
-          ['bf_home_testimonial_role','span','Підпис автора',testimonial.role],
-        ];
-        for (const [id,type,label,value] of virtualText) ext.blocks.push({
-          id,type,label,icon:type==='p'?'¶':'🏷',value,domIndex:Number.MAX_SAFE_INTEGER-3,
-          orig:id,origVal:value,virtual:true,
-        });
-      }
-      const home = Object.assign({}, DEFAULTS.homepage, getSetting('homepage', {}));
-      ext.blocks.push({
-        id: 'bf_home_testimonial_image', type: 'img',
-        label: 'Фото до відгуку', icon: '🖼',
-        value: home.testimonialImage || '', domIndex: Number.MAX_SAFE_INTEGER,
-        orig: 'bf_home_testimonial_image', origVal: home.testimonialImage || '',
-        virtual: true,
-      });
-    }
     // flag plain-text blocks whose value is neither in the client bundle nor
     // repeated in the page's own scripts (flight data) — hydration may revert
     // them; the editor shows a warning badge so it's visible before it bites
@@ -1969,8 +1884,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   // contains oldVal (e.g. a word appended) can't be double-inserted.
   const prePairs = safeTextPairs((blocks || [])
     .filter(b => b && b.id && !b.isNew && !b.delete && b.newVal != null && b.origVal != null
-                 && b.origVal !== b.newVal && b.type !== 'img'
-                 && !b.id.startsWith('bf_home_testimonial_'))
+                 && b.origVal !== b.newVal && b.type !== 'img')
     .map(b => ({ oldVal: b.origVal, newVal: b.newVal })));
   const preHtml = html;
   for (const p of prePairs) html = html.split(p.oldVal).join(p.newVal);
@@ -1983,33 +1897,9 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   const $ = cheerio.load(html, { decodeEntities: false });
   let changed = 0;
   const textPairs = []; // old → new plain-text edits, mirrored into JS chunks below
-  const stageEdits = [];
-  const homeTestimonial = rel === 'index.html' ? homeTestimonialFromDom($) : null;
-  let homeTextChanged = false;
 
   for (const b of blocks) {
     if (!b.id) continue;
-    if (/^bf_home_testimonial_(quote|author|role)$/.test(b.id)) {
-      if (!homeTestimonial) continue;
-      const field = b.id.slice('bf_home_testimonial_'.length);
-      const next = cleanText(b.newVal == null ? homeTestimonial[field] : b.newVal);
-      if (next !== homeTestimonial[field]) {
-        homeTestimonial[field] = next;
-        homeTextChanged = true;
-        changed++;
-      }
-      continue;
-    }
-    if (b.id === 'bf_home_testimonial_image') {
-      const home = Object.assign({}, DEFAULTS.homepage, getSetting('homepage', {}));
-      const nextImage = sanitizeHref(b.newVal == null ? home.testimonialImage : b.newVal);
-      if (nextImage !== home.testimonialImage) {
-        home.testimonialImage = nextImage;
-        setSetting('homepage', home);
-        changed++;
-      }
-      continue;
-    }
     if (b.id.startsWith('seo_')) {
       if (b.id === 'seo_title') {
         let el = $('head title');
@@ -2062,11 +1952,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
       if (b.type === 'img') el.attr('src', encodeHtmlEnts(b.newVal));
       else {
         el.html(b.newVal);
-        if (/^bf_stg\d+_(title|label|desc)$/.test(b.id)) {
-          stageEdits.push({ id: b.id, newVal: cleanText(b.newVal) });
-        } else {
-          textPairs.push({ oldVal: b.origVal, newVal: b.newVal });
-        }
+        textPairs.push({ oldVal: b.origVal, newVal: b.newVal });
       }
       changed++;
     }
@@ -2096,46 +1982,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     // old string across the serialized page (they can only be in scripts now).
     // (flight-data occurrences were already replaced on the raw page above,
     // before cheerio — see prePairs)
-    let homeSync = null;
-    if (homeTextChanged && homeTestimonial) {
-      homeTestimonial.quoteEl.text(`“${homeTestimonial.quote}”`);
-      homeTestimonial.authorEl.text(`– ${homeTestimonial.author}${homeTestimonial.role?', '+homeTestimonial.role:''}`);
-    }
     writeAtomic(full, $.html());
-    if (homeTextChanged && homeTestimonial) {
-      try {
-        const hc = readHomeContentBundle();
-        if (!hc || !hc.obj.testimonial || !hc.obj.testimonial[0]) throw new Error('home testimonial bundle not found');
-        hc.obj.testimonial[0].quote = homeTestimonial.quote;
-        hc.obj.testimonial[0].author = homeTestimonial.author;
-        hc.obj.testimonial[0].role = homeTestimonial.role;
-        homeSync = writeHomeContentBundle(hc);
-      } catch(e) {
-        homeSync = { error:e.message };
-      }
-    }
-    if (stageEdits.length) {
-      const m = rel.match(/^igry\/([^/]+)\/index\.html$/);
-      const row = m ? gSlug.get(m[1]) : null;
-      if (row) {
-        const stages = parseStages(row.stages);
-        let stageChanged = false;
-        for (const edit of stageEdits) {
-          const sm = edit.id.match(/^bf_stg(\d+)_(title|label|desc)$/);
-          if (!sm || !stages[+sm[1]]) continue;
-          const field = sm[2] === 'desc' ? 'description' : sm[2];
-          if (stages[+sm[1]][field] === edit.newVal) continue;
-          stages[+sm[1]][field] = edit.newVal;
-          stageChanged = true;
-        }
-        if (stageChanged) {
-          snapshotGameHistory(row.id, row);
-          const current = gameRow(row);
-          gUpd.run({ ...gameBody({ ...current, stages }, row), id: row.id });
-          writeGeneratedGamePage(gOne.get(row.id));
-        }
-      }
-    }
     if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
     let chunkSync = null, templateSync = null;
     if (textPairs.length) {
@@ -2145,23 +1992,6 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
       const matched = new Set((chunkSync && chunkSync.matchedVals) || []);
       for (const p of textPairs) {
         if (matched.has(p.oldVal)) continue;
-        // Testimonial copy is rendered as “ + dictionary value + ”. The page
-        // editor sees the decorated DOM string, while the content bundle only
-        // contains the undecorated value. Sync that inner literal explicitly.
-        const oldCore = p.oldVal.replace(/^\s*[“”"']\s*/, '').replace(/\s*[“”"']\s*$/, '').trim();
-        const newCore = p.newVal.replace(/^\s*[“”"']\s*/, '').replace(/\s*[“”"']\s*$/, '').trim();
-        if (oldCore !== p.oldVal && oldCore && newCore) {
-          let coreSync = null;
-          try { coreSync = syncChunkTexts([{ oldVal: oldCore, newVal: newCore }]); } catch {}
-          if (coreSync && coreSync.matched) {
-            const sc = readSiteContent();
-            if (sc && sc.obj.testimonial && sc.obj.testimonial[0] && sc.obj.testimonial[0].quote === oldCore) {
-              sc.obj.testimonial[0].quote = newCore;
-              try { writeSiteContent(sc); } catch {}
-            }
-            continue;
-          }
-        }
         let r; try { r = syncSiteContentTemplate(p.oldVal, p.newVal); }
         catch(e){ r = { ok:false, reason:'error', error:e.message }; }
         if (r) (templateSync ||= []).push(r);
@@ -2174,8 +2004,8 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
       if (v.missing.length) { integrity = v.missing; audit('system', 'integrity_missing_refs', { after: 'page_patch', missing: v.missing.slice(0, 10) }); }
     } catch {}
     const publishedAt = bumpPublishedAt();
-    audit(req.ip, 'page_patch', {path: rel, changed, publishedAt, chunkSync, templateSync, homeSync});
-    res.json({ok: true, changed, publishedAt, integrity, templateSync, homeSync});
+    audit(req.ip, 'page_patch', {path: rel, changed, publishedAt, chunkSync, templateSync});
+    res.json({ok: true, changed, publishedAt, integrity, templateSync});
   } else {
     res.json({ok: true, changed: 0});
   }
@@ -2382,7 +2212,7 @@ const RUNTIME_JS = `(function(){
   // KeyframeEffect constructors directly, bypassing the prototype method).
   function apply(s){try{
     if(!s)return;
-    var a=s.appearance||{},b=s.banner||{},m=s.maintenance||{},ig=s.integrations||{},g=s.general||{},hp=s.homepage||{};
+    var a=s.appearance||{},b=s.banner||{},m=s.maintenance||{},ig=s.integrations||{},g=s.general||{};
     if(g.primaryColor)document.documentElement.style.setProperty('--bf-primary',g.primaryColor);
     if(a.customCss){var st=document.getElementById('bf-css')||Object.assign(document.createElement('style'),{id:'bf-css'});st.textContent=a.customCss;if(!st.parentNode)document.head.appendChild(st);}
     if(ig.headScripts&&!window.__bfH){window.__bfH=1;var d=document.createElement('div');d.innerHTML=ig.headScripts;d.childNodes.forEach(function(n){if(n.tagName==='SCRIPT'){var sc=document.createElement('script');for(var i=0;i<n.attributes.length;i++)sc.setAttribute(n.attributes[i].name,n.attributes[i].value);sc.text=n.textContent;document.head.appendChild(sc);}else document.head.appendChild(n.cloneNode(true));});}
@@ -2391,24 +2221,7 @@ const RUNTIME_JS = `(function(){
     if(b.enabled&&b.text){var el=ex||document.createElement('div');el.id='bf-banner';el.style.cssText='position:relative;z-index:9998;width:100%;padding:10px 16px;text-align:center;font:600 14px/1.4 Comfortaa,system-ui,sans-serif;background:'+(b.bg||'#2E9BE6')+';color:'+(b.fg||'#fff')+';';el.innerHTML=b.link?'<a href="'+b.link+'" style="color:inherit;text-decoration:underline">'+esc(b.text)+'</a>':esc(b.text);if(!ex)document.body.insertBefore(el,document.body.firstChild);}else if(ex)ex.remove();
     var mo=document.getElementById('bf-maintenance');
     if(m.enabled){if(!mo){mo=document.createElement('div');mo.id='bf-maintenance';mo.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0b1f33;color:#fff;font:500 20px/1.6 Comfortaa,system-ui,sans-serif;';mo.innerHTML='<div style="max-width:560px"><div style="font-size:40px;margin-bottom:16px">🦦</div><div>'+esc(m.message||'')+'</div></div>';document.body.appendChild(mo);document.documentElement.style.overflow='hidden';}}else if(mo){mo.remove();document.documentElement.style.overflow='';}
-    applyTestimonialImage(hp.testimonialImage||'');
-    setTimeout(function(){applyTestimonialImage(hp.testimonialImage||'');},300);
-    setTimeout(function(){applyTestimonialImage(hp.testimonialImage||'');},1200);
   }catch(e){}}
-  function applyTestimonialImage(url){
-    var old=document.getElementById('bf-testimonial-image');
-    if(!url){if(old)old.remove();return;}
-    var quoteIcon=document.querySelector('main svg.lucide-quote');
-    if(!quoteIcon)return;
-    var card=quoteIcon.parentElement;
-    if(!card)return;
-    var quote=card.querySelector('p.text-xl');
-    if(!quote)return;
-    var img=old||document.createElement('img');
-    img.id='bf-testimonial-image';img.src=url;img.alt='Фото автора відгуку';
-    img.style.cssText='display:block;width:96px;height:96px;object-fit:cover;border-radius:50%;margin:0 auto 22px;border:3px solid rgba(0,159,227,.18);box-shadow:0 10px 30px rgba(15,23,42,.14);position:relative;z-index:10;background:#fff';
-    if(img.parentElement!==card)card.insertBefore(img,quote);
-  }
   function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
   function load(){getJson('/api/public/site.json',8000).then(function(s){apply(s);startLiveRefresh(s);}).catch(function(){});}
