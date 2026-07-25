@@ -219,36 +219,28 @@ function renderGameStagesHtml(stages, statusRaw) {
   // (trymaysia) via the BF_STAGES markers, where none of the generated-template
   // classes (.rv reveal animation, .gp-eyebrow, .gp-stitle) exist — depending
   // on them left the section heading nearly invisible.
-  // `data-bf-stages` marks this whole section as generated-from-DB: extractBlocks()
-  // skips it, so the block editor never offers these texts. Editing them there would
-  // silently revert on the next game save / pm2 boot, since this HTML is re-rendered
-  // from the `stages` DB column every time. Real edits go through the game editor.
-  // The data-bf-id values below are DETERMINISTIC for the same reason: regeneration
-  // must not churn them, or every restart would look like a mass id loss.
-  let html = `<section data-bf-stages="true" style="background-color:rgb(9,13,19);padding:72px 24px">
+  let html = `<section style="background-color:rgb(9,13,19);padding:72px 24px">
   <div style="max-width:880px;margin:0 auto">
     <div style="margin-bottom:32px">
-      <p data-bf-id="bf_stg_eyebrow" style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 12px">Прогрес</p>
-      <h2 data-bf-id="bf_stg_heading" style="font-size:clamp(26px,4vw,40px);font-weight:800;color:rgba(255,255,255,.92);margin:0 0 12px;letter-spacing:-.02em">Етапи проєкту</h2>
-      <p data-bf-id="bf_stg_subtitle" style="color:rgba(255,255,255,.45);font-size:15px;margin:0">Стан запуску кожного етапу.</p>
+      <p style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 12px">Прогрес</p>
+      <h2 style="font-size:clamp(26px,4vw,40px);font-weight:800;color:rgba(255,255,255,.92);margin:0 0 12px;letter-spacing:-.02em">Етапи проєкту</h2>
+      <p style="color:rgba(255,255,255,.45);font-size:15px;margin:0">Стан запуску кожного етапу.</p>
     </div>
     <div style="display:grid;gap:20px">`;
-  let stgIdx = 0;
   for (const stg of stages) {
     const isUn = stg.status === 'unlocked';
-    const sid = `bf_stg${stgIdx++}`;
     html += `
       <article style="background:linear-gradient(135deg, ${isUn ? 'rgba(61,107,138,0.22) 0%, rgb(11,17,24) 48%' : 'rgb(9,13,19) 0%, rgb(12,18,26) 100%'});border:1px solid ${isUn ? 'rgb(22,34,48)' : 'rgb(15,23,33)'};border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isUn ? '16px' : '10px'};gap:16px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="${sid}_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:${isUn ? 'rgba(61,107,138,0.23)' : 'rgba(61,107,138,0.14)'};border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
+            <span style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:${isUn ? 'rgba(61,107,138,0.23)' : 'rgba(61,107,138,0.14)'};border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
               ${stageLockSvg(isUn)}
             </span>
-            <h3 data-bf-id="${sid}_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,${isUn ? '.9' : '.55'});margin:0">${escapeHtml(stg.title)}</h3>
+            <h3 style="font-size:22px;font-weight:600;color:rgba(255,255,255,${isUn ? '.9' : '.55'});margin:0">${escapeHtml(stg.title)}</h3>
           </div>
-          ${stg.label ? `<span data-bf-id="${sid}_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:${isUn ? 'rgba(61,107,138,0.26)' : 'rgba(216,226,240,0.11)'};color:${isUn ? '#bdf6df' : 'rgba(230,238,247,0.7)'};border:1px solid ${isUn ? 'rgba(61,107,138,0.6)' : 'rgba(190,205,224,0.22)'};white-space:nowrap">${escapeHtml(stg.label)}</span>` : ''}
+          ${stg.label ? `<span style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:${isUn ? 'rgba(61,107,138,0.26)' : 'rgba(216,226,240,0.11)'};color:${isUn ? '#bdf6df' : 'rgba(230,238,247,0.7)'};border:1px solid ${isUn ? 'rgba(61,107,138,0.6)' : 'rgba(190,205,224,0.22)'};white-space:nowrap">${escapeHtml(stg.label)}</span>` : ''}
         </div>
-        <div data-bf-id="${sid}_desc" style="color:rgba(255,255,255,${isUn ? '.6' : '.35'});font-size:15px;line-height:1.6">
+        <div style="color:rgba(255,255,255,${isUn ? '.6' : '.35'});font-size:15px;line-height:1.6">
           ${escapeHtml(stg.description || (isUn ? '' : 'Секція ще не заповнена'))}
         </div>
       </article>`;
@@ -1126,11 +1118,6 @@ function extractBlocks(html){
   root.find('h1, h2, h3, p, a, span, img, li').each((_, el) => {
     const $el = $(el);
     if ($el.closest('script, style, svg, header, nav, footer').length > 0) return;
-    // Generated-from-DB regions (game stages): re-rendered by writeGeneratedGamePage()
-    // on every game save and pm2 boot, so any block-editor change here would silently
-    // revert. Skipped BEFORE id assignment — these carry their own deterministic ids
-    // from the generator, and handing out random ones would churn them each restart.
-    if ($el.closest('[data-bf-stages]').length > 0) return;
 
     const tag = el.tagName.toLowerCase();
     

@@ -5,67 +5,67 @@
           radial-gradient(110% 76% at 50% 122%, rgba(40,61,87,0.24) 0%, transparent 58%),
           linear-gradient(180deg, rgb(13,20,28) 0%, rgb(10,16,23) 44%, rgb(9,13,19) 100%);border:1px solid rgba(40,61,87,0.36);box-shadow:inset 0 1px 0 rgba(255,255,255,0.12), 0 30px 58px -34px rgba(0,0,0,0.72), 0 0 0 1px rgba(40,61,87,0.2);border-radius:24px;padding:24px 20px 22px"><div class="cursor-grab" style="width:292px;height:258px;margin:18px auto;position:relative;transform-style:preserve-3d;transform:translateZ(0) rotateX(-7deg) rotateY(-13deg);transition:transform 0.08s ease-out;will-change:transform"><div style="position:absolute;width:292px;height:258px;left:50%;top:50%;margin-left:-146px;margin-top:-129px;transform:translateZ(49px);backface-visibility:hidden;background-color:#283D57;border-radius:2px;overflow:hidden"><div class="absolute inset-0 pointer-events-none" style="background:linear-gradient(180deg, rgba(14,21,30,0.42) 0%, rgba(18,28,40,0.1) 36%, rgba(19,29,42,0.1) 64%, rgba(14,21,30,0.3) 100%)"></div><div class="absolute inset-0 pointer-events-none" style="background:linear-gradient(135deg, rgba(255,255,255,0.13) 0%, transparent 32%, transparent 68%, rgba(255,255,255,0.05) 100%)"></div><div class="absolute inset-0 pointer-events-none" style="box-shadow:inset 0 0 26px -10px rgba(0,0,0,0.45)"></div></div><div style="position:absolute;width:292px;height:258px;left:50%;top:50%;margin-left:-146px;margin-top:-129px;transform:rotateY(180deg) translateZ(49px);backface-visibility:hidden;background-color:rgb(34,52,74);border-radius:2px;overflow:hidden"><div class="absolute inset-0 pointer-events-none" style="background:linear-gradient(45deg, rgba(255,255,255,0.05) 0%, transparent 45%, transparent 68%, rgba(255,255,255,0.04) 100%)"></div><div class="absolute inset-0 pointer-events-none" style="background:linear-gradient(180deg, rgba(14,21,30,0.24) 0%, rgba(18,27,39,0.08) 36%, rgba(18,27,39,0.1) 64%, rgba(14,21,30,0.2) 100%)"></div><div class="absolute inset-0 pointer-events-none" style="box-shadow:inset 0 0 24px -10px rgba(0,0,0,0.46)"></div></div><div style="position:absolute;width:98px;height:258px;left:50%;top:50%;margin-left:-49px;margin-top:-129px;transform:rotateY(90deg) translateZ(146px);backface-visibility:hidden;background-color:rgb(31,48,68);border-radius:2px;overflow:hidden"><div class="absolute inset-0 pointer-events-none bg-gradient-to-r from-black/25 via-transparent to-black/35"></div><div class="absolute inset-0" style="box-shadow:inset 0 0 17px -6px rgba(0,0,0,0.52)"></div></div><div style="position:absolute;width:98px;height:258px;left:50%;top:50%;margin-left:-49px;margin-top:-129px;transform:rotateY(-90deg) translateZ(146px);backface-visibility:hidden;background-color:rgb(31,48,68);border-radius:2px;overflow:hidden"><div class="absolute inset-0 pointer-events-none bg-gradient-to-r from-black/35 via-transparent to-black/20"></div><div class="absolute inset-0" style="box-shadow:inset 0 0 17px -6px rgba(0,0,0,0.52)"></div></div><div style="position:absolute;width:292px;height:98px;left:50%;top:50%;margin-left:-146px;margin-top:-49px;transform:rotateX(90deg) translateZ(129px);backface-visibility:hidden;background-color:rgb(37,56,80);border-radius:2px;overflow:hidden"><div class="absolute inset-0" style="background:linear-gradient(160deg, rgba(255,255,255,0.14) 0%, transparent 42%)"></div><div class="absolute inset-0" style="box-shadow:inset 0 0 14px -4px rgba(0,0,0,0.34)"></div></div><div style="position:absolute;width:292px;height:98px;left:50%;top:50%;margin-left:-146px;margin-top:-49px;transform:rotateX(-90deg) translateZ(129px);backface-visibility:hidden;background-color:rgb(18,27,39);border-radius:2px;overflow:hidden"><div class="absolute inset-0 pointer-events-none" style="box-shadow:inset 0 0 20px -5px rgba(0,0,0,0.62)"></div></div><div style="position:absolute;width:268.64px;height:107.80000000000001px;left:50%;top:50%;margin-left:-134.32px;margin-top:136px;transform:rotateX(-90deg) translateZ(-131px);background:radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 72%);filter:blur(10px);pointer-events:none"></div></div></div></div><div class="p-5 sm:p-10 rounded-3xl" style="background:linear-gradient(180deg, rgb(10,15,22) 0%, rgb(12,18,26) 100%);border:1px solid rgb(15,23,33);box-shadow:0 22px 50px -42px rgba(0,0,0,0.55);opacity:0;transform:translateX(30px)"><div class="w-full h-px bg-white/10 mb-6"></div><div class="w-full h-px bg-white/10 mt-6"></div></div></div></div></section>
 <!-- BF_STAGES_START -->
-<section data-bf-stages="true" style="background-color:rgb(9,13,19);padding:72px 24px">
+<section style="background-color:rgb(9,13,19);padding:72px 24px">
   <div style="max-width:880px;margin:0 auto">
     <div style="margin-bottom:32px">
-      <p data-bf-id="bf_stg_eyebrow" style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 12px">Прогрес</p>
-      <h2 data-bf-id="bf_stg_heading" style="font-size:clamp(26px,4vw,40px);font-weight:800;color:rgba(255,255,255,.92);margin:0 0 12px;letter-spacing:-.02em">Етапи проєкту</h2>
-      <p data-bf-id="bf_stg_subtitle" style="color:rgba(255,255,255,.45);font-size:15px;margin:0">Стан запуску кожного етапу.</p>
+      <p style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 12px">Прогрес</p>
+      <h2 style="font-size:clamp(26px,4vw,40px);font-weight:800;color:rgba(255,255,255,.92);margin:0 0 12px;letter-spacing:-.02em">Етапи проєкту</h2>
+      <p style="color:rgba(255,255,255,.45);font-size:15px;margin:0">Стан запуску кожного етапу.</p>
     </div>
     <div style="display:grid;gap:20px">
       <article style="background:linear-gradient(135deg, rgba(61,107,138,0.22) 0%, rgb(11,17,24) 48%);border:1px solid rgb(22,34,48);border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:16px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="bf_stg0_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.23);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
+            <span style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.23);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(189,246,223,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
             </span>
-            <h3 data-bf-id="bf_stg0_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,.9);margin:0">Анонс</h3>
+            <h3 style="font-size:22px;font-weight:600;color:rgba(255,255,255,.9);margin:0">Анонс</h3>
           </div>
-          <span data-bf-id="bf_stg0_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(61,107,138,0.26);color:#bdf6df;border:1px solid rgba(61,107,138,0.6);white-space:nowrap">ЧЕРНЕТКА</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(61,107,138,0.26);color:#bdf6df;border:1px solid rgba(61,107,138,0.6);white-space:nowrap">ЧЕРНЕТКА</span>
         </div>
-        <div data-bf-id="bf_stg0_desc" style="color:rgba(255,255,255,.6);font-size:15px;line-height:1.6">
+        <div style="color:rgba(255,255,255,.6);font-size:15px;line-height:1.6">
           Ми раді представити «Тримайся» — динамічну настільну гру, натхненну духом морських пригод! Хапайтеся за мотузку і не відпускайте — хто протримається довше? Гра для 2–5 гравців, партія — близько 15 хвилин.
         </div>
       </article>
       <article style="background:linear-gradient(135deg, rgb(9,13,19) 0%, rgb(12,18,26) 100%);border:1px solid rgb(15,23,33);border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:16px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="bf_stg1_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.14);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
+            <span style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.14);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </span>
-            <h3 data-bf-id="bf_stg1_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,.55);margin:0">Передзамовлення</h3>
+            <h3 style="font-size:22px;font-weight:600;color:rgba(255,255,255,.55);margin:0">Передзамовлення</h3>
           </div>
-          <span data-bf-id="bf_stg1_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(216,226,240,0.11);color:rgba(230,238,247,0.7);border:1px solid rgba(190,205,224,0.22);white-space:nowrap">СКОРО</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(216,226,240,0.11);color:rgba(230,238,247,0.7);border:1px solid rgba(190,205,224,0.22);white-space:nowrap">СКОРО</span>
         </div>
-        <div data-bf-id="bf_stg1_desc" style="color:rgba(255,255,255,.35);font-size:15px;line-height:1.6">
+        <div style="color:rgba(255,255,255,.35);font-size:15px;line-height:1.6">
           Секція ще не заповнена
         </div>
       </article>
       <article style="background:linear-gradient(135deg, rgb(9,13,19) 0%, rgb(12,18,26) 100%);border:1px solid rgb(15,23,33);border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:16px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="bf_stg2_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.14);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
+            <span style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.14);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </span>
-            <h3 data-bf-id="bf_stg2_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,.55);margin:0">Виробництво</h3>
+            <h3 style="font-size:22px;font-weight:600;color:rgba(255,255,255,.55);margin:0">Виробництво</h3>
           </div>
-          <span data-bf-id="bf_stg2_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(216,226,240,0.11);color:rgba(230,238,247,0.7);border:1px solid rgba(190,205,224,0.22);white-space:nowrap">СКОРО</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(216,226,240,0.11);color:rgba(230,238,247,0.7);border:1px solid rgba(190,205,224,0.22);white-space:nowrap">СКОРО</span>
         </div>
-        <div data-bf-id="bf_stg2_desc" style="color:rgba(255,255,255,.35);font-size:15px;line-height:1.6">
+        <div style="color:rgba(255,255,255,.35);font-size:15px;line-height:1.6">
           Секція ще не заповнена
         </div>
       </article>
       <article style="background:linear-gradient(135deg, rgb(9,13,19) 0%, rgb(12,18,26) 100%);border:1px solid rgb(15,23,33);border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:16px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="bf_stg3_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.14);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
+            <span style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.14);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </span>
-            <h3 data-bf-id="bf_stg3_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,.55);margin:0">У вільному продажі</h3>
+            <h3 style="font-size:22px;font-weight:600;color:rgba(255,255,255,.55);margin:0">У вільному продажі</h3>
           </div>
-          <span data-bf-id="bf_stg3_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(216,226,240,0.11);color:rgba(230,238,247,0.7);border:1px solid rgba(190,205,224,0.22);white-space:nowrap">СКОРО</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(216,226,240,0.11);color:rgba(230,238,247,0.7);border:1px solid rgba(190,205,224,0.22);white-space:nowrap">СКОРО</span>
         </div>
-        <div data-bf-id="bf_stg3_desc" style="color:rgba(255,255,255,.35);font-size:15px;line-height:1.6">
+        <div style="color:rgba(255,255,255,.35);font-size:15px;line-height:1.6">
           Секція ще не заповнена
         </div>
       </article></div></div></section>
