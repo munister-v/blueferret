@@ -394,14 +394,8 @@ a:focus-visible, button:focus-visible {
   /* Prevent horizontal scroll */
   body { overflow-x: hidden; }
 
-  /* Touch-friendly tap targets.
-     NB: never set `display` on the bare `a, button` selector here. bf.css is
-     unlayered while Tailwind utilities live in @layer utilities, so an
-     unlayered `display:inline-flex` beats even `.block` and turns every
-     block-level card link into a shrink-to-fit box — which then sizes its
-     grid `auto` column to max-content and overflows the viewport on mobile.
-     The targeted nav/CTA re-apply further down handles real tap targets. */
-  a, button { min-height: 44px; }
+  /* Touch-friendly tap targets */
+  a, button { min-height: 44px; display: inline-flex; align-items: center; }
 
   /* Better text rendering */
   h1, h2, h3 { text-wrap: balance; }
