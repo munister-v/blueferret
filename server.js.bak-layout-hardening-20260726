@@ -308,72 +308,10 @@ function renderGameStagesHtml(stages, statusRaw) {
   return html;
 }
 
-function repairIgryStructureHtml(html) {
-  const $ = cheerio.load(html, { decodeEntities: false });
-  const badge = $('.badge-gradient').first();
-  if (!badge.length || badge.children().length <= 6) return { html, repaired: false };
-
-  const title = badge.children('h1').first().clone();
-  const subtitle = badge.children('p.text-lead').first().clone();
-  const count = badge.children('[data-bf-id="bf_f7100a22"]').first().clone();
-  const updates = badge.children('[data-bf-id="bf_009cee3f"]').first().clone();
-  if (!title.length || !subtitle.length) return { html, repaired: false };
-
-  // A historic cross-container reorder could pull most of the page into this
-  // two-item badge. Keep its icon/label and rebuild the known hero siblings.
-  badge.children().slice(2).remove();
-  const facts = $('<div class="mt-7 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3"></div>');
-  if (count.length) facts.append(count);
-  if (updates.length) facts.append(updates);
-  badge.after(title);
-  title.after(subtitle);
-  subtitle.after(facts);
-  return { html: $.html(), repaired: true };
-}
-
-function makeIgryStaticHtml(html) {
-  const $ = cheerio.load(html, { decodeEntities:false });
-  $('script').each((_, el) => {
-    const node = $(el);
-    const src = node.attr('src') || '';
-    const inline = node.html() || '';
-    if (src.includes('/_next/static/chunks/') || /self\.__next_f/.test(inline)) node.remove();
-  });
-  $('link[rel="preload"],link[rel="modulepreload"]').each((_, el) => {
-    const node = $(el);
-    if ((node.attr('href') || '').includes('/_next/static/chunks/')) node.remove();
-  });
-  if (!$('meta[name="bf-render-mode"]').length) {
-    $('head').append('<meta name="bf-render-mode" content="static-cms">');
-  }
-  return $.html();
-}
-
-function renderCatalogCard({ g, slugKey, excerpt, href, cover, status }) {
-  return `<a href="${encodeHtmlEnts(href)}" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]" data-bf-id="bf_cat_${slugKey}_card">
-    <div class="aspect-[4/3] relative overflow-hidden bg-slate-800">
-      <img src="${encodeHtmlEnts(cover)}" alt="${escapeHtml(g.title || '')}" class="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async" data-bf-id="bf_cat_${slugKey}_image">
-      <div class="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent"></div>
-      <div class="absolute bottom-3 sm:bottom-5 left-3 sm:left-5 right-3 sm:right-5 flex justify-between items-end gap-2">
-        <span class="board-game-badge inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/95 text-slate-700 text-xs sm:text-sm shadow-md backdrop-blur-sm border border-[var(--bf-accent)]/30" data-bf-id="bf_cat_${slugKey}_status">${status}</span>
-        <span class="p-2.5 sm:p-3 rounded-xl bg-white/95 backdrop-blur-sm border border-white/60 shadow-sm text-bf" aria-hidden="true">→</span>
-      </div>
-    </div>
-    <div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full">
-      <h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800" data-bf-id="bf_cat_${slugKey}_title">${escapeHtml(g.title || '')}</h2>
-      <p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6" data-bf-id="bf_cat_${slugKey}_description">${escapeHtml(excerpt)}</p>
-      <span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span>
-    </div>
-  </a>`;
-}
-
 function regenGamesCatalog() {
   const p = path.join(PAGES_ROOT, 'igry/index.html');
   if (!fs.existsSync(p)) return;
   let html = fs.readFileSync(p, 'utf8');
-  const structure = repairIgryStructureHtml(html);
-  html = structure.html;
-  if (structure.repaired) audit('system', 'igry_structure_repaired', {});
 
   const startIdx = html.indexOf('data-bf-games-grid="true"');
   if (startIdx === -1) return;
@@ -396,20 +334,47 @@ function regenGamesCatalog() {
   if (gridEnd === -1) return;
   
   const gridOuterHTML = html.slice(divStart, gridEnd);
+  const aMatch = gridOuterHTML.match(/<a [^>]*href="\/igry\/[^"]+"[^>]*>[\s\S]*?<\/a>/i);
+  if (!aMatch) return;
+  const template = aMatch[0];
   
   function getStatusName(s) { return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс'; }
   const games = gAll.all().filter(g => !['archived', 'hidden', 'draft'].includes(g.status)).map(gameRow);
 
+  // Extract the first card's title and description text for replacement
+  // In minified HTML, text may sit directly in divs without h2/p wrappers
+  const firstGame = games[0] || {};
+  const firstTitle = escapeHtml(firstGame.title || 'Тримайся');
+  const firstDesc = escapeHtml(firstGame.description || firstGame.subtitle || '');
+  
   const newCards = games.map(g => {
-    const slugKey = String(g.slug || g.id || 'game').replace(/[^a-z0-9_-]/gi, '_');
-    const paragraphs = cleanText(g.description || g.subtitle || 'Опис гри скоро з\'явиться.').split(/\n\s*\n/).filter(Boolean);
-    const rawDescription = paragraphs[0] || '';
-    const excerpt = rawDescription.length > 260
-      ? rawDescription.slice(0, 257).replace(/\s+\S*$/, '') + '…'
-      : rawDescription;
-    const href = sanitizeHref(g.buy_url || `/igry/${g.slug}/`);
-    const cover = sanitizeHref(g.cover_url || '/images/placeholder-game.svg');
-    return renderCatalogCard({ g, slugKey, excerpt, href, cover, status: getStatusName(g.status) });
+    let card = template;
+    // Replace href
+    card = card.replace(/href="\/igry\/[^"]+"\/?/, `href="${g.buy_url || '/igry/'+g.slug+'/'}"`);
+    // Replace image src
+    card = card.replace(/src="[^"]+"/, `src="${g.cover_url || '/images/placeholder-game.svg'}"`);
+    // Replace alt
+    card = card.replace(/alt="[^"]*"/, `alt="${escapeHtml(g.title||'')}"`);
+    // Replace title: try h2 first, then find raw text in the card body
+    const h2re = /(<h2[^>]*>)[\s\S]*?(<\/h2>)/i;
+    if (h2re.test(card)) {
+      card = card.replace(h2re, `$1${escapeHtml(g.title||'')}$2`);
+    } else if (firstTitle && card.includes(firstTitle)) {
+      card = card.replace(firstTitle, escapeHtml(g.title||''));
+    }
+    // Replace description: try p first, then find raw text
+    const pre = /(<p[^>]*>)[\s\S]*?(<\/p>)/i;
+    if (pre.test(card)) {
+      card = card.replace(pre, `$1${escapeHtml(g.description||g.subtitle||'')}$2`);
+    } else if (firstDesc && firstDesc.length > 20 && card.includes(firstDesc)) {
+      card = card.replace(firstDesc, escapeHtml(g.description||g.subtitle||''));
+    }
+    // Replace status badge
+    const badgeRe = /(<span[^>]*board-game-badge[^>]*>)[\s\S]*?(<\/span>)/i;
+    if (badgeRe.test(card)) {
+      card = card.replace(badgeRe, `$1${getStatusName(g.status)}$2`);
+    }
+    return card;
   });
   
   const firstCloseBracket = gridOuterHTML.indexOf('>');
@@ -421,43 +386,11 @@ function regenGamesCatalog() {
   newHtml = newHtml.replace(countRegex, `$1${games.length} ${games.length===1?'гра':'ігри'} в каталозі$3`);
   
   newHtml = newHtml.replace(/<script>window\.__BF_IGRY_HTML=[\s\S]*?<\/script>/i, '');
-  newHtml = makeIgryStaticHtml(newHtml);
   
   writeAtomic(p, newHtml);
 }
 
 function cleanText(v) { return String(v ?? '').trim(); }
-function sanitizeEditorHtml(v) {
-  const $ = cheerio.load(`<div id="bf-sanitize-root">${String(v ?? '')}</div>`, { decodeEntities:false });
-  const root = $('#bf-sanitize-root');
-  root.find('script,style,iframe,object,embed,form,input,button,textarea,select,video,audio').remove();
-  const allowed = new Set(['b','strong','i','em','u','br','a','span','sub','sup']);
-  root.find('*').each((_, el) => {
-    const node = $(el), tag = String(el.tagName || '').toLowerCase();
-    if (!allowed.has(tag)) { node.replaceWith(node.contents()); return; }
-    const href = tag === 'a' ? sanitizeHref(node.attr('href') || '') : '';
-    for (const attr of Object.keys(el.attribs || {})) node.removeAttr(attr);
-    if (href) node.attr('href', href);
-  });
-  return (root.html() || '').trim();
-}
-
-function validateEditablePageHtml(html, rel) {
-  if (typeof html !== 'string' || html.length < 100 || html.length > 8 * 1024 * 1024) throw new Error('invalid_page_size');
-  const $ = cheerio.load(html, { decodeEntities:false });
-  if (!$('html').length || !$('body').length || !$('main').length) throw new Error('required_page_structure_missing');
-  const ids = new Set();
-  let duplicate = '';
-  $('[data-bf-id]').each((_, el) => {
-    const id = $(el).attr('data-bf-id');
-    if (id && ids.has(id) && !duplicate) duplicate = id;
-    if (id) ids.add(id);
-  });
-  if (duplicate) throw new Error(`duplicate_block_id:${duplicate}`);
-  if (rel === 'igry/index.html' && $('.badge-gradient').first().children().length > 6) {
-    throw new Error('catalog_hero_structure_invalid');
-  }
-}
 // Any URL that ends up in href/src of saved page or game HTML must be
 // checked here first -- an admin (or anyone who reaches these endpoints
 // directly, bypassing the client-side prompt guard added for the WYSIWYG
@@ -685,7 +618,6 @@ function relinkChunkEverywhere(oldName, newName) {
 function syncIgryHeroChunk() {
   const igryFile = path.join(SITE_ROOT, 'igry', 'index.html');
   let html; try { html = fs.readFileSync(igryFile, 'utf8'); } catch { return; }
-  if (html.includes('name="bf-render-mode" content="static-cms"')) return;
   const $ = cheerio.load(html, { decodeEntities: false });
   const badge = $('[data-bf-id="bf_23a70ecb"]').first().text().trim();
   const title = $('[data-bf-id="bf_ca918952"]').first().text().trim();
@@ -1368,17 +1300,6 @@ function extractBlocks(html){
       }
     }
   });
-
-  const parentKeys = new WeakMap();
-  let parentSeq = 0;
-  for (const block of blocks) {
-    if (block.type === 'seo') { block.parentKey = 'seo'; continue; }
-    const node = root.find(`[data-bf-id="${block.id}"]`).first()[0];
-    const parent = node && node.parent;
-    if (!parent) { block.parentKey = 'root'; continue; }
-    if (!parentKeys.has(parent)) parentKeys.set(parent, `parent_${parentSeq++}`);
-    block.parentKey = parentKeys.get(parent);
-  }
 
   return { blocks, newHtml: changed ? $.html() : html };
 }
@@ -2174,17 +2095,6 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
     const html = fs.readFileSync(full, 'utf8');
     const ext = extractBlocks(html);
     if (ext.newHtml !== html) writeAtomic(full, ext.newHtml);
-    if (rel === 'igry/index.html') {
-      const catalogDom = cheerio.load(ext.newHtml, { decodeEntities:false });
-      const generatedIds = new Set();
-      catalogDom('[data-bf-games-grid] [data-bf-id]').each((_, el) => {
-        const id = catalogDom(el).attr('data-bf-id');
-        if (id) generatedIds.add(id);
-      });
-      // Catalog cards are generated from the Games database on every save and
-      // process restart. Editing their rendered copies here would be temporary.
-      ext.blocks = ext.blocks.filter(block => !generatedIds.has(block.id));
-    }
     if (rel === 'index.html') {
       const homeDom = cheerio.load(ext.newHtml, { decodeEntities:false });
       const testimonial = homeTestimonialFromDom(homeDom);
@@ -2200,7 +2110,7 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
         ];
         for (const [id,type,label,value] of virtualText) ext.blocks.push({
           id,type,label,icon:type==='p'?'¶':'🏷',value,domIndex:Number.MAX_SAFE_INTEGER-3,
-          orig:id,origVal:value,virtual:true,parentKey:'home_testimonial',
+          orig:id,origVal:value,virtual:true,
         });
       }
       ext.blocks.push({
@@ -2208,7 +2118,7 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
         label: 'Фото до відгуку', icon: '🖼',
         value: home.testimonialImage || '', domIndex: Number.MAX_SAFE_INTEGER,
         orig: 'bf_home_testimonial_image', origVal: home.testimonialImage || '',
-        virtual: true, parentKey:'home_testimonial',
+        virtual: true,
       });
     }
     // flag plain-text blocks whose value is neither in the client bundle nor
@@ -2218,7 +2128,6 @@ app.get('/api/admin/page-extract', requireAuth, (req, res) => {
       const blob = chunksBlob();
       for (const b of ext.blocks) {
         if (b.type === 'seo' || b.type === 'img') continue;
-        if (/^bf_stg\d+_(title|label|desc)$/.test(b.id)) continue;
         const v = (b.value || '');
         if (v.length < 20 || /[<>&]/.test(v)) continue; // short/markup: too ambiguous
         // chunks store apostrophes escaped inside JSON.parse('...') strings
@@ -2261,14 +2170,9 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   // contains oldVal (e.g. a word appended) can't be double-inserted.
   const prePairs = safeTextPairs((blocks || [])
     .filter(b => b && b.id && !b.isNew && !b.delete && b.newVal != null && b.origVal != null
-                 && b.origVal !== b.newVal && b.type !== 'img' && b.type !== 'seo'
+                 && b.origVal !== b.newVal && b.type !== 'img'
                  && !b.id.startsWith('bf_home_testimonial_'))
-    .map(b => ({
-      oldVal: b.origVal,
-      newVal: (b.type === 'p' || b.type === 'li')
-        ? cleanInner(sanitizeEditorHtml(b.newVal))
-        : cleanInner(String(b.newVal)),
-    })));
+    .map(b => ({ oldVal: b.origVal, newVal: b.newVal })));
   const preHtml = html;
   for (const p of prePairs) html = html.split(p.oldVal).join(p.newVal);
   // sanity: the global replace must never change page structure
@@ -2337,16 +2241,14 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     if (b.isNew) {
       let tag = b.type;
       let newEl;
-      if (tag === 'p') newEl = $(`<p data-bf-id="${b.id}">${sanitizeEditorHtml(b.newVal || '')}</p>`);
-      else if (tag === 'h2') newEl = $('<h2></h2>').attr('data-bf-id', b.id).text(cleanText(b.newVal));
-      else if (tag === 'img') newEl = $(`<img data-bf-id="${b.id}" src="${encodeHtmlEnts(sanitizeHref(b.newVal || ''))}" alt="">`);
-      else if (tag === 'a') newEl = $('<a class="gp-btn-p" style="margin-top:10px"></a>').attr('data-bf-id', b.id).attr('href', sanitizeHref(b.newHref || '')).text(cleanText(b.newVal));
-      else if (tag === 'li') newEl = $(`<li data-bf-id="${b.id}">${sanitizeEditorHtml(b.newVal || '')}</li>`);
+      if (tag === 'p') newEl = $(`<p data-bf-id="${b.id}">${b.newVal || ''}</p>`);
+      else if (tag === 'h2') newEl = $(`<h2 data-bf-id="${b.id}">${b.newVal || ''}</h2>`);
+      else if (tag === 'img') newEl = $(`<img data-bf-id="${b.id}" src="${encodeHtmlEnts(b.newVal || '')}" alt="">`);
+      else if (tag === 'a') newEl = $(`<a data-bf-id="${b.id}" href="${encodeHtmlEnts(sanitizeHref(b.newHref || ''))}" class="gp-btn-p" style="margin-top:10px">${b.newVal || ''}</a>`);
+      else if (tag === 'li') newEl = $(`<li data-bf-id="${b.id}">${b.newVal || ''}</li>`);
       
       if (newEl) {
-        const anchor = b.afterBlockId ? $(`[data-bf-id="${b.afterBlockId}"]`).first() : null;
-        if (anchor && anchor.length) anchor.after(newEl);
-        else if ($('main').length) $('main').append(newEl);
+        if ($('main').length) $('main').append(newEl);
         else $('body').append(newEl);
         changed++;
       }
@@ -2368,38 +2270,31 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     }
     
     if (b.newVal != null && b.origVal !== b.newVal) {
-      if (b.type === 'img') el.attr('src', encodeHtmlEnts(sanitizeHref(b.newVal)));
+      if (b.type === 'img') el.attr('src', encodeHtmlEnts(b.newVal));
       else {
-        const richText = b.type === 'p' || b.type === 'li';
-        const savedVal = richText ? sanitizeEditorHtml(b.newVal) : cleanInner(String(b.newVal));
-        if (richText) el.html(savedVal);
-        else el.text(savedVal);
+        el.html(b.newVal);
         if (/^bf_stg\d+_(title|label|desc)$/.test(b.id)) {
-          stageEdits.push({ id: b.id, newVal: cleanInner(savedVal) });
+          stageEdits.push({ id: b.id, newVal: cleanText(b.newVal) });
         } else {
-          textPairs.push({ oldVal: b.origVal, newVal: richText ? cleanInner(savedVal) : savedVal });
+          textPairs.push({ oldVal: b.origVal, newVal: b.newVal });
         }
       }
       changed++;
     }
     
+    if (b.appendHtml) {
+      el.after('\\n' + b.appendHtml);
+      changed++;
+    }
   }
 
   if (Array.isArray(reorder) && reorder.length > 1) {
     const elements = reorder.map(id => $(`[data-bf-id="${id}"]`)).filter(el => el.length);
-    const siblingGroups = new Map();
-    for (const el of elements) {
-      const parent = el.parent()[0];
-      if (!parent) continue;
-      if (!siblingGroups.has(parent)) siblingGroups.set(parent, []);
-      siblingGroups.get(parent).push(el);
-    }
-    for (const siblings of siblingGroups.values()) {
-      if (siblings.length < 2) continue;
-      let anchor = siblings[0];
-      for (let i = 1; i < siblings.length; i++) {
-        anchor.after(siblings[i]);
-        anchor = siblings[i];
+    if (elements.length > 1) {
+      let anchor = elements[0];
+      for (let i = 1; i < elements.length; i++) {
+        anchor.after(elements[i]);
+        anchor = elements[i];
       }
       changed++;
     }
@@ -2417,13 +2312,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
       homeTestimonial.quoteEl.text(`“${homeTestimonial.quote}”`);
       homeTestimonial.authorEl.text(`– ${homeTestimonial.author}${homeTestimonial.role?', '+homeTestimonial.role:''}`);
     }
-    const outputHtml = $.html();
-    try { validateEditablePageHtml(outputHtml, rel); }
-    catch (e) {
-      audit(req.ip, 'page_patch_structure_refused', { path: rel, error:e.message });
-      return res.status(409).json({ error:'unsafe_page_structure', detail:e.message });
-    }
-    writeAtomic(full, outputHtml);
+    writeAtomic(full, $.html());
     if (homeTextChanged && homeTestimonial) {
       try {
         const hc = readHomeContentBundle();
@@ -2458,9 +2347,9 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
         }
       }
     }
-    if (rel === 'igry/index.html') { try { regenGamesCatalog(); } catch(e){} }
+    if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
     let chunkSync = null, templateSync = null;
-    if (textPairs.length && rel !== 'igry/index.html') {
+    if (textPairs.length) {
       try { chunkSync = syncChunkTexts(textPairs); } catch(e){ chunkSync = {error: e.message}; }
       // Anything the chunks had no literal copy of may still be a
       // site-content template rendered with a {slot} filled in.
@@ -2655,12 +2544,10 @@ app.put('/api/admin/pages/*', requireAuth, (req, res) => {
   if (!full.startsWith(PAGES_ROOT)) return res.status(403).json({error:'forbidden'});
   const { content } = req.body || {};
   if (typeof content !== 'string') return res.status(400).json({error:'no content'});
-  try { validateEditablePageHtml(content, rel); }
-  catch (e) { return res.status(400).json({error:'unsafe_page_structure', detail:e.message}); }
   // backup
   writeBackup(full);
   writeAtomic(full, content);
-  if (rel === 'igry/index.html') { try { regenGamesCatalog(); } catch(e){} }
+  if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
   let integrity = null;
   try {
     const v = verifyChunkRefs();
@@ -2878,7 +2765,6 @@ const server = app.listen(PORT, HOST, () => {
   setTimeout(() => {
     try {
       regenGamesCatalog();
-      syncIgryHeroChunk();
       const allGames = gAll.all();
       for (const row of allGames) {
         writeGeneratedGamePage(row);

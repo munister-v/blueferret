@@ -1482,26 +1482,20 @@ function syncReorderToPreview(idA,idB){
 }
 function moveBlockUp(id) {
   const idx = pageBlocks.findIndex(b => b.id === id);
-  const parentKey = idx > -1 ? pageBlocks[idx].parentKey : null;
-  let target = idx - 1;
-  while (target >= 0 && pageBlocks[target].parentKey !== parentKey) target--;
-  if (idx > 0 && target >= 0) {
+  if (idx > 0) {
     const temp = pageBlocks[idx];
-    pageBlocks[idx] = pageBlocks[target];
-    pageBlocks[target] = temp;
+    pageBlocks[idx] = pageBlocks[idx - 1];
+    pageBlocks[idx - 1] = temp;
     pageReordered = true;
     switchPedTab(pedTab);
   }
 }
 function moveBlockDown(id) {
   const idx = pageBlocks.findIndex(b => b.id === id);
-  const parentKey = idx > -1 ? pageBlocks[idx].parentKey : null;
-  let target = idx + 1;
-  while (target < pageBlocks.length && pageBlocks[target].parentKey !== parentKey) target++;
-  if (idx > -1 && target < pageBlocks.length) {
+  if (idx > -1 && idx < pageBlocks.length - 1) {
     const temp = pageBlocks[idx];
-    pageBlocks[idx] = pageBlocks[target];
-    pageBlocks[target] = temp;
+    pageBlocks[idx] = pageBlocks[idx + 1];
+    pageBlocks[idx + 1] = temp;
     pageReordered = true;
     switchPedTab(pedTab);
   }
@@ -1534,7 +1528,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
     const addRow = b.type!=='seo'&&!isDeleted?`<div class="add-block-row" style="text-align:center;margin:4px 0 12px;opacity:0.6;transition:.2s;display:flex;justify-content:center"><div class="add-block-btns" style="display:flex;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:12px;cursor:pointer;border:1px dashed rgba(255,255,255,0.1)"><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','p')">➕ ¶ Абзац</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','h2')">➕ H₂ Загол</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','img')">➕ 🖼 Фото</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','a')">➕ 🔗 Кнопка</span></div></div>`:'';
 
     if (b.type === 'img') {
-      return `<div class="blk img${edited?' edited':''}${b.isNew?' new-blk':''}" data-id="${esc(b.id)}" data-parent="${esc(b.parentKey||'root')}" data-tab="images" style="padding:14px 16px 12px;${delStyle}">
+      return `<div class="blk img${edited?' edited':''}${b.isNew?' new-blk':''}" data-id="${esc(b.id)}" data-tab="images" style="padding:14px 16px 12px;${delStyle}">
         <div class="blk-head" style="margin-bottom:6px">
           <div class="blk-ico img">🖼</div>
           <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
@@ -1564,6 +1558,8 @@ function buildBlocksHtml(blocks, tabFilter, search){
           <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
           <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmdLink();" title="Посилання" style="padding:4px 8px;background:transparent;border:none">🔗</button>
           <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('unlink')" title="Прибрати посилання" style="padding:4px 8px;background:transparent;border:none">🚫</button>
+          <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
+          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('insertUnorderedList')" title="Маркований список" style="padding:4px 8px;background:transparent;border:none">● List</button>
         </div>
         <div class="wysiwyg-editor" contenteditable="true" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:80px;padding:12px;border:1.5px solid var(--glass-border);border-radius:8px;background:rgba(255,255,255,.02);color:var(--txt);outline:none;font-size:14px;line-height:1.6;overflow-y:auto">${curVal}</div>
       `;
@@ -1587,7 +1583,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
       inputHtml = `<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`;
     }
 
-    return `<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" data-parent="${esc(b.parentKey||'root')}" data-tab="${PAGE_TYPE_TAB[b.type]||'content'}" style="padding:14px 16px 12px;${delStyle}">
+    return `<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="${PAGE_TYPE_TAB[b.type]||'content'}" style="padding:14px 16px 12px;${delStyle}">
       <div class="blk-head" style="margin-bottom:6px">
         <div class="blk-ico ${b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
         <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
@@ -1625,9 +1621,6 @@ function switchPedTab(tab){
       animation: 150,
       handle: '.blk-ico',
       ghostClass: 'sortable-ghost',
-      onMove: function(evt) {
-        return evt.dragged.dataset.parent === evt.related.dataset.parent;
-      },
       onEnd: function(evt) {
         // Find the IDs of blocks in their new order
         const newOrderIds = Array.from(list.querySelectorAll('.blk')).map(el => el.dataset.id);
@@ -1961,7 +1954,7 @@ function addBlockAfter(afterId, type) {
     pageBlocks.splice(idx + 1, 0, {
       id: newId, type, label: lbl, icon: icn,
       value: type==='img'?'https://placehold.co/600x400':(type==='h2'?'Новий заголовок':'Новий текст...'),
-      href, isNew: true, afterBlockId: afterId, parentKey: pageBlocks[idx].parentKey || 'root'
+      href, isNew: true, afterBlockId: afterId
     });
     pageEdited[newId] = pageBlocks[idx+1].value;
     if(type==='a') pageEdited[newId+'_href'] = href;
@@ -2273,8 +2266,7 @@ async function savePatchedPage(){
         type: b.type,
         isNew: true,
         newVal: newVal,
-        newHref: newHref,
-        afterBlockId: b.afterBlockId
+        newHref: newHref
       });
       continue;
     }

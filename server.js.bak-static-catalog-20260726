@@ -331,42 +331,6 @@ function repairIgryStructureHtml(html) {
   return { html: $.html(), repaired: true };
 }
 
-function makeIgryStaticHtml(html) {
-  const $ = cheerio.load(html, { decodeEntities:false });
-  $('script').each((_, el) => {
-    const node = $(el);
-    const src = node.attr('src') || '';
-    const inline = node.html() || '';
-    if (src.includes('/_next/static/chunks/') || /self\.__next_f/.test(inline)) node.remove();
-  });
-  $('link[rel="preload"],link[rel="modulepreload"]').each((_, el) => {
-    const node = $(el);
-    if ((node.attr('href') || '').includes('/_next/static/chunks/')) node.remove();
-  });
-  if (!$('meta[name="bf-render-mode"]').length) {
-    $('head').append('<meta name="bf-render-mode" content="static-cms">');
-  }
-  return $.html();
-}
-
-function renderCatalogCard({ g, slugKey, excerpt, href, cover, status }) {
-  return `<a href="${encodeHtmlEnts(href)}" class="group relative flex h-full flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden board-game-border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_46px_-30px_rgba(15,23,42,0.45)]" data-bf-id="bf_cat_${slugKey}_card">
-    <div class="aspect-[4/3] relative overflow-hidden bg-slate-800">
-      <img src="${encodeHtmlEnts(cover)}" alt="${escapeHtml(g.title || '')}" class="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async" data-bf-id="bf_cat_${slugKey}_image">
-      <div class="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent"></div>
-      <div class="absolute bottom-3 sm:bottom-5 left-3 sm:left-5 right-3 sm:right-5 flex justify-between items-end gap-2">
-        <span class="board-game-badge inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-white/95 text-slate-700 text-xs sm:text-sm shadow-md backdrop-blur-sm border border-[var(--bf-accent)]/30" data-bf-id="bf_cat_${slugKey}_status">${status}</span>
-        <span class="p-2.5 sm:p-3 rounded-xl bg-white/95 backdrop-blur-sm border border-white/60 shadow-sm text-bf" aria-hidden="true">→</span>
-      </div>
-    </div>
-    <div class="p-5 sm:p-7 lg:p-8 flex flex-col h-full">
-      <h2 class="text-lg sm:text-2xl lg:text-[1.8rem] font-bold group-hover:text-[var(--bf-accent)] transition-colors duration-300 mb-3 sm:mb-4 tracking-tight text-slate-800" data-bf-id="bf_cat_${slugKey}_title">${escapeHtml(g.title || '')}</h2>
-      <p class="text-slate-600 text-sm sm:text-lg leading-[1.7] mb-5 sm:mb-6" data-bf-id="bf_cat_${slugKey}_description">${escapeHtml(excerpt)}</p>
-      <span class="inline-flex items-center gap-2 text-[var(--bf-accent)] font-bold text-sm group-hover:gap-4 group-hover:text-[var(--teal-accent)] transition-all duration-300 mt-auto">Детальніше →</span>
-    </div>
-  </a>`;
-}
-
 function regenGamesCatalog() {
   const p = path.join(PAGES_ROOT, 'igry/index.html');
   if (!fs.existsSync(p)) return;
@@ -396,20 +360,50 @@ function regenGamesCatalog() {
   if (gridEnd === -1) return;
   
   const gridOuterHTML = html.slice(divStart, gridEnd);
+  const aMatch = gridOuterHTML.match(/<a [^>]*href="\/igry\/[^"]+"[^>]*>[\s\S]*?<\/a>/i);
+  if (!aMatch) return;
+  const template = aMatch[0];
   
   function getStatusName(s) { return s==='draft'?'Чернетка':s==='archived'?'Архів':s==='preorder'?'Передзамовлення':s==='onsale'?'У продажі':'Анонс'; }
   const games = gAll.all().filter(g => !['archived', 'hidden', 'draft'].includes(g.status)).map(gameRow);
 
+  // Extract the first card's title and description text for replacement
+  // In minified HTML, text may sit directly in divs without h2/p wrappers
+  const firstGame = games[0] || {};
+  const firstTitle = escapeHtml(firstGame.title || 'Тримайся');
+  const firstDesc = escapeHtml(firstGame.description || firstGame.subtitle || '');
+  
   const newCards = games.map(g => {
+    let card = template;
+    // Replace href
+    card = card.replace(/href="\/igry\/[^"]+"\/?/, `href="${g.buy_url || '/igry/'+g.slug+'/'}"`);
+    // Replace image src
+    card = card.replace(/src="[^"]+"/, `src="${g.cover_url || '/images/placeholder-game.svg'}"`);
+    // Replace alt
+    card = card.replace(/alt="[^"]*"/, `alt="${escapeHtml(g.title||'')}"`);
+    // Replace title: try h2 first, then find raw text in the card body
+    const h2re = /(<h2[^>]*>)[\s\S]*?(<\/h2>)/i;
+    if (h2re.test(card)) {
+      card = card.replace(h2re, `$1${escapeHtml(g.title||'')}$2`);
+    } else if (firstTitle && card.includes(firstTitle)) {
+      card = card.replace(firstTitle, escapeHtml(g.title||''));
+    }
+    // Replace description: try p first, then find raw text
+    const pre = /(<p[^>]*>)[\s\S]*?(<\/p>)/i;
+    if (pre.test(card)) {
+      card = card.replace(pre, `$1${escapeHtml(g.description||g.subtitle||'')}$2`);
+    } else if (firstDesc && firstDesc.length > 20 && card.includes(firstDesc)) {
+      card = card.replace(firstDesc, escapeHtml(g.description||g.subtitle||''));
+    }
+    // Replace status badge
+    const badgeRe = /(<span[^>]*board-game-badge[^>]*>)[\s\S]*?(<\/span>)/i;
+    if (badgeRe.test(card)) {
+      card = card.replace(badgeRe, `$1${getStatusName(g.status)}$2`);
+    }
+    let cardBlock = 0;
     const slugKey = String(g.slug || g.id || 'game').replace(/[^a-z0-9_-]/gi, '_');
-    const paragraphs = cleanText(g.description || g.subtitle || 'Опис гри скоро з\'явиться.').split(/\n\s*\n/).filter(Boolean);
-    const rawDescription = paragraphs[0] || '';
-    const excerpt = rawDescription.length > 260
-      ? rawDescription.slice(0, 257).replace(/\s+\S*$/, '') + '…'
-      : rawDescription;
-    const href = sanitizeHref(g.buy_url || `/igry/${g.slug}/`);
-    const cover = sanitizeHref(g.cover_url || '/images/placeholder-game.svg');
-    return renderCatalogCard({ g, slugKey, excerpt, href, cover, status: getStatusName(g.status) });
+    card = card.replace(/data-bf-id="[^"]*"/g, () => `data-bf-id="bf_cat_${slugKey}_${cardBlock++}"`);
+    return card;
   });
   
   const firstCloseBracket = gridOuterHTML.indexOf('>');
@@ -421,7 +415,6 @@ function regenGamesCatalog() {
   newHtml = newHtml.replace(countRegex, `$1${games.length} ${games.length===1?'гра':'ігри'} в каталозі$3`);
   
   newHtml = newHtml.replace(/<script>window\.__BF_IGRY_HTML=[\s\S]*?<\/script>/i, '');
-  newHtml = makeIgryStaticHtml(newHtml);
   
   writeAtomic(p, newHtml);
 }
@@ -685,7 +678,6 @@ function relinkChunkEverywhere(oldName, newName) {
 function syncIgryHeroChunk() {
   const igryFile = path.join(SITE_ROOT, 'igry', 'index.html');
   let html; try { html = fs.readFileSync(igryFile, 'utf8'); } catch { return; }
-  if (html.includes('name="bf-render-mode" content="static-cms"')) return;
   const $ = cheerio.load(html, { decodeEntities: false });
   const badge = $('[data-bf-id="bf_23a70ecb"]').first().text().trim();
   const title = $('[data-bf-id="bf_ca918952"]').first().text().trim();
@@ -2458,9 +2450,9 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
         }
       }
     }
-    if (rel === 'igry/index.html') { try { regenGamesCatalog(); } catch(e){} }
+    if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
     let chunkSync = null, templateSync = null;
-    if (textPairs.length && rel !== 'igry/index.html') {
+    if (textPairs.length) {
       try { chunkSync = syncChunkTexts(textPairs); } catch(e){ chunkSync = {error: e.message}; }
       // Anything the chunks had no literal copy of may still be a
       // site-content template rendered with a {slot} filled in.
@@ -2660,7 +2652,7 @@ app.put('/api/admin/pages/*', requireAuth, (req, res) => {
   // backup
   writeBackup(full);
   writeAtomic(full, content);
-  if (rel === 'igry/index.html') { try { regenGamesCatalog(); } catch(e){} }
+  if (rel === 'igry/index.html') { try { syncIgryHeroChunk(); } catch(e){} }
   let integrity = null;
   try {
     const v = verifyChunkRefs();
