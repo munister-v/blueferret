@@ -2592,7 +2592,6 @@ const RUNTIME_JS = `(function(){
   // the actual fix (a getAnimations() sweep — Element.animate() patching
   // didn't catch it, framer-motion drives these via the Animation/
   // KeyframeEffect constructors directly, bypassing the prototype method).
-  var testimonialState={image:'',extra:''},testimonialObserver=null,testimonialTimer=0;
   function apply(s){try{
     if(!s)return;
     var a=s.appearance||{},b=s.banner||{},m=s.maintenance||{},ig=s.integrations||{},g=s.general||{},hp=s.homepage||{};
@@ -2604,28 +2603,11 @@ const RUNTIME_JS = `(function(){
     if(b.enabled&&b.text){var el=ex||document.createElement('div');el.id='bf-banner';el.style.cssText='position:relative;z-index:9998;width:100%;padding:10px 16px;text-align:center;font:600 14px/1.4 Comfortaa,system-ui,sans-serif;background:'+(b.bg||'#2E9BE6')+';color:'+(b.fg||'#fff')+';';el.innerHTML=b.link?'<a href="'+b.link+'" style="color:inherit;text-decoration:underline">'+esc(b.text)+'</a>':esc(b.text);if(!ex)document.body.insertBefore(el,document.body.firstChild);}else if(ex)ex.remove();
     var mo=document.getElementById('bf-maintenance');
     if(m.enabled){if(!mo){mo=document.createElement('div');mo.id='bf-maintenance';mo.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0b1f33;color:#fff;font:500 20px/1.6 Comfortaa,system-ui,sans-serif;';mo.innerHTML='<div style="max-width:560px"><div style="font-size:40px;margin-bottom:16px">🦦</div><div>'+esc(m.message||'')+'</div></div>';document.body.appendChild(mo);document.documentElement.style.overflow='hidden';}}else if(mo){mo.remove();document.documentElement.style.overflow='';}
-    testimonialState.image=hp.testimonialImage||'';
-    testimonialState.extra=hp.testimonialExtraText||'';
-    applyTestimonialState();
-    watchTestimonialHydration();
-    setTimeout(applyTestimonialState,300);
-    setTimeout(applyTestimonialState,1200);
+    applyTestimonialImage(hp.testimonialImage||'');
+    applyTestimonialExtra(hp.testimonialExtraText||'');
+    setTimeout(function(){applyTestimonialImage(hp.testimonialImage||'');applyTestimonialExtra(hp.testimonialExtraText||'');},300);
+    setTimeout(function(){applyTestimonialImage(hp.testimonialImage||'');applyTestimonialExtra(hp.testimonialExtraText||'');},1200);
   }catch(e){}}
-  function applyTestimonialState(){
-    applyTestimonialImage(testimonialState.image);
-    applyTestimonialExtra(testimonialState.extra);
-  }
-  function watchTestimonialHydration(){
-    if(testimonialObserver||!window.MutationObserver||!document.body)return;
-    testimonialObserver=new MutationObserver(function(records){
-      var changed=false;
-      for(var i=0;i<records.length;i++){if(records[i].type==='childList'){changed=true;break;}}
-      if(!changed)return;
-      clearTimeout(testimonialTimer);
-      testimonialTimer=setTimeout(applyTestimonialState,20);
-    });
-    testimonialObserver.observe(document.body,{childList:true,subtree:true});
-  }
   function applyTestimonialImage(url){
     var old=document.getElementById('bf-testimonial-image');
     if(!url){if(old)old.remove();return;}
@@ -2636,11 +2618,8 @@ const RUNTIME_JS = `(function(){
     var quote=card.querySelector('p.text-xl');
     if(!quote)return;
     var img=old||document.createElement('img');
-    img.id='bf-testimonial-image';
-    if(img.getAttribute('src')!==url)img.src=url;
-    if(img.alt!=='Фото автора відгуку')img.alt='Фото автора відгуку';
-    var imageStyle='display:block;width:96px;height:96px;object-fit:cover;border-radius:50%;margin:0 auto 22px;border:3px solid rgba(0,159,227,.18);box-shadow:0 10px 30px rgba(15,23,42,.14);position:relative;z-index:10;background:#fff';
-    if(img.style.cssText!==imageStyle)img.style.cssText=imageStyle;
+    img.id='bf-testimonial-image';img.src=url;img.alt='Фото автора відгуку';
+    img.style.cssText='display:block;width:96px;height:96px;object-fit:cover;border-radius:50%;margin:0 auto 22px;border:3px solid rgba(0,159,227,.18);box-shadow:0 10px 30px rgba(15,23,42,.14);position:relative;z-index:10;background:#fff';
     if(img.parentElement!==card)card.insertBefore(img,quote);
   }
   function applyTestimonialExtra(value){
@@ -2654,9 +2633,8 @@ const RUNTIME_JS = `(function(){
     if(!paragraphs.length)return;
     var extra=old||document.createElement('p');
     extra.id='bf-testimonial-extra-text';
-    if(extra.textContent!==value)extra.textContent=value;
-    var extraStyle='max-width:760px;margin:16px auto 0;color:#64748b;font-size:16px;line-height:1.7;text-align:center';
-    if(extra.style.cssText!==extraStyle)extra.style.cssText=extraStyle;
+    extra.textContent=value;
+    extra.style.cssText='max-width:760px;margin:16px auto 0;color:#64748b;font-size:16px;line-height:1.7;text-align:center';
     var byline=paragraphs.length>1?paragraphs[paragraphs.length-1]:null;
     if(extra.parentElement!==card){if(byline)card.insertBefore(extra,byline);else card.appendChild(extra);}
   }
