@@ -1787,11 +1787,6 @@ function kikMoney(n){ return new Intl.NumberFormat('uk-UA',{maximumFractionDigit
 function kikDate(iso){ const [y,m,d]=String(iso).split('-'); return `${d}.${m}.${y}`; }
 function kikPctExact(p){ return String(p.goal>0?Math.min(100,p.raised/p.goal*100):0); }
 function kikPctRound(p){ return String(p.goal>0?Math.round(Math.min(100,p.raised/p.goal*100)):0); }
-function kikSupportFlight(p){
-  if(!p||!p.support)return null;
-  return JSON.stringify({projectId:p.id,projectName:p.name,minDonation:p.support.minDonation,
-    defaultDonation:p.support.defaultDonation,tiers:p.support.tiers||[]}).replace(/"/g,'\\"');
-}
 
 function syncKikProjectPages(oldP, newP, targetLink){
   if(!oldP || !newP) return null;
@@ -1813,24 +1808,6 @@ function syncKikProjectPages(oldP, newP, targetLink){
     pairs.push([oldP.coverImage,newP.coverImage]);
   if(oldP.link && newP.link && oldP.link!==newP.link)
     pairs.push([oldP.link,newP.link]);
-  const supportPairs=[];
-  if(oldP.support&&newP.support){
-    const oldT=oldP.support.tiers||[],newT=newP.support.tiers||[];
-    for(let i=0;i<Math.min(oldT.length,newT.length);i++){
-      addText(oldT[i].title,newT[i].title,supportPairs);
-      addText(oldT[i].description,newT[i].description,supportPairs);
-      const oi=oldT[i].includes||[],ni=newT[i].includes||[];
-      for(let j=0;j<Math.min(oi.length,ni.length);j++)addText(oi[j],ni[j],supportPairs);
-      if(Number(oldT[i].amount)!==Number(newT[i].amount)){
-        const a=kikMoney(oldT[i].amount),b=kikMoney(newT[i].amount);
-        supportPairs.push([`>${a.replace(/ /g,'&nbsp;')}<`,`>${b.replace(/ /g,'&nbsp;')}<`]);
-      }
-    }
-    if(Number(oldP.support.minDonation)!==Number(newP.support.minDonation)){
-      supportPairs.push([`Мінімум – ${kikMoney(oldP.support.minDonation)}.`,`Мінімум – ${kikMoney(newP.support.minDonation)}.`]);
-      supportPairs.push([`min="${oldP.support.minDonation}"`,`min="${newP.support.minDonation}"`]);
-    }
-  }
   if(oldP.lastUpdate !== newP.lastUpdate) pairs.push([kikDate(oldP.lastUpdate), kikDate(newP.lastUpdate)]);
   // Amounts and percentages MUST carry their delimiters. A bare "0 ₴" is a
   // substring of "95 000 ₴", so an unanchored swap rewrites the goal too and
@@ -1861,19 +1838,15 @@ function syncKikProjectPages(oldP, newP, targetLink){
   const targets = [
     { file: detail,                   use: pairs.concat(namePairs) },
     { file: kikParkedPath(detail),    use: pairs.concat(namePairs) },
-    { file: support,                  use: namePairs.concat(supportPairs), supportFlight:true },
-    { file: kikParkedPath(support),   use: namePairs.concat(supportPairs), supportFlight:true },
+    { file: support,                  use: namePairs },  // only the name is shown there
+    { file: kikParkedPath(support),   use: namePairs },
   ];
   const touched = [];
   for(const t of targets){
-    if((!t.use.length&&!t.supportFlight) || !fs.existsSync(t.file)) continue;
+    if(!t.use.length || !fs.existsSync(t.file)) continue;
     let h; try { h = fs.readFileSync(t.file,'utf8'); } catch { continue; }
     const before = h;
     let hits = 0;
-    if(t.supportFlight){
-      const a=kikSupportFlight(oldP),b=kikSupportFlight(newP);
-      if(a&&b&&a!==b){const n=h.split(a).length-1;if(n){h=h.split(a).join(b);hits+=n;}}
-    }
     for(const [a,b] of t.use){
       const n = h.split(a).length - 1;
       if(n){ h = h.split(a).join(b); hits += n; }

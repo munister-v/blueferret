@@ -1015,27 +1015,6 @@ function kpImgInput(id,key,inputId){
   if(thumb) thumb.innerHTML=url?`<img src="${esc(url)}" onerror="this.style.display='none'">`:'';
 }
 window.kpImgInput=kpImgInput;
-function kpSupportForm(p){
-  const s=p.support;
-  if(!s)return `<div class="kp-support"><button type="button" class="btn btn-g btn-sm" onclick="kpInitSupport('${jsq(p.id)}')">Додати рівні підтримки</button></div>`;
-  return `<details class="kp-support" open><summary>Підтримка та винагороди</summary>
-    <div class="kp-grid" style="margin-top:12px">
-      <label class="kp-f"><span>Мінімальний внесок, ₴</span><input type="number" min="1" value="${Number(s.minDonation||0)}" oninput="kpSupportEdit('${jsq(p.id)}','minDonation',this.value)"></label>
-      <label class="kp-f"><span>Сума за замовчуванням, ₴</span><input type="number" min="1" value="${Number(s.defaultDonation||0)}" oninput="kpSupportEdit('${jsq(p.id)}','defaultDonation',this.value)"></label>
-    </div>
-    <div class="kp-tiers">${(s.tiers||[]).map((t,i)=>`<div class="kp-tier">
-      <div class="kp-tier-head"><strong>Винагорода ${i+1}</strong><button type="button" class="btn btn-d btn-sm" onclick="kpRemoveTier('${jsq(p.id)}',${i})">Видалити</button></div>
-      <div class="kp-grid">
-        <label class="kp-f"><span>Назва</span><input type="text" value="${esc(t.title||'')}" oninput="kpTierEdit('${jsq(p.id)}',${i},'title',this.value)"></label>
-        <label class="kp-f"><span>Сума, ₴</span><input type="number" min="1" value="${Number(t.amount||0)}" oninput="kpTierEdit('${jsq(p.id)}',${i},'amount',this.value)"></label>
-      </div>
-      <label class="kp-f"><span>Опис</span><textarea rows="2" oninput="kpTierEdit('${jsq(p.id)}',${i},'description',this.value)">${esc(t.description||'')}</textarea></label>
-      <label class="kp-f"><span>Що входить, кожен пункт з нового рядка</span><textarea rows="3" oninput="kpTierEdit('${jsq(p.id)}',${i},'includes',this.value)">${esc((t.includes||[]).join('\n'))}</textarea></label>
-      <label class="kp-check"><input type="checkbox" ${t.featured?'checked':''} onchange="kpTierEdit('${jsq(p.id)}',${i},'featured',this.checked)"> Рекомендована винагорода</label>
-    </div>`).join('')}</div>
-    <button type="button" class="btn btn-g btn-sm" onclick="kpAddTier('${jsq(p.id)}')">＋ Додати винагороду</button>
-  </details>`;
-}
 function kpForm(p){
   return `<div class="kp-form">
     ${kpField(p,'name','Назва')}
@@ -1052,7 +1031,6 @@ function kpForm(p){
     </div>
     ${kpField(p,'updatePreview','Текст оновлення','area')}
     ${kpField(p,'coverImage','Обкладинка','img')}
-    ${kpSupportForm(p)}
   </div>`;
 }
 function kpMarkup(){
@@ -1118,19 +1096,6 @@ function kpDelete(id){
   if(!confirm(`Видалити «${kp.hidden[i].name}» зі списку? Сторінки буде приховано й залишено на сервері для відновлення.`))return;
   kp.hidden.splice(i,1);kp.openId=null;kp.dirty=true;kpRerender();
 }
-function kpMarkDirty(){kp.dirty=true;const btn=$('#kpSave');if(btn){btn.disabled=false;btn.textContent='💾 Опублікувати зміни';}}
-function kpInitSupport(id){const p=kpFind(id);if(!p)return;p.support={minDonation:50,defaultDonation:200,tiers:[]};kpMarkDirty();kpRerender();}
-function kpSupportEdit(id,key,val){const p=kpFind(id);if(!p?.support)return;p.support[key]=Number(val||0);kpMarkDirty();}
-function kpTierEdit(id,index,key,val){
-  const t=kpFind(id)?.support?.tiers?.[index];if(!t)return;
-  t[key]=key==='amount'?Number(val||0):key==='featured'?!!val:key==='includes'?String(val).split('\n').map(x=>x.trim()).filter(Boolean):val;kpMarkDirty();
-}
-function kpAddTier(id){
-  const p=kpFind(id);if(!p?.support)return;const used=new Set(p.support.tiers.map(t=>t.id));let n=p.support.tiers.length+1,idv;
-  do{idv=`${p.id}-tier-${n++}`;}while(used.has(idv));
-  p.support.tiers.push({id:idv,title:'Нова винагорода',description:'Опишіть склад і переваги цієї винагороди.',amount:1000,includes:['Підтримка проєкту']});kpMarkDirty();kpRerender();
-}
-function kpRemoveTier(id,index){const p=kpFind(id);if(!p?.support)return;p.support.tiers.splice(index,1);kpMarkDirty();kpRerender();}
 function kpEdit(id,key,val,keepFocus){
   const p=kpFind(id);if(!p)return;
   p[key]=(key==='raised'||key==='goal')?Number(val||0):val;
@@ -1195,16 +1160,6 @@ function kpValidate(){
     if(String(p.link)!==`/kik/proekty/${p.id}`)e.push(`${w}: посилання має бути /kik/proekty/${p.id}`);
     if(p.coverImage&&(!/^\/[^\s]*$/.test(String(p.coverImage))||String(p.coverImage).startsWith('//')))e.push(`${w}: обкладинка має бути шляхом на сайті`);
     if(Number(p.goal)<Number(p.raised))e.push(`${w}: ціль менша за зібрану суму`);
-    if(p.support){
-      if(Number(p.support.minDonation)<1)e.push(`${w}: мінімальний внесок має бути не менше 1 ₴`);
-      if(Number(p.support.defaultDonation)<Number(p.support.minDonation))e.push(`${w}: типова сума менша за мінімальний внесок`);
-      const ids=new Set();(p.support.tiers||[]).forEach((t,i)=>{
-        if(ids.has(t.id))e.push(`${w}: повторюється ID винагороди ${t.id}`);ids.add(t.id);
-        if(String(t.title||'').trim().length<2)e.push(`${w}: винагорода ${i+1} без назви`);
-        if(String(t.description||'').trim().length<8)e.push(`${w}: закороткий опис винагороди ${i+1}`);
-        if(Number(t.amount)<1)e.push(`${w}: сума винагороди ${i+1} має бути не менше 1 ₴`);
-      });
-    }
   }
   return e;
 }
@@ -1223,7 +1178,7 @@ async function kpSave(){
     kp.err=[err.message];kpRerender();toast(err.message,'er');
   }
 }
-window.kpEdit=kpEdit;window.kpToggleEdit=kpToggleEdit;window.kpSetVisible=kpSetVisible;window.kpNew=kpNew;window.kpDuplicate=kpDuplicate;window.kpDelete=kpDelete;window.kpInitSupport=kpInitSupport;window.kpSupportEdit=kpSupportEdit;window.kpTierEdit=kpTierEdit;window.kpAddTier=kpAddTier;window.kpRemoveTier=kpRemoveTier;window.kpSave=kpSave;
+window.kpEdit=kpEdit;window.kpToggleEdit=kpToggleEdit;window.kpSetVisible=kpSetVisible;window.kpNew=kpNew;window.kpDuplicate=kpDuplicate;window.kpDelete=kpDelete;window.kpSave=kpSave;
 
 // ── SETTINGS ──
 function renderSettings(id){

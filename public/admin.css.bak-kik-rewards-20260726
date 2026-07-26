@@ -532,7 +532,6 @@ textarea.code{font-family:ui-monospace,monospace;font-size:12.5px;min-height:200
 .kp-cnt.bad{color:var(--red);font-weight:700}
 .kp-errs{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:#fca5a5;display:flex;flex-direction:column;gap:4px}
 .kp-empty{text-align:center;padding:30px;color:var(--txt-m);font-size:13px}
-.kp-support{border-top:1px solid var(--bd);padding-top:12px}.kp-support>summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--txt);padding:4px 0}.kp-tiers{display:flex;flex-direction:column;gap:10px;margin:12px 0}.kp-tier{background:rgba(255,255,255,.025);border:1px solid var(--bd);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}.kp-tier-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}.kp-check{display:flex;align-items:center;gap:8px;color:var(--txt-m);font-size:12px}.kp-check input{width:16px;height:16px;accent-color:var(--kik)}
 @media(max-width:900px){.kp-head{align-items:flex-start;flex-wrap:wrap}.kp-main{min-width:calc(100% - 84px)}.kp-acts{width:100%;justify-content:flex-start;padding-left:68px}.kp-toolbar{margin-top:12px;justify-content:flex-start}}
 @media(max-width:700px){
   header{height:54px;margin:8px 8px 0;padding:0 10px;border-radius:12px;top:8px}

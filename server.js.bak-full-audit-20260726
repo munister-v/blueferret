@@ -154,39 +154,16 @@ app.post('/api/admin/password', requireAuth, (req, res) => {
 // ---------- settings ----------
 app.get('/api/admin/settings', requireAuth, (_req, res) => res.json(fullSettings()));
 app.put('/api/admin/settings', requireAuth, (req, res) => {
-  const body = req.body || {}, changed = [], before = fullSettings();
-  if(body.general?.primaryColor && !/^#[0-9a-f]{6}$/i.test(body.general.primaryColor))
-    return res.status(400).json({error:'Основний колір має бути у форматі #RRGGBB'});
-  for(const key of ['siteTitle','tagline']) if(body.general?.[key]&&/[<>"\\]/.test(body.general[key]))
-    return res.status(400).json({error:`Поле ${key} містить символ, який не можна безпечно опублікувати`});
-  const validHref=v=>!v||((/^https?:\/\/[^\s"'<>]+$/i.test(v)||/^\/(?!\/)[^\s"'<>]*$/.test(v)));
-  if(body.banner&&!validHref(String(body.banner.link||'').trim()))
-    return res.status(400).json({error:'Посилання банера має починатися з https:// або /'});
-  if(body.contacts){
-    for(const key of ['telegram','instagram','facebook','x']) if(!validHref(String(body.contacts[key]||'').trim()))
-      return res.status(400).json({error:`Некоректне посилання у полі ${key}`});
-  }
+  const body = req.body || {}, changed = [];
   for (const k of EDITABLE_KEYS) {
     if (body[k] && typeof body[k] === 'object') {
       setSetting(k, Object.assign({}, DEFAULTS[k], getSetting(k, {}), body[k]));
       changed.push(k);
     }
   }
-  const after = fullSettings();
-  const pairs = [];
-  for(const [section,fields] of Object.entries({general:['siteTitle','tagline'],contacts:['email','telegram','instagram','facebook','x']})){
-    for(const field of fields){
-      const oldVal=before[section]?.[field], newVal=after[section]?.[field];
-      if(oldVal&&newVal&&oldVal!==newVal) pairs.push({oldVal,newVal});
-    }
-  }
-  let contentSync=null;
-  try{
-    if(pairs.length) contentSync={chunks:syncChunkTexts(pairs),html:syncHtmlTexts(pairs)};
-  }catch(e){ return res.status(500).json({error:`Не вдалося синхронізувати налаштування: ${e.message}`}); }
   bumpPublishedAt();
-  audit(req.ip, 'settings_save', { changed, contentSync });
-  res.json({ ok: true, changed, contentSync, settings: fullSettings() });
+  audit(req.ip, 'settings_save', { changed });
+  res.json({ ok: true, changed, settings: fullSettings() });
 });
 app.get('/api/admin/audit', requireAuth, (_req, res) => {
   res.json(db.prepare('SELECT ts,ip,action,detail FROM audit ORDER BY id DESC LIMIT 200').all());
@@ -194,15 +171,12 @@ app.get('/api/admin/audit', requireAuth, (_req, res) => {
 
 // ---------- dashboard stats ----------
 app.get('/api/admin/stats', requireAuth, (_req, res) => {
-  const visibleStatuses=['published','preorder','onsale'];
-  const gameRows=gAll.all();
-  const games=gameRows.filter(g=>visibleStatuses.includes(g.status)).length;
-  const drafts=gameRows.length-games;
-  const kb=readKikProjects(), kikRows=kb?kb.arr:[];
-  const kik=kikRows.length;
-  const kikGoal=kikRows.reduce((n,p)=>n+Number(p.goal||0),0);
-  const kikRaised=kikRows.reduce((n,p)=>n+Number(p.raised||0),0);
-  const backers=0;
+  const games   = db.prepare("SELECT COUNT(*) as n FROM games WHERE status='published'").get().n;
+  const drafts  = db.prepare("SELECT COUNT(*) as n FROM games WHERE status!='published'").get().n;
+  const kik     = db.prepare('SELECT COUNT(*) as n FROM kik_projects').get().n;
+  const kikGoal = db.prepare('SELECT COALESCE(SUM(goal),0) as n FROM kik_projects').get().n;
+  const kikRaised = db.prepare('SELECT COALESCE(SUM(raised),0) as n FROM kik_projects').get().n;
+  const backers = db.prepare('SELECT COALESCE(SUM(backers),0) as n FROM kik_projects').get().n;
   const lastAudit = db.prepare('SELECT ts,action FROM audit ORDER BY id DESC LIMIT 1').get();
   let uploads = 0;
   try { uploads = fs.readdirSync(UPLOADS).filter(f => !f.startsWith('.')).length; } catch {}
@@ -216,31 +190,7 @@ function parseGameLinks(v) {
   const arr = Array.isArray(v) ? v : (()=>{ try { return JSON.parse(v||'[]'); } catch { return []; } })();
   return arr.map(l => ({ label: cleanText(l&&l.label), url: sanitizeHref(l&&l.url) })).filter(l => l.label && l.url);
 }
-function gamePageMode(r){
-  if(!r||!r.slug)return 'missing';
-  const file=path.join(SITE_ROOT,'igry',r.slug,'index.html');
-  if(!fs.existsSync(file))return 'missing';
-  try{return fs.readFileSync(file,'utf8').includes('data-bf-generated-game="true"')?'generated':'custom';}
-  catch{return 'missing';}
-}
-function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), stages: parseStages(r.stages), links: parseGameLinks(r.links), always_visible: r.always_visible==null?1:(r.always_visible?1:0), page_mode:gamePageMode(r) } : null; }
-
-function syncCustomGamePage(before,after){
-  if(!before||!after||gamePageMode(before)!=='custom')return null;
-  const file=path.join(SITE_ROOT,'igry',before.slug,'index.html');
-  let html=fs.readFileSync(file,'utf8'), changed=0;
-  const textPairs=safeTextPairs(['title','subtitle','description','author','players','age','duration']
-    .map(k=>({oldVal:String(before[k]||''),newVal:String(after[k]||'')})));
-  const assetPairs=['cover_url','hero_bg_url','hero_logo_url'].map(k=>({oldVal:String(before[k]||''),newVal:String(after[k]||'')}))
-    .filter(p=>p.oldVal&&p.newVal&&p.oldVal!==p.newVal&&!/["<>\\]/.test(p.oldVal+p.newVal));
-  for(const p of [...textPairs,...assetPairs]){
-    const n=html.split(p.oldVal).length-1;
-    if(n){html=html.split(p.oldVal).join(p.newVal);changed+=n;}
-  }
-  if(changed){writeBackup(file);writeAtomic(file,html);}
-  const chunks=textPairs.length?syncChunkTexts(textPairs):null;
-  return {changed,chunks};
-}
+function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), stages: parseStages(r.stages), links: parseGameLinks(r.links), always_visible: r.always_visible==null?1:(r.always_visible?1:0) } : null; }
 
 // Stage lock icons as inline SVG — the 🔓 emoji renders as a *closed* gold
 // padlock in several system fonts (indistinguishable from 🔒), so the open
@@ -788,32 +738,6 @@ function syncChunkTexts(pairs) {
   return { files: filesPatched, matched: matchedPairs.size, total: safe.length, matchedVals: [...matchedPairs] };
 }
 
-// General branding/contact settings live in both React chunks and the
-// prerendered HTML visitors receive before hydration. Keep both copies in
-// sync; otherwise the settings API reports success while the visible page
-// continues showing the old value (or briefly flashes it on every load).
-function syncHtmlTexts(pairs){
-  const safe=safeTextPairs(pairs); if(!safe.length) return {files:0,matched:0};
-  let files=0,matched=0;
-  (function walk(dir){
-    let items;try{items=fs.readdirSync(dir);}catch{return;}
-    for(const name of items){
-      if(name.startsWith('.')||name==='_next'||name==='uploads'||name==='cdn-cgi')continue;
-      const full=path.join(dir,name);let st;try{st=fs.statSync(full);}catch{continue;}
-      if(st.isDirectory()){walk(full);continue;}
-      if(!name.endsWith('.html'))continue;
-      let html;try{html=fs.readFileSync(full,'utf8');}catch{continue;}
-      const before=html;
-      for(const p of safe){
-        const hits=html.split(p.oldVal).length-1;
-        if(hits){html=html.split(p.oldVal).join(p.newVal);matched+=hits;}
-      }
-      if(html!==before){writeBackup(full);writeAtomic(full,html);files++;}
-    }
-  })(SITE_ROOT);
-  return {files,matched};
-}
-
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
@@ -876,21 +800,18 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   const id=+req.params.id, ex=gOne.get(id);
   if (!ex) return res.status(404).json({error:'not_found'});
   const data = gameBody(req.body||{}, ex);
-  if(gamePageMode(ex)==='custom'&&ex.slug!==data.slug)
-    return res.status(400).json({error:'URL авторської сторінки змінюється через редактор «Сторінки»'});
   const c = gSlug.get(data.slug);
   if (c && c.id!==id) return res.status(409).json({error:'slug_exists'});
   snapshotGameHistory(id, ex);
   gUpd.run({...data,id});
   if (ex.slug !== data.slug) removeGeneratedGamePage(ex.slug);
-  const customSync=syncCustomGamePage(ex,gOne.get(id));
   writeGeneratedGamePage(gOne.get(id));
   regenGamesCatalog();
   syncGamesChunkVisibility();
   syncGamesNavVisibility();
   const publishedAt = bumpPublishedAt();
-  audit(req.ip,'game_update',{id,publishedAt,customSync});
-  res.json({...gameRow(gOne.get(id)), publishedAt,customSync});
+  audit(req.ip,'game_update',{id,publishedAt});
+  res.json({...gameRow(gOne.get(id)), publishedAt});
 });
 app.get('/api/admin/games/:id/history', requireAuth, (req, res) => {
   const id = +req.params.id;
@@ -1787,11 +1708,6 @@ function kikMoney(n){ return new Intl.NumberFormat('uk-UA',{maximumFractionDigit
 function kikDate(iso){ const [y,m,d]=String(iso).split('-'); return `${d}.${m}.${y}`; }
 function kikPctExact(p){ return String(p.goal>0?Math.min(100,p.raised/p.goal*100):0); }
 function kikPctRound(p){ return String(p.goal>0?Math.round(Math.min(100,p.raised/p.goal*100)):0); }
-function kikSupportFlight(p){
-  if(!p||!p.support)return null;
-  return JSON.stringify({projectId:p.id,projectName:p.name,minDonation:p.support.minDonation,
-    defaultDonation:p.support.defaultDonation,tiers:p.support.tiers||[]}).replace(/"/g,'\\"');
-}
 
 function syncKikProjectPages(oldP, newP, targetLink){
   if(!oldP || !newP) return null;
@@ -1813,24 +1729,6 @@ function syncKikProjectPages(oldP, newP, targetLink){
     pairs.push([oldP.coverImage,newP.coverImage]);
   if(oldP.link && newP.link && oldP.link!==newP.link)
     pairs.push([oldP.link,newP.link]);
-  const supportPairs=[];
-  if(oldP.support&&newP.support){
-    const oldT=oldP.support.tiers||[],newT=newP.support.tiers||[];
-    for(let i=0;i<Math.min(oldT.length,newT.length);i++){
-      addText(oldT[i].title,newT[i].title,supportPairs);
-      addText(oldT[i].description,newT[i].description,supportPairs);
-      const oi=oldT[i].includes||[],ni=newT[i].includes||[];
-      for(let j=0;j<Math.min(oi.length,ni.length);j++)addText(oi[j],ni[j],supportPairs);
-      if(Number(oldT[i].amount)!==Number(newT[i].amount)){
-        const a=kikMoney(oldT[i].amount),b=kikMoney(newT[i].amount);
-        supportPairs.push([`>${a.replace(/ /g,'&nbsp;')}<`,`>${b.replace(/ /g,'&nbsp;')}<`]);
-      }
-    }
-    if(Number(oldP.support.minDonation)!==Number(newP.support.minDonation)){
-      supportPairs.push([`Мінімум – ${kikMoney(oldP.support.minDonation)}.`,`Мінімум – ${kikMoney(newP.support.minDonation)}.`]);
-      supportPairs.push([`min="${oldP.support.minDonation}"`,`min="${newP.support.minDonation}"`]);
-    }
-  }
   if(oldP.lastUpdate !== newP.lastUpdate) pairs.push([kikDate(oldP.lastUpdate), kikDate(newP.lastUpdate)]);
   // Amounts and percentages MUST carry their delimiters. A bare "0 ₴" is a
   // substring of "95 000 ₴", so an unanchored swap rewrites the goal too and
@@ -1861,19 +1759,15 @@ function syncKikProjectPages(oldP, newP, targetLink){
   const targets = [
     { file: detail,                   use: pairs.concat(namePairs) },
     { file: kikParkedPath(detail),    use: pairs.concat(namePairs) },
-    { file: support,                  use: namePairs.concat(supportPairs), supportFlight:true },
-    { file: kikParkedPath(support),   use: namePairs.concat(supportPairs), supportFlight:true },
+    { file: support,                  use: namePairs },  // only the name is shown there
+    { file: kikParkedPath(support),   use: namePairs },
   ];
   const touched = [];
   for(const t of targets){
-    if((!t.use.length&&!t.supportFlight) || !fs.existsSync(t.file)) continue;
+    if(!t.use.length || !fs.existsSync(t.file)) continue;
     let h; try { h = fs.readFileSync(t.file,'utf8'); } catch { continue; }
     const before = h;
     let hits = 0;
-    if(t.supportFlight){
-      const a=kikSupportFlight(oldP),b=kikSupportFlight(newP);
-      if(a&&b&&a!==b){const n=h.split(a).length-1;if(n){h=h.split(a).join(b);hits+=n;}}
-    }
     for(const [a,b] of t.use){
       const n = h.split(a).length - 1;
       if(n){ h = h.split(a).join(b); hits += n; }
@@ -2560,14 +2454,13 @@ app.get('/api/public/games', (_req, res) => {
   res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma','no-cache');
   res.setHeader('Expires','0');
-  res.json(gAll.all().filter(g=>['published','preorder','onsale'].includes(g.status)).map(gameRow));
+  res.json(gAll.all().filter(g=>g.status==='published').map(gameRow));
 });
 app.get('/api/public/kik', (_req, res) => {
   res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma','no-cache');
   res.setHeader('Expires','0');
-  const b=readKikProjects();
-  res.json(b?b.arr:[]);
+  res.json(kAll.all());
 });
 
 const RUNTIME_JS = `(function(){
@@ -2692,12 +2585,10 @@ app.get('/api/health', (_req, res) => {
   let dbOk = false, uploadsOk = false;
   try { db.prepare('SELECT 1').get(); dbOk = true; } catch {}
   try { fs.accessSync(UPLOADS, fs.constants.R_OK | fs.constants.W_OK); uploadsOk = true; } catch {}
-  const kb=readKikProjects();
   const counts = {
     games: db.prepare('SELECT COUNT(*) as n FROM games').get().n,
-    publishedGames: gAll.all().filter(g=>['published','preorder','onsale'].includes(g.status)).length,
-    kik: kb?kb.arr.length:0,
-    hiddenKik: getSetting(KIK_HIDDEN_KEY,[]).length,
+    publishedGames: db.prepare("SELECT COUNT(*) as n FROM games WHERE status='published'").get().n,
+    kik: db.prepare('SELECT COUNT(*) as n FROM kik_projects').get().n,
     media: (() => { try { return fs.readdirSync(UPLOADS).filter(f => !f.startsWith('.')).length; } catch { return 0; } })(),
   };
   res.json({ ok: dbOk && uploadsOk, ts: Date.now(), uptime: Math.round(process.uptime()), dbOk, uploadsOk, counts });

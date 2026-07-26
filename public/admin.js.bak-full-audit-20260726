@@ -15,21 +15,19 @@ const NAV=[
   {g:'Контент',items:[
     {id:'games',ico:'🎲',l:'Ігри'},
     {id:'kikprojects',ico:'🚀',l:'КІК проєкти'},
-    {id:'sitetext',ico:'🌐',l:'Тексти сайту'},
     {id:'pages',ico:'📄',l:'Сторінки'},
     {id:'media',ico:'🖼',l:'Медіа'},
   ]},
   {g:'Налаштування',items:[
     {id:'general',ico:'⚙️',l:'Загальне'},
     {id:'contacts',ico:'📬',l:'Контакти'},
-    {id:'sitecontrol',ico:'📣',l:'Банер і режим'},
   ]},
   {g:'Система',items:[
     {id:'security',ico:'🔑',l:'Безпека'},
     {id:'audit',ico:'📋',l:'Журнал'},
   ]},
 ];
-const STABS=new Set(['general','contacts','sitecontrol']);
+const STABS=new Set(['general','contacts']);
 
 // ── UTILS ──
 function autoResize(el) {
@@ -73,8 +71,7 @@ async function api(method,url,body){
   if(!r.ok){
     const j=await r.json().catch(()=>({}));
     const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.'};
-    const detail=Array.isArray(j.details)&&j.details.length?' · '+j.details.slice(0,4).join(' · '):'';
-    throw new Error((map[j.error]||j.error||('HTTP '+r.status))+detail);
+    throw new Error(map[j.error]||j.error||('HTTP '+r.status));
   }
   if(r.status===204)return null;
   return r.json();
@@ -108,7 +105,6 @@ async function render(){
       case'dashboard':el.innerHTML=await renderDash();setTimeout(()=>{try{checkSiteHealth();}catch{}},50);break;
       case'games':el.innerHTML=renderGamesList();break;
       case'kikprojects':await renderKikProjects();break;
-      case'sitetext':await renderSiteText();break;
       case'pages':await renderPages();break;
       case'media':await renderMedia();break;
       case'security':el.innerHTML=renderSecurity();break;
@@ -144,7 +140,6 @@ async function renderDash(){
     kik_create:  {ico:'🚀',bg:'rgba(75,178,114,.1)',   label:'Новий КІК-проект'},
     kik_update:  {ico:'📊',bg:'rgba(75,178,114,.1)',   label:'КІК оновлено'},
     kik_delete:  {ico:'🗑',bg:'rgba(239,68,68,.1)',    label:'КІК видалено'},
-    kik_projects_save:{ico:'🚀',bg:'rgba(75,178,114,.1)',label:'КІК проєкти опубліковано'},
     page_patch:  {ico:'📄',bg:'rgba(251,191,36,.1)',   label:'Сторінку відредаговано'},
     page_edit:   {ico:'📝',bg:'rgba(251,191,36,.1)',   label:'HTML-редагування'},
     upload:      {ico:'🖼',bg:'rgba(75,178,114,.1)',   label:'Файл завантажено'},
@@ -297,11 +292,6 @@ function renderGameEditor(){
         <button class="btn btn-g btn-sm" onclick="backToGames()">← Ігри</button>
         ${editingGame?`Редагувати: <strong>${esc(g.title)}</strong>`:'Нова гра'}
       </div>
-      ${g.page_mode==='custom'?`<div class="ged-section" style="background:rgba(251,191,36,.08);border-bottom-color:rgba(251,191,36,.22)">
-        <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--txt-m)">Авторська сторінка: поля нижче оновлюють каталог і всі точні збіги; інші блоки редагуються окремо.</span>
-          <button class="btn btn-g btn-sm" onclick="openGamePageEditor('${jsq(g.slug)}')">Редагувати сторінку</button>
-        </div></div>`:''}
 
       <div class="ged-section">
         <h4>Основне</h4>
@@ -309,7 +299,7 @@ function renderGameEditor(){
           <input type="text" id="g_title" value="${esc(g.title)}" placeholder="Назва гри" oninput="updatePreview()"></div>
         <div class="row2">
           <div class="field"><label class="flbl">Slug (URL)</label>
-            <input type="text" id="g_slug" value="${esc(g.slug)}" placeholder="nazva-gry" ${g.page_mode==='custom'?'readonly':''}></div>
+            <input type="text" id="g_slug" value="${esc(g.slug)}" placeholder="nazva-gry"></div>
           <div class="field"><label class="flbl">Статус (Видимість і Бейдж)</label>
             <select id="g_status" onchange="updatePreview()">
               <optgroup label="👁 Відображаються в каталозі">
@@ -732,12 +722,7 @@ function backToGames(){
   const el=$('#mainContent');if(el)el.style.padding='22px';
   activeTab='games';render();
 }
-async function openGamePageEditor(slug){
-  activeTab='pages';saveTab('pages');activePage=null;pageBlocks=[];pageEdited={};
-  await renderPages();
-  await selectPage(`igry/${slug}/index.html`);
-}
-window.openGameEditor=openGameEditor;window.openGamePageEditor=openGamePageEditor;window.saveGame=saveGame;window.deleteGame=deleteGame;window.backToGames=backToGames;
+window.openGameEditor=openGameEditor;window.saveGame=saveGame;window.deleteGame=deleteGame;window.backToGames=backToGames;
 
 // ── KIK LIST ──
 function renderKikList(){
@@ -1015,27 +1000,6 @@ function kpImgInput(id,key,inputId){
   if(thumb) thumb.innerHTML=url?`<img src="${esc(url)}" onerror="this.style.display='none'">`:'';
 }
 window.kpImgInput=kpImgInput;
-function kpSupportForm(p){
-  const s=p.support;
-  if(!s)return `<div class="kp-support"><button type="button" class="btn btn-g btn-sm" onclick="kpInitSupport('${jsq(p.id)}')">Додати рівні підтримки</button></div>`;
-  return `<details class="kp-support" open><summary>Підтримка та винагороди</summary>
-    <div class="kp-grid" style="margin-top:12px">
-      <label class="kp-f"><span>Мінімальний внесок, ₴</span><input type="number" min="1" value="${Number(s.minDonation||0)}" oninput="kpSupportEdit('${jsq(p.id)}','minDonation',this.value)"></label>
-      <label class="kp-f"><span>Сума за замовчуванням, ₴</span><input type="number" min="1" value="${Number(s.defaultDonation||0)}" oninput="kpSupportEdit('${jsq(p.id)}','defaultDonation',this.value)"></label>
-    </div>
-    <div class="kp-tiers">${(s.tiers||[]).map((t,i)=>`<div class="kp-tier">
-      <div class="kp-tier-head"><strong>Винагорода ${i+1}</strong><button type="button" class="btn btn-d btn-sm" onclick="kpRemoveTier('${jsq(p.id)}',${i})">Видалити</button></div>
-      <div class="kp-grid">
-        <label class="kp-f"><span>Назва</span><input type="text" value="${esc(t.title||'')}" oninput="kpTierEdit('${jsq(p.id)}',${i},'title',this.value)"></label>
-        <label class="kp-f"><span>Сума, ₴</span><input type="number" min="1" value="${Number(t.amount||0)}" oninput="kpTierEdit('${jsq(p.id)}',${i},'amount',this.value)"></label>
-      </div>
-      <label class="kp-f"><span>Опис</span><textarea rows="2" oninput="kpTierEdit('${jsq(p.id)}',${i},'description',this.value)">${esc(t.description||'')}</textarea></label>
-      <label class="kp-f"><span>Що входить, кожен пункт з нового рядка</span><textarea rows="3" oninput="kpTierEdit('${jsq(p.id)}',${i},'includes',this.value)">${esc((t.includes||[]).join('\n'))}</textarea></label>
-      <label class="kp-check"><input type="checkbox" ${t.featured?'checked':''} onchange="kpTierEdit('${jsq(p.id)}',${i},'featured',this.checked)"> Рекомендована винагорода</label>
-    </div>`).join('')}</div>
-    <button type="button" class="btn btn-g btn-sm" onclick="kpAddTier('${jsq(p.id)}')">＋ Додати винагороду</button>
-  </details>`;
-}
 function kpForm(p){
   return `<div class="kp-form">
     ${kpField(p,'name','Назва')}
@@ -1052,7 +1016,6 @@ function kpForm(p){
     </div>
     ${kpField(p,'updatePreview','Текст оновлення','area')}
     ${kpField(p,'coverImage','Обкладинка','img')}
-    ${kpSupportForm(p)}
   </div>`;
 }
 function kpMarkup(){
@@ -1118,19 +1081,6 @@ function kpDelete(id){
   if(!confirm(`Видалити «${kp.hidden[i].name}» зі списку? Сторінки буде приховано й залишено на сервері для відновлення.`))return;
   kp.hidden.splice(i,1);kp.openId=null;kp.dirty=true;kpRerender();
 }
-function kpMarkDirty(){kp.dirty=true;const btn=$('#kpSave');if(btn){btn.disabled=false;btn.textContent='💾 Опублікувати зміни';}}
-function kpInitSupport(id){const p=kpFind(id);if(!p)return;p.support={minDonation:50,defaultDonation:200,tiers:[]};kpMarkDirty();kpRerender();}
-function kpSupportEdit(id,key,val){const p=kpFind(id);if(!p?.support)return;p.support[key]=Number(val||0);kpMarkDirty();}
-function kpTierEdit(id,index,key,val){
-  const t=kpFind(id)?.support?.tiers?.[index];if(!t)return;
-  t[key]=key==='amount'?Number(val||0):key==='featured'?!!val:key==='includes'?String(val).split('\n').map(x=>x.trim()).filter(Boolean):val;kpMarkDirty();
-}
-function kpAddTier(id){
-  const p=kpFind(id);if(!p?.support)return;const used=new Set(p.support.tiers.map(t=>t.id));let n=p.support.tiers.length+1,idv;
-  do{idv=`${p.id}-tier-${n++}`;}while(used.has(idv));
-  p.support.tiers.push({id:idv,title:'Нова винагорода',description:'Опишіть склад і переваги цієї винагороди.',amount:1000,includes:['Підтримка проєкту']});kpMarkDirty();kpRerender();
-}
-function kpRemoveTier(id,index){const p=kpFind(id);if(!p?.support)return;p.support.tiers.splice(index,1);kpMarkDirty();kpRerender();}
 function kpEdit(id,key,val,keepFocus){
   const p=kpFind(id);if(!p)return;
   p[key]=(key==='raised'||key==='goal')?Number(val||0):val;
@@ -1195,16 +1145,6 @@ function kpValidate(){
     if(String(p.link)!==`/kik/proekty/${p.id}`)e.push(`${w}: посилання має бути /kik/proekty/${p.id}`);
     if(p.coverImage&&(!/^\/[^\s]*$/.test(String(p.coverImage))||String(p.coverImage).startsWith('//')))e.push(`${w}: обкладинка має бути шляхом на сайті`);
     if(Number(p.goal)<Number(p.raised))e.push(`${w}: ціль менша за зібрану суму`);
-    if(p.support){
-      if(Number(p.support.minDonation)<1)e.push(`${w}: мінімальний внесок має бути не менше 1 ₴`);
-      if(Number(p.support.defaultDonation)<Number(p.support.minDonation))e.push(`${w}: типова сума менша за мінімальний внесок`);
-      const ids=new Set();(p.support.tiers||[]).forEach((t,i)=>{
-        if(ids.has(t.id))e.push(`${w}: повторюється ID винагороди ${t.id}`);ids.add(t.id);
-        if(String(t.title||'').trim().length<2)e.push(`${w}: винагорода ${i+1} без назви`);
-        if(String(t.description||'').trim().length<8)e.push(`${w}: закороткий опис винагороди ${i+1}`);
-        if(Number(t.amount)<1)e.push(`${w}: сума винагороди ${i+1} має бути не менше 1 ₴`);
-      });
-    }
   }
   return e;
 }
@@ -1223,12 +1163,12 @@ async function kpSave(){
     kp.err=[err.message];kpRerender();toast(err.message,'er');
   }
 }
-window.kpEdit=kpEdit;window.kpToggleEdit=kpToggleEdit;window.kpSetVisible=kpSetVisible;window.kpNew=kpNew;window.kpDuplicate=kpDuplicate;window.kpDelete=kpDelete;window.kpInitSupport=kpInitSupport;window.kpSupportEdit=kpSupportEdit;window.kpTierEdit=kpTierEdit;window.kpAddTier=kpAddTier;window.kpRemoveTier=kpRemoveTier;window.kpSave=kpSave;
+window.kpEdit=kpEdit;window.kpToggleEdit=kpToggleEdit;window.kpSetVisible=kpSetVisible;window.kpNew=kpNew;window.kpDuplicate=kpDuplicate;window.kpDelete=kpDelete;window.kpSave=kpSave;
 
 // ── SETTINGS ──
 function renderSettings(id){
   const g=S.general||{},b=S.banner||{},m=S.maintenance||{},c=S.contacts||{},seo=S.seo||{},ig=S.integrations||{},ap=S.appearance||{};
-  const T={general:'⚙️ Загальні',contacts:'📬 Контакти',sitecontrol:'📣 Банер і режим сайту'};
+  const T={general:'⚙️ Загальні',contacts:'📬 Контакти'};
   let body='';
   switch(id){
     case'general':body=`
@@ -1247,17 +1187,6 @@ function renderSettings(id){
         <div class="field"><label class="flbl">Facebook</label><input type="url" data-p="contacts.facebook" value="${esc(c.facebook)}"></div>
         <div class="field"><label class="flbl">X</label><input type="url" data-p="contacts.x" value="${esc(c.x)}"></div>
       </div>`;break;
-    case'sitecontrol':body=`
-      <label class="field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" data-p="banner.enabled" ${b.enabled?'checked':''}><span class="flbl" style="margin:0">Показувати інформаційний банер</span></label>
-      <div class="field"><label class="flbl">Текст банера</label><input type="text" data-p="banner.text" value="${esc(b.text)}"></div>
-      <div class="field"><label class="flbl">Посилання банера</label><input type="url" data-p="banner.link" value="${esc(b.link)}" placeholder="https:// або /сторінка"></div>
-      <div class="row2">
-        <div class="field"><label class="flbl">Фон банера</label><input type="color" data-p="banner.bg" value="${esc(b.bg||'#2E9BE6')}"></div>
-        <div class="field"><label class="flbl">Колір тексту</label><input type="color" data-p="banner.fg" value="${esc(b.fg||'#ffffff')}"></div>
-      </div>
-      <div style="border-top:1px solid var(--line);margin:18px 0"></div>
-      <label class="field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" data-p="maintenance.enabled" ${m.enabled?'checked':''}><span class="flbl" style="margin:0">Увімкнути технічний режим</span></label>
-      <div class="field"><label class="flbl">Повідомлення технічного режиму</label><textarea data-p="maintenance.message" style="min-height:90px">${esc(m.message)}</textarea></div>`;break;
   }
   return `<div class="card">
     <div class="ch"><div class="ct">${T[id]||id}</div></div>
@@ -1294,7 +1223,6 @@ async function saveSettings(){
 
 // ── PAGES ──
 let activePage=null, pageBlocks=[], pageEdited={};
-const PAGE_TYPE_TAB={h1:'content',h2:'content',h3:'content',p:'content',a:'content',span:'content',li:'content',img:'images',seo:'seo'};
 const PICO={'/':{i:'🏠'},igry:{i:'🎲'},kik:{i:'🚀'},kontakty:{i:'📬'}};
 function pIco(p){const s=p==='/'?'/':p.split('/')[0];return(PICO[s]||{i:'📄'}).i;}
 function gPages(ps){const g={};for(const p of ps){const s=p.path==='/'?'__root__':p.path.split('/')[0];const l=s==='__root__'?'Головна':s==='igry'?'🎲 Ігри':s==='kik'?'🚀 КІК':s==='kontakty'?'📬 Контакти':s;if(!g[s])g[s]={l,items:[]};g[s].items.push(p);}return g;}
@@ -1504,19 +1432,18 @@ window.moveBlockUp = moveBlockUp;
 window.moveBlockDown = moveBlockDown;
 
 function buildBlocksHtml(blocks, tabFilter, search){
-  let filtered=blocks.filter(b=>(PAGE_TYPE_TAB[b.type]||'content')===tabFilter);
+  const typeToTab={h1:'content',h2:'content',h3:'content',p:'content',a:'content',span:'content',li:'content',img:'images'};
+  let filtered=blocks.filter(b=>(typeToTab[b.type]||'content')===tabFilter && b.type !== 'seo');
   if(search) filtered=filtered.filter(b=>b.value.toLowerCase().includes(search)||b.label.toLowerCase().includes(search));
   if(!filtered.length) return`<div class="tab-empty">${search?'Нічого не знайдено':'Немає блоків'}</div>`;
   return filtered.map(b=>{
-    const isLong=b.type==='p'||(b.type==='seo'&&b.id==='seo_meta_desc');
+    const isLong=b.type==='p'||(b.type==='seo'&&b.id==='meta_desc');
     const curVal=pageEdited[b.id]!==undefined?pageEdited[b.id]:b.value;
     const edited=(pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value) || b.isNew;
     const isDeleted=deletedBlocks.has(b.id);
     const delStyle=isDeleted?'opacity:0.3;pointer-events:none;background:rgba(239,68,68,0.05);border-color:rgba(239,68,68,0.2)':'';
 
-    const actionControls = b.type==='seo' ? `
-      <button class="reset-btn" onclick="resetField('${esc(b.id)}')" title="Скинути">↩</button>
-    ` : `
+    const actionControls = `
       ${isDeleted?`<span style="color:#ef4444;font-size:10px;font-weight:bold;margin-right:8px">ВИДАЛЕНО</span><button class="reset-btn" onclick="restoreBlock('${esc(b.id)}')" title="Відновити" style="color:#22c55e">↩ Відновити</button>`:`
       <button class="reset-btn" onclick="moveBlockUp('${esc(b.id)}')" title="Вгору">⬆</button>
       <button class="reset-btn" onclick="moveBlockDown('${esc(b.id)}')" title="Вниз">⬇</button>
@@ -1525,7 +1452,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
       `}
     `;
 
-    const addRow = b.type!=='seo'&&!isDeleted?`<div class="add-block-row" style="text-align:center;margin:4px 0 12px;opacity:0.6;transition:.2s;display:flex;justify-content:center"><div class="add-block-btns" style="display:flex;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:12px;cursor:pointer;border:1px dashed rgba(255,255,255,0.1)"><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','p')">➕ ¶ Абзац</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','h2')">➕ H₂ Загол</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','img')">➕ 🖼 Фото</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','a')">➕ 🔗 Кнопка</span></div></div>`:'';
+    const addRow = !isDeleted?`<div class="add-block-row" style="text-align:center;margin:4px 0 12px;opacity:0.6;transition:.2s;display:flex;justify-content:center"><div class="add-block-btns" style="display:flex;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:12px;cursor:pointer;border:1px dashed rgba(255,255,255,0.1)"><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','p')">➕ ¶ Абзац</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','h2')">➕ H₂ Загол</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','img')">➕ 🖼 Фото</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','a')">➕ 🔗 Кнопка</span></div></div>`:'';
 
     if (b.type === 'img') {
       return `<div class="blk img${edited?' edited':''}${b.isNew?' new-blk':''}" data-id="${esc(b.id)}" data-tab="images" style="padding:14px 16px 12px;${delStyle}">
@@ -1583,7 +1510,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
       inputHtml = `<input type="text" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" value="${esc(curVal)}">`;
     }
 
-    return `<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="${PAGE_TYPE_TAB[b.type]||'content'}" style="padding:14px 16px 12px;${delStyle}">
+    return `<div class="blk ${b.type}${edited?' edited':''}" data-id="${esc(b.id)}" data-tab="${typeToTab[b.type]||'content'}" style="padding:14px 16px 12px;${delStyle}">
       <div class="blk-head" style="margin-bottom:6px">
         <div class="blk-ico ${b.type==='p'?'p':b.type}">${b.type.startsWith('h')?b.type.toUpperCase():esc(b.icon)}</div>
         <span class="blk-lbl" style="font-size:10px;letter-spacing:.08em">${esc(b.label)}</span>
@@ -1597,10 +1524,12 @@ function buildBlocksHtml(blocks, tabFilter, search){
 }
 
 function countTabChanges(tab){
-  return pageBlocks.filter(b=>(PAGE_TYPE_TAB[b.type]||'content')===tab&&((pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value) || b.isNew || deletedBlocks.has(b.id))).length;
+  const typeToTab={h1:'content',h2:'content',h3:'content',p:'content',a:'content',span:'content',li:'content',img:'images'};
+  return pageBlocks.filter(b=>(typeToTab[b.type]||'content')===tab&&b.type!=='seo'&&((pageEdited[b.id]!==undefined&&pageEdited[b.id]!==b.value) || b.isNew || deletedBlocks.has(b.id))).length;
 }
 function countTab(tab){
-  return pageBlocks.filter(b=>(PAGE_TYPE_TAB[b.type]||'content')===tab).length;
+  const typeToTab={h1:'content',h2:'content',h3:'content',p:'content',a:'content',span:'content',li:'content',img:'images'};
+  return pageBlocks.filter(b=>(typeToTab[b.type]||'content')===tab&&b.type!=='seo').length;
 }
 
 // Rebuilds ONLY the block list — never the search input. The old version
@@ -1630,7 +1559,7 @@ function switchPedTab(tab){
         // Elements not visible (e.g. SEO, or other tabs) should retain their relative positions.
         
         // Get all visible blocks from pageBlocks in the order they were before
-        const visibleBlocks = pageBlocks.filter(b => (PAGE_TYPE_TAB[b.type]||'content')===pedTab && b.type!=='seo' && !deletedBlocks.has(b.id));
+        const visibleBlocks = pageBlocks.filter(b => (typeToTab[b.type]||'content')===pedTab && b.type!=='seo' && !deletedBlocks.has(b.id));
         
         // Ensure sizes match
         if (visibleBlocks.length === newOrderIds.length) {
@@ -1642,7 +1571,7 @@ function switchPedTab(tab){
             let i = 0;
             const newPageBlocks = [];
             for (const b of pageBlocks) {
-              if ((PAGE_TYPE_TAB[b.type]||'content')===pedTab && b.type!=='seo' && !deletedBlocks.has(b.id)) {
+              if ((typeToTab[b.type]||'content')===pedTab && b.type!=='seo' && !deletedBlocks.has(b.id)) {
                 // Insert from the newly ordered subset
                 const blockToInsert = orderedBlocks[i++];
                 // Temporarily mark it as edited to force a save if needed, or rely on reorder payload
@@ -1730,7 +1659,7 @@ function renderPagesUI(){
   // build editor area
   let edHtml='', pvSrc='';
   if(activePage && pageBlocks.length){
-    const cCount=countTab('content'), iCount=countTab('images'), sCount=countTab('seo');
+    const cCount=countTab('content'), iCount=countTab('images');
     const editorContent=`
       <div class="ped-tabs">
         <button class="ped-tab${pedTab==='content'?' on':''}" data-tab="content" onclick="switchPedTab('content')">
@@ -1738,9 +1667,6 @@ function renderPagesUI(){
         </button>
         <button class="ped-tab${pedTab==='images'?' on':''}" data-tab="images" onclick="switchPedTab('images')">
           🖼 Зображення<span class="tab-cnt">${iCount}</span><span class="tab-dot"></span>
-        </button>
-        <button class="ped-tab${pedTab==='seo'?' on':''}" data-tab="seo" onclick="switchPedTab('seo')">
-          🔍 SEO<span class="tab-cnt">${sCount}</span><span class="tab-dot"></span>
         </button>
       </div>
       ${(cCount===0&&iCount===0)?(()=>{
