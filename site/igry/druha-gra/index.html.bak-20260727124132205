@@ -121,23 +121,23 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 <section class="gp-hero">
   <div class="gp-hero-bg">
     
-      <img src="https://blueferret.com.ua/images/placeholder-game.svg" alt="Друга гра" loading="eager" data-bf-id="bf_e3ac29eb">
+      <img src="https://blueferret.com.ua/images/placeholder-game.svg" alt="Друга гра" loading="eager" data-bf-id="bf_5c2fc442">
     
   </div>
-  <div class="gp-hero-overlay"></div>
+  <div class="gp-hero-overlay" data-bf-id="bf_d3c1df4b"></div>
   
   <div class="gp-hero-body rv">
     
-      <div class="gp-kicker">Анонс</div><h1 class="gp-hero-title" data-bf-id="bf_385382a2">Друга гра</h1>
+      <div class="gp-kicker" data-bf-id="bf_5af7b954">Анонс</div><h1 class="gp-hero-title" data-bf-id="bf_26fcba86">Друга гра</h1>
     
-    <p class="gp-hero-sub" data-bf-id="bf_ad661b6a">Кожен хід - нова історія</p>
+    <p class="gp-hero-sub" data-bf-id="bf_d2d256fe">Кожен хід - нова історія</p>
     
-      <a class="gp-btn-s" href="#passport" data-bf-id="bf_94339a10">Дізнатися більше ↓</a>
+      <a class="gp-btn-s" href="#passport" data-bf-id="bf_cf499217">Дізнатися більше ↓</a>
     
   </div>
 
   <div class="gp-hero-scroll rv" onclick="document.getElementById('passport').scrollIntoView({behavior:'smooth'})">
-    <span data-bf-id="bf_a7fa887e">Зануритися</span>
+    <span data-bf-id="bf_2848088a">Зануритися</span>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
   </div>
 </section>
@@ -145,12 +145,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 <section class="gp-section" id="passport" style="background:rgba(0,0,0,0.2)">
   <div class="gp-inner">
     <div class="rv text-center" style="text-align:center;margin-bottom:40px">
-      <p class="gp-eyebrow" data-bf-id="bf_1645d4e6">Про гру</p>
-      <h2 class="gp-stitle" data-bf-id="bf_fa0972c4">Паспорт пригоди</h2>
-      <p style="color:rgba(255,255,255,0.4);max-width:600px;margin:0 auto" data-bf-id="bf_86fb90e9">Коротко про формат гри, щоб одразу зрозуміти, чого чекати.</p>
+      <p class="gp-eyebrow" data-bf-id="bf_3e9a19c8">Про гру</p>
+      <h2 class="gp-stitle" data-bf-id="bf_ee01bb91">Паспорт пригоди</h2>
+      <p style="color:rgba(255,255,255,0.4);max-width:600px;margin:0 auto" data-bf-id="bf_32a78192">Коротко про формат гри, щоб одразу зрозуміти, чого чекати.</p>
     </div>
     
-    <div class="pp-grid rv"><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg></div><div class="pp-label">ГРАВЦІ</div><div class="pp-val">2-4</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></div><div class="pp-label">ТРИВАЛІСТЬ</div><div class="pp-val">30-45</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-baby"><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"></path><path d="M15 12h.01"></path><path d="M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"></path><path d="M9 12h.01"></path></svg></div><div class="pp-label">ВІК</div><div class="pp-val">8+</div></div></div>
+    <div class="pp-grid rv"><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg></div><div class="pp-label" data-bf-id="bf_96816127">ГРАВЦІ</div><div class="pp-val" data-bf-id="bf_22bba709">2-4</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></div><div class="pp-label" data-bf-id="bf_3fc7fd6f">ТРИВАЛІСТЬ</div><div class="pp-val" data-bf-id="bf_321f178f">30-45</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-baby"><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"></path><path d="M15 12h.01"></path><path d="M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"></path><path d="M9 12h.01"></path></svg></div><div class="pp-label" data-bf-id="bf_9ea24271">ВІК</div><div class="pp-val" data-bf-id="bf_ca4a0a7e">8+</div></div></div>
   </div>
 </section>
 
@@ -159,20 +159,20 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
     <div class="gp-about-grid">
       <div class="gp-about-visual rv">
         <div class="gp-3d-box">
-          <img src="/images/placeholder-game.svg" alt="Друга гра" loading="lazy" data-bf-id="bf_09a1a02a">
+          <img src="/images/placeholder-game.svg" alt="Друга гра" loading="lazy" data-bf-id="bf_e7ea4362">
         </div>
       </div>
       
       <div class="gp-about-content rv" style="transition-delay:0.1s">
-        <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6" style="background:rgba(255,255,255,0.05);color:var(--accent);border:1px solid rgba(255,255,255,0.1)" data-bf-id="bf_a0f72fbd">Анонс</span>
-        <h3 class="gp-stitle" style="font-size:28px" data-bf-id="bf_31c1a3c3">Що за гра?</h3>
-        <div style="width:100%;height:1px;background:rgba(255,255,255,0.1);margin-bottom:24px"></div>
-        <div class="gp-desc"><p data-bf-id="bf_f2f55298">Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.</p></div>
+        <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6" style="background:rgba(255,255,255,0.05);color:var(--accent);border:1px solid rgba(255,255,255,0.1)" data-bf-id="bf_917ea647">Анонс</span>
+        <h3 class="gp-stitle" style="font-size:28px" data-bf-id="bf_2343fcfd">Що за гра?</h3>
+        <div style="width:100%;height:1px;background:rgba(255,255,255,0.1);margin-bottom:24px" data-bf-id="bf_64b7eebc"></div>
+        <div class="gp-desc"><p data-bf-id="bf_a8f0ea6b">Стратегічна гра для 2-4 гравців. Унікальна механіка, продуманий баланс та висока реіграбельність. Ідеально для вечорів з друзями.</p></div>
         
         <div class="gp-actions">
           
           
-          <a class="gp-btn-s" href="/igry/" data-bf-id="bf_58c46a0a">← Каталог</a>
+          <a class="gp-btn-s" href="/igry/" data-bf-id="bf_202af33a">← Каталог</a>
         </div>
       </div>
     </div>
@@ -197,12 +197,23 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 </div>
 <script>
 (function(){
+  var els=document.querySelectorAll('.rv');
   var io=new IntersectionObserver(function(es){
     es.forEach(function(e){
       if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);}
     });
   },{threshold:.15,rootMargin:'0px 0px -50px 0px'});
-  document.querySelectorAll('.rv').forEach(function(el){io.observe(el);});
+  els.forEach(function(el){io.observe(el);});
+  // Fallback: IntersectionObserver callbacks are deprioritized/frozen by the
+  // browser while the tab is backgrounded (visibilityState "hidden"), and can
+  // also simply fail to fire on some devices/slow loads. A permanently
+  // opacity:0 section (title, stats, description all invisible) reads as a
+  // broken page, so force everything visible after 1.2s regardless of
+  // whether the observer ever ran.
+  setTimeout(function(){
+    els.forEach(function(el){ el.classList.add('vis'); });
+    io.disconnect();
+  },1200);
 })();
 </script>
 <script src="/api/public/runtime.js" defer=""></script>
