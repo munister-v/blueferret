@@ -2779,46 +2779,22 @@ const RUNTIME_JS = `(function(){
     });
     testimonialObserver.observe(document.body,{childList:true,subtree:true});
   }
-  // Portrait photo in a rounded rectangle on the left, the quote mark and both
-  // text lines in a column on the right; stacks centred on narrow screens.
-  // Driven by a stylesheet keyed off a marker attribute rather than inline
-  // styles plus DOM restructuring, because the quote/author <p> must stay
-  // DIRECT children of the card — applyTestimonialExtra() below and the
-  // server-side block editor both address them as such, so wrapping them in a
-  // column <div> would quietly break the editor.
-  var TESTIMONIAL_CSS=
-     '[data-bf-testimonial-photo]{display:grid;grid-template-columns:minmax(0,228px) minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:38px;align-items:start}'
-    +'[data-bf-testimonial-photo]>#bf-testimonial-image{grid-column:1;grid-row:1/-1;align-self:stretch;display:block;width:100%;height:100%;min-height:230px;object-fit:cover;object-position:center 22%;border-radius:22px;box-shadow:0 18px 44px -18px rgba(15,23,42,.35);background:#fff;position:relative;z-index:10}'
-    +'[data-bf-testimonial-photo]>svg.lucide-quote{position:static;grid-column:2;grid-row:1;margin:0 0 14px;width:44px;height:44px}'
-    +'[data-bf-testimonial-photo]>p{grid-column:2;max-width:none;margin-left:0;margin-right:0;text-align:left}'
-    +'@media(max-width:860px){'
-    +'[data-bf-testimonial-photo]{grid-template-columns:minmax(0,1fr);grid-template-rows:none;justify-items:center}'
-    +'[data-bf-testimonial-photo]>#bf-testimonial-image{grid-column:1;grid-row:auto;width:210px;height:250px;min-height:0;margin:0 auto 20px}'
-    +'[data-bf-testimonial-photo]>svg.lucide-quote{grid-column:1;grid-row:auto;margin:0 auto 12px}'
-    +'[data-bf-testimonial-photo]>p{grid-column:1;text-align:center}}';
   function applyTestimonialImage(url){
     var old=document.getElementById('bf-testimonial-image');
-    var st=document.getElementById('bf-testimonial-photo-css');
+    if(!url){if(old)old.remove();return;}
     var quoteIcon=document.querySelector('main svg.lucide-quote');
-    var card=quoteIcon?quoteIcon.parentElement:null;
-    if(!url){
-      if(old)old.remove();
-      if(st)st.remove();
-      if(card)card.removeAttribute('data-bf-testimonial-photo');
-      return;
-    }
+    if(!quoteIcon)return;
+    var card=quoteIcon.parentElement;
     if(!card)return;
     var quote=card.querySelector('p.text-xl');
     if(!quote)return;
-    if(!st){st=document.createElement('style');st.id='bf-testimonial-photo-css';document.head.appendChild(st);}
-    if(st.textContent!==TESTIMONIAL_CSS)st.textContent=TESTIMONIAL_CSS;
-    if(!card.hasAttribute('data-bf-testimonial-photo'))card.setAttribute('data-bf-testimonial-photo','');
     var img=old||document.createElement('img');
     img.id='bf-testimonial-image';
     if(img.getAttribute('src')!==url)img.src=url;
-    if(img.alt!=='Вероніка Рогачова та Каша')img.alt='Вероніка Рогачова та Каша';
-    // the photo must be the first grid item so it lands in column 1
-    if(img.parentElement!==card||img.nextElementSibling!==quoteIcon)card.insertBefore(img,card.firstChild);
+    if(img.alt!=='Фото автора відгуку')img.alt='Фото автора відгуку';
+    var imageStyle='display:block;width:96px;height:96px;object-fit:cover;border-radius:50%;margin:0 auto 22px;border:3px solid rgba(0,159,227,.18);box-shadow:0 10px 30px rgba(15,23,42,.14);position:relative;z-index:10;background:#fff';
+    if(img.style.cssText!==imageStyle)img.style.cssText=imageStyle;
+    if(img.parentElement!==card)card.insertBefore(img,quote);
   }
   function applyTestimonialExtra(value){
     var old=document.getElementById('bf-testimonial-extra-text');
