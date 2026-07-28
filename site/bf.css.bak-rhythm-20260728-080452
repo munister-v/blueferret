@@ -621,29 +621,3 @@ main a[href="/igry/trymaysia/"] h2 {
   margin-bottom: 14px !important;
 }
 
-/* -- bf-vertical-rhythm ---------------------------------------------------
-   Every section carried its own large py-* padding, so the gap between two
-   blocks was the SUM of both: 144+144=288px between "Хто ми" and "Те, що ми
-   цінуємо", and 112+192=304px before the closing CTA. That read as empty
-   voids rather than breathing room. One scale for all sections instead, so
-   the distance between blocks is predictable across the whole site.
-   The hero is untouched — it has no py-* class (min-h-[100vh] instead).      */
-main section[class^="py-"],
-main section[class*=" py-"] {
-  padding-top: 88px !important;
-  padding-bottom: 88px !important;
-}
-@media (max-width: 1023px) {
-  main section[class^="py-"],
-  main section[class*=" py-"] {
-    padding-top: 64px !important;
-    padding-bottom: 64px !important;
-  }
-}
-@media (max-width: 639px) {
-  main section[class^="py-"],
-  main section[class*=" py-"] {
-    padding-top: 48px !important;
-    padding-bottom: 48px !important;
-  }
-}

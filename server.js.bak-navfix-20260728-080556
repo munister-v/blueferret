@@ -2775,35 +2775,6 @@ const RUNTIME_JS = `(function(){
   function applyTestimonialState(){
     applyTestimonialImage(testimonialState.image);
     applyTestimonialExtra(testimonialState.extra);
-    // re-applied here (not once at load) for the same reason as the two above:
-    // React re-renders the header and would drop the listener
-    fixGamesNavLink();
-  }
-  // The header "Наші ігри" item is a <button> dropdown trigger whose handler is
-  // dead on desktop — verified in a real browser: neither hover nor click opens
-  // anything and nothing navigates, so the item reads as broken while every
-  // other "Наші ігри" control on the site goes to the catalog.
-  // Deliberately ADAPTIVE rather than a hard override: the click is left to run
-  // normally and we only navigate if no menu actually appeared. That way the
-  // mobile menu (or a future repaired dropdown) keeps working untouched, and we
-  // never suppress a menu that does open.
-  function fixGamesNavLink(){
-    var nodes=document.querySelectorAll('header button,nav button');
-    for(var i=0;i<nodes.length;i++){
-      var b=nodes[i];
-      if(b.getAttribute('data-bf-games-link')==='1')continue;
-      if((b.textContent||'').replace(/\s+/g,' ').trim()!=='Наші ігри')continue;
-      b.setAttribute('data-bf-games-link','1');
-      b.style.cursor='pointer';
-      b.addEventListener('click',function(){
-        var host=this.parentElement||this;
-        setTimeout(function(){
-          if(host.querySelector('a[href^="/igry"]'))return;          // dropdown opened
-          if(document.querySelector('[role="menu"] a[href^="/igry"]'))return;
-          location.href='/igry/';
-        },220);
-      },false);
-    }
   }
   function watchTestimonialHydration(){
     if(testimonialObserver||!window.MutationObserver||!document.body)return;
