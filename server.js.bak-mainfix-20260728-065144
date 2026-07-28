@@ -442,19 +442,6 @@ function sanitizeEditorHtml(v) {
   return (root.html() || '').trim();
 }
 
-// Blocks on a generated game page that have a write-back path into the games
-// table. Everything else on such a page is re-rendered from the DB row by
-// writeGeneratedGamePage() (on every game save and on boot), so offering it in
-// the block editor would show a save that silently reverts later.
-const GAME_FIELD_IDS = {
-  bf_g_title: 'title',
-  bf_g_subtitle: 'subtitle',
-  bf_g_players: 'players',
-  bf_g_duration: 'duration',
-  bf_g_age: 'age',
-  bf_g_author: 'author',
-};
-
 function validateEditablePageHtml(html, rel) {
   if (typeof html !== 'string' || html.length < 100 || html.length > 8 * 1024 * 1024) throw new Error('invalid_page_size');
   const $ = cheerio.load(html, { decodeEntities:false });
@@ -506,14 +493,14 @@ function generatedGameHtml(g) {
 
   const rawDesc = (g.description || '').trim() || 'Опис гри скоро з\'явиться.';
   const metaDesc = escapeHtml(rawDesc.replace(/\n/g,' ').slice(0, 155));
-  const descHtml = rawDesc.split('\n').filter(p => p.trim()).map((p, i) => `<p data-bf-id="bf_g_desc${i}">${escapeHtml(p)}</p>`).join('');
+  const descHtml = rawDesc.split('\n').filter(p => p.trim()).map(p => `<p>${escapeHtml(p)}</p>`).join('');
   const year = new Date().getFullYear();
 
   const passportCards = [
-    players && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></div><div class="pp-label">ГРАВЦІ</div><div class="pp-val" data-bf-id="bf_g_players">${players}</div></div>`,
-    duration && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div class="pp-label">ТРИВАЛІСТЬ</div><div class="pp-val" data-bf-id="bf_g_duration">${duration}</div></div>`,
-    age && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-baby"><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M15 12h.01"/><path d="M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/><path d="M9 12h.01"/></svg></div><div class="pp-label">ВІК</div><div class="pp-val" data-bf-id="bf_g_age">${age}</div></div>`,
-    author && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-building"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg></div><div class="pp-label">ВИДАВЕЦЬ</div><div class="pp-val" data-bf-id="bf_g_author">${author}</div></div>`,
+    players && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></div><div class="pp-label">ГРАВЦІ</div><div class="pp-val">${players}</div></div>`,
+    duration && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div class="pp-label">ТРИВАЛІСТЬ</div><div class="pp-val">${duration}</div></div>`,
+    age && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-baby"><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M15 12h.01"/><path d="M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/><path d="M9 12h.01"/></svg></div><div class="pp-label">ВІК</div><div class="pp-val">${age}</div></div>`,
+    author && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-building"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg></div><div class="pp-label">ВИДАВЕЦЬ</div><div class="pp-val">${author}</div></div>`,
   ].filter(Boolean).join('');
 
   const gameTpl = fs.readFileSync(path.join(__dirname, 'views', 'game.ejs'), 'utf8');
@@ -1319,8 +1306,6 @@ function extractBlocks(html){
   if (metaDesc) add('seo_meta_desc', 'seo', 'Meta Description', '📝', decodeHtmlEnts(metaDesc), -1);
 
   const root = $('main').length ? $('main') : $('body');
-  // Hand-built game pages (trymaysia) carry no such marker and stay fully editable.
-  const isGeneratedGame = $('html').attr('data-bf-generated-game') === 'true';
   
   let idx = 0;
   root.find('h1, h2, h3, p, a, span, img, li, div').each((_, el) => {
@@ -1333,9 +1318,6 @@ function extractBlocks(html){
     const existingId = $el.attr('data-bf-id') || '';
     const stageEditable = /^bf_stg\d+_(title|label|desc)$/.test(existingId);
     if ($el.closest('[data-bf-stages]').length > 0 && !stageEditable) return;
-    // See GAME_FIELD_IDS: on a generated page only DB-backed blocks are editable.
-    if (isGeneratedGame && !stageEditable
-        && !GAME_FIELD_IDS[existingId] && !/^bf_g_desc\d+$/.test(existingId)) return;
 
     const tag = el.tagName.toLowerCase();
     // A few hand-built game sections use a leaf <div> for their copy instead
@@ -2299,7 +2281,6 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   let changed = 0;
   const textPairs = []; // old → new plain-text edits, mirrored into JS chunks below
   const stageEdits = [];
-  const gameFieldEdits = [];
   const homeTestimonial = rel === 'index.html' ? homeTestimonialFromDom($) : null;
   let homeTextChanged = false;
 
@@ -2395,8 +2376,6 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
         else el.text(savedVal);
         if (/^bf_stg\d+_(title|label|desc)$/.test(b.id)) {
           stageEdits.push({ id: b.id, newVal: cleanInner(savedVal) });
-        } else if (GAME_FIELD_IDS[b.id] || /^bf_g_desc\d+$/.test(b.id)) {
-          gameFieldEdits.push({ id: b.id, newVal: cleanInner(savedVal) });
         } else {
           textPairs.push({ oldVal: b.origVal, newVal: richText ? cleanInner(savedVal) : savedVal });
         }
@@ -2457,7 +2436,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
         homeSync = { error:e.message };
       }
     }
-    if (stageEdits.length || gameFieldEdits.length) {
+    if (stageEdits.length) {
       const m = rel.match(/^igry\/([^/]+)\/index\.html$/);
       const row = m ? gSlug.get(m[1]) : null;
       if (row) {
@@ -2471,29 +2450,10 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
           stages[+sm[1]][field] = edit.newVal;
           stageChanged = true;
         }
-        const current = gameRow(row);
-        const patch = {};
-        let fieldChanged = false;
-        for (const edit of gameFieldEdits) {
-          const f = GAME_FIELD_IDS[edit.id];
-          if (!f || (current[f] || '') === edit.newVal) continue;
-          patch[f] = edit.newVal;
-          fieldChanged = true;
-        }
-        // description is one DB column split across N <p> blocks — rebuild it
-        // from every paragraph in the patched DOM, not just the edited one.
-        if (gameFieldEdits.some(e => /^bf_g_desc\d+$/.test(e.id))) {
-          const parts = [];
-          $('[data-bf-id^="bf_g_desc"]').each((_, el) => {
-            const t = cleanInner($(el).text());
-            if (t) parts.push(t);
-          });
-          const desc = parts.join('\n');
-          if (desc && desc !== (current.description || '')) { patch.description = desc; fieldChanged = true; }
-        }
-        if (stageChanged || fieldChanged) {
+        if (stageChanged) {
           snapshotGameHistory(row.id, row);
-          gUpd.run({ ...gameBody({ ...current, ...patch, stages }, row), id: row.id });
+          const current = gameRow(row);
+          gUpd.run({ ...gameBody({ ...current, stages }, row), id: row.id });
           writeGeneratedGamePage(gOne.get(row.id));
         }
       }

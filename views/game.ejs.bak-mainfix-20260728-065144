@@ -120,8 +120,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
   </nav>
 </header>
 
-<main>
-
 <section class="gp-hero">
   <div class="gp-hero-bg">
     <% if (isVideoBg) { %>
@@ -136,9 +134,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
     <% if (heroLogo) { %>
       <img class="gp-hero-logo" src="<%= heroLogo %>" alt="<%= title %>">
     <% } else { %>
-      <div class="gp-kicker"><%= statusLabel %></div><h1 class="gp-hero-title" data-bf-id="bf_g_title"><%= title %></h1>
+      <div class="gp-kicker"><%= statusLabel %></div><h1 class="gp-hero-title"><%= title %></h1>
     <% } %>
-    <p class="gp-hero-sub" data-bf-id="bf_g_subtitle"><%= subtitle %></p>
+    <p class="gp-hero-sub"><%= subtitle %></p>
     <% if (buy) { %>
       <a class="gp-btn-p" href="<%= buy %>">Придбати →</a>
     <% } else { %>
@@ -194,8 +192,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 <%- renderGameGalleryHtml(g.gallery, title) %>
 
 <%- renderGameStagesHtml(g.stages, statusRaw) %>
-
-</main>
 
 <footer class="gp-footer">
   <div class="gp-footer-inner rv">
