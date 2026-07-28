@@ -1309,26 +1309,18 @@ function extractBlocks(html){
     blocks.push({ id, type, label, icon, value: v, domIndex, orig: id, origVal: v, ...extra });
   };
 
-  // Hand-built game pages (trymaysia) carry no such marker and stay fully editable.
-  const isGeneratedGame = $('html').attr('data-bf-generated-game') === 'true';
-
-  // On a generated game page every one of these is DERIVED in views/game.ejs
-  // (<title> and og:title from g.title, description from g.description), so an
-  // edit here is overwritten the next time writeGeneratedGamePage() runs. Offer
-  // them only where they are the actual source of truth; on game pages the user
-  // edits the title/description blocks instead, and SEO follows automatically.
-  if (!isGeneratedGame) {
-    const title = $('head title').text();
-    if (title) add('seo_title', 'seo', 'Заголовок сторінки (SEO)', '🔍', decodeHtmlEnts(title), -3);
-
-    const ogTitle = $('head meta[property="og:title"]').attr('content');
-    if (ogTitle) add('seo_og_title', 'seo', 'OG Title (соцмережі)', '📲', decodeHtmlEnts(ogTitle), -2);
-
-    const metaDesc = $('head meta[name="description"]').attr('content');
-    if (metaDesc) add('seo_meta_desc', 'seo', 'Meta Description', '📝', decodeHtmlEnts(metaDesc), -1);
-  }
+  const title = $('head title').text();
+  if (title) add('seo_title', 'seo', 'Заголовок сторінки (SEO)', '🔍', decodeHtmlEnts(title), -3);
+  
+  const ogTitle = $('head meta[property="og:title"]').attr('content');
+  if (ogTitle) add('seo_og_title', 'seo', 'OG Title (соцмережі)', '📲', decodeHtmlEnts(ogTitle), -2);
+  
+  const metaDesc = $('head meta[name="description"]').attr('content');
+  if (metaDesc) add('seo_meta_desc', 'seo', 'Meta Description', '📝', decodeHtmlEnts(metaDesc), -1);
 
   const root = $('main').length ? $('main') : $('body');
+  // Hand-built game pages (trymaysia) carry no such marker and stay fully editable.
+  const isGeneratedGame = $('html').attr('data-bf-generated-game') === 'true';
   
   let idx = 0;
   root.find('h1, h2, h3, p, a, span, img, li, div').each((_, el) => {
