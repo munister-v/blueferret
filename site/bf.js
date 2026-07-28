@@ -311,6 +311,27 @@
   }
 
   function initMobileMenuFallback() {
+    // React may replace the hydrated header button after this script has run
+    // (especially on slower mobile Safari). A document-level capture handler
+    // survives that replacement, so every current or future hamburger works.
+    if (!document.documentElement.dataset.bfMobileMenuDelegated) {
+      document.documentElement.dataset.bfMobileMenuDelegated = '1';
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest && e.target.closest('button');
+        if (!btn) return;
+        const label = btn.getAttribute('aria-label') || '';
+        const controls = btn.getAttribute('aria-controls') || '';
+        const isHamburger = label === 'Відкрити меню'
+          || controls === 'mobile-site-nav'
+          || controls === 'bf-mobile-menu-fallback';
+        if (!isHamburger) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        btn.setAttribute('aria-controls', 'bf-mobile-menu-fallback');
+        openFallbackMobileMenu();
+      }, true);
+    }
+
     document.querySelectorAll('button[aria-controls="mobile-site-nav"], button[aria-label="Відкрити меню"]').forEach((btn) => {
       if (btn.dataset.bfMobileFallback) return;
       btn.dataset.bfMobileFallback = '1';
@@ -340,6 +361,7 @@
 
 	  function polishGamesCatalog() {
 	    if (!/^\/igry\/?$/.test(window.location.pathname)) return;
+	    document.documentElement.classList.add('bf-games-catalog');
 
     document.querySelectorAll('a[href="/igry/trymaysia/"], a[href$="/igry/trymaysia/"]').forEach(card => {
       const img = card.querySelector('img');
@@ -351,6 +373,15 @@
       img.style.objectPosition = 'center';
       img.style.padding = '10px 12px 0';
       img.style.background = '#263d57';
+
+      // Keep the catalogue title as real text. It follows the same calm type
+      // treatment as the description instead of using the cover wordmark.
+      const title = card.querySelector('h2');
+      if (title) {
+        title.classList.remove('bf-trymaysia-wordmark');
+        title.removeAttribute('aria-label');
+        title.textContent = 'Тримайся';
+      }
 	    });
 	  }
 
