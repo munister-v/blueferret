@@ -8,6 +8,13 @@ let pickerCallback=null;
 // editor state
 let editingGame=null;
 let gameGallery=[], gameStages=[], gameLinks=[];
+let editorFormDirty=false;
+
+function hasUnsavedWork(){
+  const pageDirty=pageEdited&&Object.keys(pageEdited).length>0;
+  const siteDirty=siteEdited&&Object.keys(siteEdited).length>0;
+  return !!(editorFormDirty||pageDirty||siteDirty||(kp&&kp.dirty));
+}
 
 // ── NAV ──
 const NAV=[
@@ -42,6 +49,24 @@ function autoResize(el) {
 }
 const esc=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const jsq=x=>String(x??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/</g,'\\x3c');
+function normalizeTextValue(value,{multiline=true,inline=false}={}){
+  let s=String(value??'');
+  try{s=s.normalize('NFC');}catch{}
+  s=s.replace(/\r\n?/g,'\n')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,'')
+    .replace(/[\u00A0\u2007\u202F]/g,' ')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g,'');
+  if(inline)return s.replace(/\s+/g,' ').trim();
+  if(multiline)return s.split('\n').map(line=>line.replace(/[\t ]+/g,' ').trimEnd()).join('\n').trim();
+  return s.replace(/\s+/g,' ').trim();
+}
+function normalizePageText(value){
+  return normalizeTextValue(value,{inline:true})
+    .replace(/"([^"\n]+)"/g,'«$1»')
+    .replace(/"/g,'»')
+    .replace(/</g,'‹')
+    .replace(/>/g,'›');
+}
 const fmtD=ts=>ts?new Date(ts).toLocaleString('uk-UA'):'—';
 const fmtM=n=>Number(n||0).toLocaleString('uk-UA');
 const fmtSz=b=>b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB';
@@ -72,7 +97,7 @@ async function api(method,url,body){
   if(r.status===401){showLogin();throw new Error('unauth');}
   if(!r.ok){
     const j=await r.json().catch(()=>({}));
-    const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.'};
+    const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.',text_too_long:'Текст завеликий для цього блоку',url_too_long:'URL завеликий',invalid_block:'Некоректний текстовий блок',too_many_blocks:'Занадто багато блоків в одному збереженні',publish_in_progress:'Інше збереження вже виконується. Зачекайте кілька секунд',publish_snapshot_failed:'Не вдалося створити безпечну копію. Збереження скасовано',publish_rolled_back:'Перевірка знайшла проблему. Зміни автоматично відкочено'};
     const detail=Array.isArray(j.details)&&j.details.length?' · '+j.details.slice(0,4).join(' · '):'';
     throw new Error((map[j.error]||j.error||('HTTP '+r.status))+detail);
   }
@@ -89,6 +114,12 @@ function buildNav(){
 }
 $('#sidebar').addEventListener('click',e=>{
   const b=e.target.closest('[data-tab]');if(!b)return;
+  if(b.dataset.tab!==activeTab&&hasUnsavedWork()&&!confirm('Є незбережені зміни. Перейти без збереження?')){e.stopImmediatePropagation();return;}
+  if(b.dataset.tab!==activeTab){
+    pageEdited={};deletedBlocks.clear();siteEdited={};
+    if(kp)kp.dirty=false;
+  }
+  editorFormDirty=false;
   activeTab=b.dataset.tab;render();
 });
 
@@ -717,6 +748,7 @@ async function saveGame(){
     if(editingGame)await api('PUT',`/api/admin/games/${editingGame.id}`,body);
     else await api('POST','/api/admin/games',body);
     games=await api('GET','/api/admin/games');
+    editorFormDirty=false;
     toast((editingGame?'Гру оновлено ✓':'Гру створено ✓')+' · сайт підхопить автоматично','ok');
     backToGames();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
@@ -728,6 +760,8 @@ async function deleteGame(id){
   catch(e){if(e.message!=='unauth')toast(e.message,'er');}
 }
 function backToGames(){
+  if(editorFormDirty&&!confirm('Вийти без збереження змін?'))return;
+  editorFormDirty=false;
   editingGame=null;gameGallery=[];gameStages=[];
   const el=$('#mainContent');if(el)el.style.padding='22px';
   activeTab='games';render();
@@ -925,6 +959,7 @@ async function saveKik(){
     if(editingKik)await api('PUT',`/api/admin/kik/${editingKik.id}`,body);
     else await api('POST','/api/admin/kik',body);
     kik=await api('GET','/api/admin/kik');
+    editorFormDirty=false;
     toast((editingKik?'Проект оновлено ✓':'Проект створено ✓')+' · дані вже в API','ok');backToKik();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
   finally{if(btn)btn.disabled=false;}
@@ -934,7 +969,7 @@ async function deleteKik(id){
   try{await api('DELETE',`/api/admin/kik/${id}`);kik=await api('GET','/api/admin/kik');toast('Видалено','ok');backToKik();}
   catch(e){if(e.message!=='unauth')toast(e.message,'er');}
 }
-function backToKik(){editingKik=null;const el=$('#mainContent');if(el)el.style.padding='22px';activeTab='kik';render();}
+function backToKik(){if(editorFormDirty&&!confirm('Вийти без збереження змін?'))return;editorFormDirty=false;editingKik=null;const el=$('#mainContent');if(el)el.style.padding='22px';activeTab='kik';render();}
 window.openKikEditor=openKikEditor;window.saveKik=saveKik;window.deleteKik=deleteKik;window.backToKik=backToKik;
 
 // ── KIK PROJECT CARDS (/kik/proekty/) ──
@@ -1288,7 +1323,7 @@ function collectSettings(){
 }
 async function saveSettings(){
   collectSettings();
-  try{const res=await api('PUT','/api/admin/settings',S);S=res.settings;toast('Збережено ✓','ok');render();}
+  try{const res=await api('PUT','/api/admin/settings',S);S=res.settings;editorFormDirty=false;toast('Збережено ✓','ok');render();}
   catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
 }
 
@@ -1553,20 +1588,10 @@ function buildBlocksHtml(blocks, tabFilter, search){
       ${addRow}`;
     }
 
-    const isWysiwyg = (b.type === 'p' || b.type === 'li');
+    const isParagraph = (b.type === 'p' || b.type === 'li');
     let inputHtml = '';
-    if (isWysiwyg) {
-      inputHtml = `
-        <div class="wysiwyg-toolbar" style="display:flex;gap:4px;margin-bottom:6px;background:rgba(255,255,255,.05);padding:4px;border-radius:6px;border:1px solid var(--glass-border)">
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('bold')" title="Жирний" style="padding:4px 8px;font-weight:bold;background:transparent;border:none">B</button>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('italic')" title="Курсив" style="padding:4px 8px;font-style:italic;background:transparent;border:none">I</button>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('underline')" title="Підкреслений" style="padding:4px 8px;text-decoration:underline;background:transparent;border:none">U</button>
-          <div style="width:1px;background:var(--glass-border);margin:0 4px"></div>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmdLink();" title="Посилання" style="padding:4px 8px;background:transparent;border:none">🔗</button>
-          <button type="button" class="btn btn-sm" onmousedown="event.preventDefault(); execCmd('unlink')" title="Прибрати посилання" style="padding:4px 8px;background:transparent;border:none">🚫</button>
-        </div>
-        <div class="wysiwyg-editor" contenteditable="true" data-blk="${esc(b.id)}" oninput="markEdited('${esc(b.id)}')" style="min-height:80px;padding:12px;border:1.5px solid var(--glass-border);border-radius:8px;background:rgba(255,255,255,.02);color:var(--txt);outline:none;font-size:14px;line-height:1.6;overflow-y:auto">${curVal}</div>
-      `;
+    if (isParagraph) {
+      inputHtml = `<textarea data-blk="${esc(b.id)}" data-inline-text="true" maxlength="${b.type==='li'?300:1500}" spellcheck="true" oninput="markEdited('${esc(b.id)}')" style="min-height:${b.type==='li'?52:80}px;padding:10px 12px;line-height:1.6">${esc(stripHtml(curVal))}</textarea>`;
     } else if (b.type === 'a') {
       const curHref = pageEdited[b.id+'_href'] !== undefined ? pageEdited[b.id+'_href'] : (b.href||'');
       inputHtml = `
@@ -1817,7 +1842,7 @@ function renderPagesUI(){
   // restore edited values
   for(const[id,val] of Object.entries(pageEdited)){
     const el=document.querySelector(`[data-blk="${id}"]`);
-    if(el)el.value=val;
+    if(el)el.value=stripHtml(val);
   }
 }
 
@@ -1872,7 +1897,7 @@ window.pgGlobalSearchInput=pgGlobalSearchInput;
 function markEdited(id){
   const el=document.querySelector(`[data-blk="${id}"]`);
   if(!el)return;
-  const val = el.hasAttribute('contenteditable') ? el.innerHTML : el.value;
+  const val = el.dataset.inlineText==='true' ? normalizePageText(el.value) : normalizeTextValue(el.value,{multiline:el.tagName==='TEXTAREA'});
   pageEdited[id]=val;
   const blk=el.closest('.blk');
   const orig=pageBlocks.find(b=>b.id===id);
@@ -1930,7 +1955,7 @@ function updateCharCounter(id,val){
 function resetField(id){
   const orig=pageBlocks.find(b=>b.id===id);if(!orig)return;
   const el=document.querySelector(`[data-blk="${id}"]`);if(!el)return;
-  el.value=orig.value;
+  el.value=stripHtml(orig.value);
   delete pageEdited[id];
   el.closest('.blk')?.classList.remove('edited');
   updateCharCounter(id,orig.value);
@@ -2264,7 +2289,8 @@ async function savePatchedPage(){
   const activeBlocks = pageBlocks.filter(b => !deletedBlocks.has(b.id));
 
   for (const b of activeBlocks) {
-    const newVal = pageEdited[b.id]!==undefined ? pageEdited[b.id] : b.value;
+    const rawVal = pageEdited[b.id]!==undefined ? pageEdited[b.id] : b.value;
+    const newVal = b.type==='img' ? String(rawVal??'').trim() : normalizePageText(stripHtml(rawVal));
     const newHref = b.type==='a' ? (pageEdited[b.id+'_href']!==undefined ? pageEdited[b.id+'_href'] : b.href) : undefined;
     
     if (b.isNew) {
@@ -2938,8 +2964,27 @@ document.addEventListener('keydown',e=>{
 window.addEventListener('beforeunload',e=>{
   const hasPageEdits=pageEdited&&Object.keys(pageEdited).length;
   const hasSiteEdits=siteEdited&&Object.keys(siteEdited).length;
-  if(hasPageEdits||hasSiteEdits){e.preventDefault();e.returnValue='';}
+  const hasProjectEdits=kp&&kp.dirty;
+  if(editorFormDirty||hasPageEdits||hasSiteEdits||hasProjectEdits){e.preventDefault();e.returnValue='';}
 });
+
+// Normalize text only when a field loses focus. Doing this on every keystroke
+// would move the caret; doing it on blur removes copied non-breaking/zero-width
+// characters and platform-specific line endings consistently in every CMS
+// section without disturbing normal typing.
+document.addEventListener('blur',e=>{
+  const el=e.target;
+  if(!el||!('value' in el)||el.type==='password'||el.type==='url'||el.type==='email'||el.type==='file'||el.type==='color'||el.classList?.contains('code'))return;
+  if(!(el.tagName==='TEXTAREA'||el.type==='text'||el.type==='search'))return;
+  const next=el.dataset.inlineText==='true'
+    ?normalizePageText(el.value)
+    :normalizeTextValue(el.value,{multiline:el.tagName==='TEXTAREA'});
+  if(next!==el.value){el.value=next;el.dispatchEvent(new Event('input',{bubbles:true}));}
+},true);
+
+document.addEventListener('input',e=>{
+  if(e.target?.closest('.ged')||e.target?.hasAttribute('data-p'))editorFormDirty=true;
+},true);
 
 // ── MEDIA SEARCH ──
 let mediaFilter='';

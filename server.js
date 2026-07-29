@@ -82,6 +82,82 @@ app.use((req, _res, next) => {
   next();
 });
 
+// Only one publish may mutate the static site at a time. A second browser tab
+// used to be able to rename the same hashed chunk while the first save was
+// still relinking HTML pages, leaving one of the requests with stale refs.
+let publishWriteActive = false;
+const publishRoute = /^\/api\/admin\/(?:settings(?:\/|$)|games(?:\/|$)|kik(?:\/|$|-projects)|site-content(?:\/|$)|pages(?:\/|$)|page-(?:patch|restore)(?:\/|$)|block-sync(?:\/|$))/;
+app.use((req, res, next) => {
+  if (!['POST','PUT','PATCH','DELETE'].includes(req.method) || !publishRoute.test(req.path)) return next();
+  // Authentication is enforced again by each route; this early check merely
+  // prevents an unauthenticated request from forcing an expensive snapshot.
+  if (!validToken(req.cookies.bf_session)) return next();
+  if (publishWriteActive) return res.status(409).json({ error:'publish_in_progress' });
+
+  let snapshot;
+  try {
+    snapshot = createPublishSnapshot();
+    db.exec('SAVEPOINT cms_publish_guard');
+    publishWriteActive = true;
+  } catch (e) {
+    if (snapshot) discardPublishSnapshot(snapshot);
+    return res.status(503).json({ error:'publish_snapshot_failed' });
+  }
+
+  let finalized = false, finalResult = null;
+  const finalize = failed => {
+    if (finalized) return finalResult;
+    finalized = true;
+    let finalFailed = failed;
+    let detail = '';
+    try {
+      if (!finalFailed) {
+        const integrity = verifyChunkRefs();
+        if (integrity.missing.length) {
+          finalFailed = true;
+          detail = `missing_chunks:${integrity.missing.length}`;
+        }
+      }
+      if (finalFailed) {
+        try { db.exec('ROLLBACK TO cms_publish_guard; RELEASE cms_publish_guard'); } catch {}
+        restorePublishSnapshot(snapshot);
+      } else {
+        // This marker commits in the SAME SQLite transaction as the edited
+        // data. If the process dies between file publication and cleanup, the
+        // next boot can tell whether to restore the file snapshot or keep it.
+        setSetting('__publish_commit', snapshot.id);
+        db.exec('RELEASE cms_publish_guard');
+        discardPublishSnapshot(snapshot);
+      }
+    } catch (e) {
+      finalFailed = true;
+      detail = detail || e.message;
+      try { db.exec('ROLLBACK TO cms_publish_guard; RELEASE cms_publish_guard'); } catch {}
+      try { restorePublishSnapshot(snapshot); } catch (restoreError) { detail += `; rollback:${restoreError.message}`; }
+    } finally {
+      publishWriteActive = false;
+    }
+    if (finalFailed) audit('system','publish_rolled_back',{ path:req.path, detail });
+    finalResult = { failed:finalFailed, detail };
+    return finalResult;
+  };
+
+  const originalEnd = res.end;
+  res.end = function(chunk, encoding, callback) {
+    const result = finalize(res.statusCode >= 400);
+    if (result.failed && res.statusCode < 400 && !res.headersSent) {
+      const body = JSON.stringify({ error:'publish_rolled_back', detail:result.detail || 'integrity_check_failed' });
+      res.statusCode = 500;
+      res.setHeader('Content-Type','application/json; charset=utf-8');
+      res.setHeader('Content-Length', Buffer.byteLength(body));
+      chunk = body; encoding = 'utf8';
+    }
+    return originalEnd.call(this, chunk, encoding, callback);
+  };
+  res.on('close', () => { if (!finalized) finalize(true); });
+  next();
+});
+
 // ---------- auth ----------
 const sha256 = s => crypto.createHash('sha256').update(String(s)).digest('hex');
 function validToken(tok) {
@@ -154,7 +230,20 @@ app.post('/api/admin/password', requireAuth, (req, res) => {
 // ---------- settings ----------
 app.get('/api/admin/settings', requireAuth, (_req, res) => res.json(fullSettings()));
 app.put('/api/admin/settings', requireAuth, (req, res) => {
-  const body = req.body || {}, changed = [], before = fullSettings();
+  const body = req.body && typeof req.body === 'object' ? JSON.parse(JSON.stringify(req.body)) : {};
+  const changed = [], before = fullSettings();
+  const inlineSettingFields = {
+    general:['siteTitle','tagline'], contacts:['email','telegram','instagram','facebook','x'],
+    banner:['text','link','bg','fg'], maintenance:['message'], homepage:['testimonialImage','testimonialExtraText']
+  };
+  for (const [section, fields] of Object.entries(inlineSettingFields)) {
+    if (!body[section] || typeof body[section] !== 'object') continue;
+    for (const field of fields) if (typeof body[section][field] === 'string') {
+      body[section][field] = field === 'message' || field === 'testimonialExtraText'
+        ? normalizeTextValue(body[section][field], { multiline:true })
+        : cleanText(body[section][field]);
+    }
+  }
   if(body.general?.primaryColor && !/^#[0-9a-f]{6}$/i.test(body.general.primaryColor))
     return res.status(400).json({error:'Основний колір має бути у форматі #RRGGBB'});
   for(const key of ['siteTitle','tagline']) if(body.general?.[key]&&/[<>"\\]/.test(body.general[key]))
@@ -426,7 +515,32 @@ function regenGamesCatalog() {
   writeAtomic(p, newHtml);
 }
 
-function cleanText(v) { return String(v ?? '').trim(); }
+function normalizeTextValue(v, { multiline = false } = {}) {
+  let s = String(v ?? '')
+    .normalize('NFC')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/[\u00A0\u2007\u202F]/g, ' ')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '');
+  if (multiline) {
+    return s.split('\n').map(line => line.replace(/[\t ]+/g, ' ').trimEnd()).join('\n').trim();
+  }
+  return s.replace(/\s+/g, ' ').trim();
+}
+function cleanText(v) { return normalizeTextValue(v); }
+
+// Text edited inside an existing React-rendered element must remain one text
+// node. Browser-generated markup (contenteditable <div>/<br>, pasted styles,
+// etc.) changes the DOM shape before hydration and is the most common source
+// of "saved, then reverted" pages. Typography can still be controlled by CSS;
+// the CMS deliberately stores these page blocks as normalized plain text.
+function cleanPageBlockText(v) {
+  return normalizeTextValue(v)
+    .replace(/"([^"\n]+)"/g, '«$1»')
+    .replace(/"/g, '»')
+    .replace(/</g, '‹')
+    .replace(/>/g, '›');
+}
 function sanitizeEditorHtml(v) {
   const $ = cheerio.load(`<div id="bf-sanitize-root">${String(v ?? '')}</div>`, { decodeEntities:false });
   const root = $('#bf-sanitize-root');
@@ -805,6 +919,91 @@ function verifyChunkRefs() {
   return { pages, missing: uniq };
 }
 
+const PUBLISH_TX_ROOT = path.join(__dirname, '.publish-transactions');
+
+function listPublishFiles() {
+  const files = [];
+  const walkHtml = d => {
+    let items; try { items = fs.readdirSync(d); } catch { return; }
+    for (const name of items) {
+      if (name.startsWith('.') || name === '_next' || name === 'uploads' || name === 'cdn-cgi') continue;
+      const full = path.join(d,name); let st; try { st = fs.statSync(full); } catch { continue; }
+      if (st.isDirectory()) walkHtml(full);
+      else if (name.endsWith('.html')) files.push(full);
+    }
+  };
+  const walkChunks = d => {
+    let items; try { items = fs.readdirSync(d); } catch { return; }
+    for (const name of items) {
+      if (name.startsWith('.') || name.includes('.bak')) continue;
+      const full = path.join(d,name); let st; try { st = fs.statSync(full); } catch { continue; }
+      if (st.isDirectory()) walkChunks(full);
+      else if (name.endsWith('.js')) files.push(full);
+    }
+  };
+  walkHtml(SITE_ROOT);
+  walkChunks(path.join(SITE_ROOT,'_next','static','chunks'));
+  return files;
+}
+
+function createPublishSnapshot() {
+  const id = `${Date.now()}-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
+  const dir = path.join(PUBLISH_TX_ROOT,id);
+  const files = listPublishFiles().map(full => path.relative(SITE_ROOT,full));
+  fs.mkdirSync(dir,{recursive:true,mode:0o700});
+  try {
+    for (const rel of files) {
+      const src = path.join(SITE_ROOT,rel), dst = path.join(dir,'files',rel);
+      fs.mkdirSync(path.dirname(dst),{recursive:true,mode:0o700});
+      try { fs.linkSync(src,dst); } catch { fs.copyFileSync(src,dst); }
+    }
+    writeAtomic(path.join(dir,'state.json'),JSON.stringify({id,createdAt:Date.now(),files}));
+    return { id,dir,files };
+  } catch (e) {
+    try { fs.rmSync(dir,{recursive:true,force:true}); } catch {}
+    throw e;
+  }
+}
+
+function discardPublishSnapshot(snapshot) {
+  if (!snapshot || !snapshot.dir || !snapshot.dir.startsWith(PUBLISH_TX_ROOT + path.sep)) return;
+  try { fs.rmSync(snapshot.dir,{recursive:true,force:true}); } catch {}
+}
+
+function restorePublishSnapshot(snapshot) {
+  if (!snapshot || !Array.isArray(snapshot.files)) throw new Error('invalid publish snapshot');
+  const keep = new Set(snapshot.files);
+  // Remove only files created by the interrupted publish (typically newly
+  // hashed chunks or a newly-created page). User uploads are never included.
+  for (const full of listPublishFiles()) {
+    const rel = path.relative(SITE_ROOT,full);
+    if (!keep.has(rel)) try { fs.unlinkSync(full); } catch {}
+  }
+  for (const rel of snapshot.files) {
+    const src = path.join(snapshot.dir,'files',rel), dst = path.join(SITE_ROOT,rel);
+    if (!fs.existsSync(src)) throw new Error(`snapshot file missing: ${rel}`);
+    writeAtomic(dst,fs.readFileSync(src,'utf8'));
+  }
+  const check = verifyChunkRefs();
+  if (check.missing.length) throw new Error(`rollback left ${check.missing.length} missing chunk refs`);
+  discardPublishSnapshot(snapshot);
+}
+
+function recoverInterruptedPublishes() {
+  let dirs; try { dirs = fs.readdirSync(PUBLISH_TX_ROOT); } catch { return []; }
+  const recovered = [];
+  const committed = getSetting('__publish_commit',null);
+  for (const name of dirs) {
+    const dir = path.join(PUBLISH_TX_ROOT,name), stateFile = path.join(dir,'state.json');
+    let state; try { state=JSON.parse(fs.readFileSync(stateFile,'utf8')); } catch { discardPublishSnapshot({dir}); continue; }
+    const snapshot = {id:state.id,dir,files:state.files};
+    if (state.id === committed) { discardPublishSnapshot(snapshot); continue; }
+    restorePublishSnapshot(snapshot);
+    recovered.push(state.id);
+  }
+  return recovered;
+}
+
 function safeTextPairs(pairs) {
   // keep only plain-text, unambiguous replacements
   return pairs.filter(p =>
@@ -923,9 +1122,15 @@ function gameBody(b, ex={}) {
   const rawSlug = (b.slug||ex.slug||b.title||'').toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi,'-').replace(/^-|-$/g,'');
   const slug = rawSlug || `game-${Date.now()}`;
   const gallery = Array.isArray(b.gallery) ? b.gallery : parseGallery(ex.gallery);
-  const stages = Array.isArray(b.stages) ? b.stages : parseStages(ex.stages);
+  const stagesRaw = Array.isArray(b.stages) ? b.stages : parseStages(ex.stages);
+  const stages = stagesRaw.map(stage => ({
+    ...stage,
+    title: cleanText(stage && stage.title),
+    label: cleanText(stage && stage.label),
+    description: normalizeTextValue(stage && stage.description, { multiline:true }),
+  }));
   const links = b.links!==undefined ? parseGameLinks(b.links) : parseGameLinks(ex.links);
-  return { slug, title:cleanText(b.title??ex.title), subtitle:cleanText(b.subtitle??ex.subtitle??''), description:cleanText(b.description??ex.description??''),
+  return { slug, title:cleanText(b.title??ex.title), subtitle:cleanText(b.subtitle??ex.subtitle??''), description:normalizeTextValue(b.description??ex.description??'', { multiline:true }),
     status:b.status||ex.status||'published', cover_url:cleanText(b.cover_url??ex.cover_url??''),
     gallery:JSON.stringify(gallery), stages:JSON.stringify(stages), links:JSON.stringify(links),
     always_visible:(b.always_visible!==undefined?!!b.always_visible:(ex.always_visible==null?true:!!ex.always_visible))?1:0,
@@ -1688,7 +1893,9 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
   let applied=0;
   for(const c of changes){
     if(c && typeof c.path==='string' && typeof c.value==='string'){
-      if(setByPath(sc.obj,c.path,c.value)) applied++;
+      const value = normalizeTextValue(c.value, { multiline:true });
+      if(value.length > 5000) return res.status(400).json({error:'text_too_long', field:c.path, max:5000});
+      if(setByPath(sc.obj,c.path,value)) applied++;
     }
   }
   if(!applied) return res.json({ok:true, applied:0});
@@ -1814,7 +2021,7 @@ function validateKikProject(p, idx){
   const e = [], where = `Проєкт #${idx+1}`;
   const txt = (v, min, max, label) => {
     if(typeof v !== 'string'){ e.push(`${where}: «${label}» — очікується текст`); return ''; }
-    const t = v.trim();
+    const t = cleanText(v);
     if(t.length < min || t.length > max) e.push(`${where}: «${label}» — ${t.length} символів, дозволено ${min}–${max}`);
     else if(KIK_PLACEHOLDERS.has(t.toLowerCase())) e.push(`${where}: «${label}» — текст-заглушка не дозволений`);
     return t;
@@ -2278,6 +2485,21 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
   if (!full.startsWith(PAGES_ROOT) || !fs.existsSync(full)) return res.status(404).json({error:'not_found'});
   const {blocks, reorder} = req.body || {};
   if (!Array.isArray(blocks)) return res.status(400).json({error:'blocks required'});
+  if (blocks.length > 500) return res.status(413).json({error:'too_many_blocks'});
+
+  const limits = { h1:160, h2:160, h3:160, span:120, a:180, p:1500, li:300, seo:320, img:2048 };
+  for (const block of blocks) {
+    if (!block || typeof block !== 'object' || typeof block.id !== 'string' || block.id.length > 160) {
+      return res.status(400).json({error:'invalid_block'});
+    }
+    const type = String(block.type || 'p');
+    if (block.newVal != null && String(block.newVal).length > (limits[type] || 1500)) {
+      return res.status(400).json({error:'text_too_long', field:block.id, max:limits[type] || 1500});
+    }
+    if (block.newHref != null && String(block.newHref).length > 2048) {
+      return res.status(400).json({error:'url_too_long', field:block.id});
+    }
+  }
   
   let html = fs.readFileSync(full, 'utf8');
   writeBackup(full);
@@ -2291,9 +2513,7 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
                  && !b.id.startsWith('bf_home_testimonial_'))
     .map(b => ({
       oldVal: b.origVal,
-      newVal: (b.type === 'p' || b.type === 'li')
-        ? cleanInner(sanitizeEditorHtml(b.newVal))
-        : cleanInner(String(b.newVal)),
+      newVal: cleanPageBlockText(b.newVal),
     })));
   const preHtml = html;
   for (const p of prePairs) html = html.split(p.oldVal).join(p.newVal);
@@ -2364,11 +2584,11 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     if (b.isNew) {
       let tag = b.type;
       let newEl;
-      if (tag === 'p') newEl = $(`<p data-bf-id="${b.id}">${sanitizeEditorHtml(b.newVal || '')}</p>`);
+      if (tag === 'p') newEl = $('<p></p>').attr('data-bf-id', b.id).text(cleanPageBlockText(b.newVal || ''));
       else if (tag === 'h2') newEl = $('<h2></h2>').attr('data-bf-id', b.id).text(cleanText(b.newVal));
       else if (tag === 'img') newEl = $(`<img data-bf-id="${b.id}" src="${encodeHtmlEnts(sanitizeHref(b.newVal || ''))}" alt="">`);
       else if (tag === 'a') newEl = $('<a class="gp-btn-p" style="margin-top:10px"></a>').attr('data-bf-id', b.id).attr('href', sanitizeHref(b.newHref || '')).text(cleanText(b.newVal));
-      else if (tag === 'li') newEl = $(`<li data-bf-id="${b.id}">${sanitizeEditorHtml(b.newVal || '')}</li>`);
+      else if (tag === 'li') newEl = $('<li></li>').attr('data-bf-id', b.id).text(cleanPageBlockText(b.newVal || ''));
       
       if (newEl) {
         const anchor = b.afterBlockId ? $(`[data-bf-id="${b.afterBlockId}"]`).first() : null;
@@ -2397,16 +2617,14 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
     if (b.newVal != null && b.origVal !== b.newVal) {
       if (b.type === 'img') el.attr('src', encodeHtmlEnts(sanitizeHref(b.newVal)));
       else {
-        const richText = b.type === 'p' || b.type === 'li';
-        const savedVal = richText ? sanitizeEditorHtml(b.newVal) : cleanInner(String(b.newVal));
-        if (richText) el.html(savedVal);
-        else el.text(savedVal);
+        const savedVal = cleanPageBlockText(b.newVal);
+        el.text(savedVal);
         if (/^bf_stg\d+_(title|label|desc)$/.test(b.id)) {
           stageEdits.push({ id: b.id, newVal: cleanInner(savedVal) });
         } else if (GAME_FIELD_IDS[b.id] || /^bf_g_desc\d+$/.test(b.id)) {
           gameFieldEdits.push({ id: b.id, newVal: cleanInner(savedVal) });
         } else {
-          textPairs.push({ oldVal: b.origVal, newVal: richText ? cleanInner(savedVal) : savedVal });
+          textPairs.push({ oldVal: b.origVal, newVal: savedVal });
         }
       }
       changed++;
@@ -2973,6 +3191,14 @@ app.use((err, req, res, _next) => {
   if (res.headersSent) return;
   res.status(err.status || 500).json({ error: err.message || 'server_error' });
 });
+
+try {
+  const recovered = recoverInterruptedPublishes();
+  if (recovered.length) audit('system','publish_recovered_on_boot',{transactions:recovered});
+} catch (e) {
+  console.error('[blueferret-admin] interrupted publish recovery failed:',e);
+  process.exit(1); // safer than serving a site whose release state is unknown
+}
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`[blueferret-admin] http://${HOST}:${PORT}`);

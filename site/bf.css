@@ -664,3 +664,187 @@ main section[class*=" py-"] {
     padding-bottom: 48px !important;
   }
 }
+
+/* -- Refined games catalogue ----------------------------------------------
+   A quieter, editorial surface: fewer decorative effects, one elevation
+   scale and consistent image/content proportions across all game cards. */
+html.bf-games-catalog body,
+html.bf-games-catalog main,
+html.bf-games-catalog main section[data-bf-static-igry="true"] {
+  background: #f7f9fa !important;
+}
+
+html.bf-games-catalog main [data-bf-id="bf_db93ff56"],
+html.bf-games-catalog main [data-bf-id="bf_30c79f5b"],
+html.bf-games-catalog main [data-bf-id="bf_6da04788"] {
+  display: none !important;
+}
+
+html.bf-games-catalog main section[data-bf-static-igry="true"] > div:first-child {
+  padding-top: 72px !important;
+  padding-bottom: 56px !important;
+}
+
+html.bf-games-catalog main section[data-bf-static-igry="true"] > div:first-child > div:last-child {
+  max-width: 760px !important;
+}
+
+html.bf-games-catalog main section[data-bf-static-igry="true"] .badge-gradient {
+  padding: 0 0 14px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html.bf-games-catalog main h1.heading-2 {
+  margin-bottom: 20px !important;
+  color: #172333 !important;
+  font-size: clamp(2.25rem, 5vw, 4rem) !important;
+  line-height: 1.08 !important;
+}
+
+html.bf-games-catalog main p.text-lead {
+  max-width: 660px !important;
+  color: #526274 !important;
+  font-size: clamp(1rem, 1.6vw, 1.18rem) !important;
+  line-height: 1.72 !important;
+}
+
+html.bf-games-catalog main [data-bf-id="bf_f7100a22"],
+html.bf-games-catalog main [data-bf-id="bf_009cee3f"] {
+  min-height: 36px !important;
+  padding: 7px 13px !important;
+  border: 1px solid #d9e2e6 !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, .66) !important;
+  box-shadow: none !important;
+  color: #5a6877 !important;
+  letter-spacing: .01em !important;
+}
+
+html.bf-games-catalog main section[data-bf-static-igry="true"] > div:nth-child(2) {
+  padding-bottom: 104px !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] {
+  gap: 24px !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a {
+  overflow: hidden !important;
+  border: 1px solid #dbe4e8 !important;
+  border-radius: 22px !important;
+  background: #fff !important;
+  box-shadow: 0 16px 44px -34px rgba(20, 37, 54, .32) !important;
+  transform: none !important;
+  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a:hover {
+  border-color: #c4d6dd !important;
+  box-shadow: 0 22px 48px -32px rgba(20, 37, 54, .42) !important;
+  transform: translateY(-2px) !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a:focus-visible {
+  outline: 3px solid rgba(0, 159, 227, .35) !important;
+  outline-offset: 4px !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:first-child {
+  width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 16 / 10 !important;
+  border-bottom: 1px solid rgba(23, 35, 51, .08) !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:first-child > div:nth-of-type(1) {
+  background: linear-gradient(180deg, transparent 55%, rgba(10, 22, 34, .36)) !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] [data-bf-id$="_status"] {
+  padding: 7px 11px !important;
+  border: 1px solid rgba(23, 35, 51, .12) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, .92) !important;
+  box-shadow: none !important;
+  color: #4f5f70 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:first-child [aria-hidden="true"] {
+  display: inline-flex !important;
+  width: 44px !important;
+  height: 44px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  border: 1px solid rgba(23, 35, 51, .12) !important;
+  border-radius: 13px !important;
+  background: rgba(255, 255, 255, .92) !important;
+  box-shadow: none !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) {
+  padding: 26px 24px 24px !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] h2 {
+  margin: 0 0 14px !important;
+  color: #1b2a3b !important;
+  font-size: clamp(1.4rem, 2vw, 1.7rem) !important;
+  line-height: 1.22 !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] p {
+  margin-bottom: 24px !important;
+  color: #566678 !important;
+  font-size: 1rem !important;
+  line-height: 1.68 !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) > span:last-child {
+  gap: 8px !important;
+  color: #147ba8 !important;
+  font-size: .9rem !important;
+  font-weight: 500 !important;
+  transition: color .2s ease, gap .2s ease !important;
+}
+
+@media (max-width: 639px) {
+  html.bf-games-catalog main section[data-bf-static-igry="true"] > div:first-child {
+    padding: 48px 20px 40px !important;
+  }
+  html.bf-games-catalog main h1.heading-2 {
+    font-size: 2.25rem !important;
+  }
+  html.bf-games-catalog main p.text-lead {
+    font-size: 1rem !important;
+    line-height: 1.65 !important;
+  }
+  html.bf-games-catalog main section[data-bf-static-igry="true"] > div:nth-child(2) {
+    padding-inline: 16px !important;
+    padding-bottom: 72px !important;
+  }
+  html.bf-games-catalog main [data-bf-games-grid="true"] {
+    gap: 18px !important;
+  }
+  html.bf-games-catalog main [data-bf-games-grid="true"] > a {
+    border-radius: 18px !important;
+  }
+  html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) {
+    padding: 22px 20px 21px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.bf-games-catalog main [data-bf-games-grid="true"] > a {
+    transition: none !important;
+  }
+}

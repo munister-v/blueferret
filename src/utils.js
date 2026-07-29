@@ -4,8 +4,26 @@ const path = require('path');
 function writeAtomic(file, content) {
   const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(tmp, content, 'utf8');
-  fs.renameSync(tmp, file);
+  let fd;
+  try {
+    const mode = (() => { try { return fs.statSync(file).mode & 0o777; } catch { return 0o644; } })();
+    fd = fs.openSync(tmp, 'wx', mode);
+    fs.writeFileSync(fd, content, 'utf8');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd); fd = null;
+    fs.renameSync(tmp, file);
+    // fsync the directory as well: without it a power loss immediately after
+    // rename may still lose the directory entry even though the file itself
+    // was flushed successfully.
+    try {
+      const dirFd = fs.openSync(path.dirname(file), 'r');
+      try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
+    } catch {}
+  } catch (e) {
+    if (fd != null) try { fs.closeSync(fd); } catch {}
+    try { fs.unlinkSync(tmp); } catch {}
+    throw e;
+  }
 }
 
 const KEEP_BACKUPS = 10;
