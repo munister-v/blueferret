@@ -18,9 +18,13 @@
 (function () {
   'use strict';
 
+  const mobileLite = window.matchMedia('(max-width: 767px)').matches;
+  const saveData = !!(navigator.connection && navigator.connection.saveData);
+
   // ── Scroll progress bar ──
   const prog = document.createElement('div');
   prog.id = 'bf-scroll-progress';
+  if (mobileLite) prog.hidden = true;
   document.body.prepend(prog);
 
   // ── Back to top ──
@@ -33,6 +37,7 @@
 
   // ── Scroll handler ──
   let ticking = false;
+  const header = document.querySelector('header');
   function onScroll() {
     if (ticking) return;
     ticking = true;
@@ -40,12 +45,11 @@
       const s = window.scrollY;
       const h = document.documentElement.scrollHeight - window.innerHeight;
       // progress bar
-      prog.style.transform = `scaleX(${h > 0 ? s / h : 0})`;
+      if (!mobileLite) prog.style.transform = `scaleX(${h > 0 ? s / h : 0})`;
       // back to top
       top.classList.toggle('show', s > 400);
       // header shadow
-      const hdr = document.querySelector('header');
-      if (hdr) hdr.classList.toggle('scrolled', s > 20);
+      if (header) header.classList.toggle('scrolled', s > 20);
       ticking = false;
     });
   }
@@ -154,11 +158,13 @@
 
   // Scroll-driven backstop: keeps reveals working even if IO never fires at all.
   let revealTick = false;
-  window.addEventListener('scroll', function () {
-    if (revealTick) return;
-    revealTick = true;
-    requestAnimationFrame(function () { rescueStuckReveals(); revealTick = false; });
-  }, { passive: true });
+  if (!mobileLite) {
+    window.addEventListener('scroll', function () {
+      if (revealTick) return;
+      revealTick = true;
+      requestAnimationFrame(function () { rescueStuckReveals(); revealTick = false; });
+    }, { passive: true });
+  }
 
   // ── Mobile menu enhancements ──
   function enhanceMenu() {
@@ -186,6 +192,7 @@
     if (nav) { enhanceMenu(); menuObs.disconnect(); }
   });
   menuObs.observe(document.body, { childList: true, subtree: true });
+  window.setTimeout(() => menuObs.disconnect(), 2500);
 
   // ── Dynamic opacity:0 reveal (mobile menu, and anything else mounted after
   //    load) ── nginx's sub_filter forces visible any whileInView element
@@ -216,6 +223,10 @@
     }
   });
   revealObs.observe(document.body, { childList: true, subtree: true });
+  // Hydration settles during the first moments after load. Keeping a
+  // full-body subtree observer alive forever makes every later DOM update pay
+  // an unnecessary traversal cost, which is particularly visible on iOS.
+  window.setTimeout(() => revealObs.disconnect(), 4000);
 
   // ── "Наші ігри" desktop nav fix ──
   // The desktop header dropdown only opens on hover (onMouseEnter/onMouseLeave),
@@ -350,6 +361,7 @@
 
   // ── Image load fade ──
   function initImages() {
+    if (mobileLite) return;
     document.querySelectorAll('img[loading="lazy"]').forEach(img => {
       if (!img.complete) {
         img.style.opacity = '0';
@@ -357,6 +369,44 @@
         img.addEventListener('load', () => { img.style.opacity = ''; }, { once: true });
       }
     });
+  }
+
+  function initHeroVideo() {
+    const video = document.querySelector('main video');
+    if (!video) return;
+    if (mobileLite || saveData) {
+      video.removeAttribute('autoplay');
+      video.preload = 'none';
+      const stop = () => { if (!video.paused) video.pause(); };
+      video.addEventListener('play', stop);
+      stop();
+      return;
+    }
+    video.preload = 'metadata';
+    const ioVideo = new IntersectionObserver(entries => {
+      const visible = entries.some(e => e.isIntersecting && e.intersectionRatio > .15);
+      if (visible && !document.hidden) video.play().catch(() => {});
+      else video.pause();
+    }, { threshold:[0,.15] });
+    ioVideo.observe(video);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) video.pause();
+      else if (video.getBoundingClientRect().bottom > 0) video.play().catch(() => {});
+    });
+  }
+
+  function versionTrymaysiaAssets() {
+    if (!/^\/igry\/trymaysia\/?$/.test(window.location.pathname)) return;
+    const versioned = /\/images\/trymaysia\/box-(?:front-center|back-center|side-right-front|side-left-front|top|bottom)-v11\.jpg$/;
+    document.querySelectorAll('img[src]').forEach((img) => {
+      const src = img.getAttribute('src') || '';
+      if (versioned.test(src)) img.setAttribute('src', `${src}?v=12`);
+    });
+    const video = document.querySelector('main video[poster]');
+    if (video) {
+      const poster = video.getAttribute('poster') || '';
+      if (versioned.test(poster)) video.setAttribute('poster', `${poster}?v=12`);
+    }
   }
 
 	  function polishGamesCatalog() {
@@ -367,7 +417,7 @@
       const img = card.querySelector('img');
       if (!img) return;
       if ((img.getAttribute('src') || '').includes('box-front-v6.png')) {
-        img.setAttribute('src', '/images/trymaysia/box-front-center-v11.jpg');
+        img.setAttribute('src', '/images/trymaysia/box-front-center-v11.jpg?v=12');
       }
       img.style.objectFit = 'contain';
       img.style.objectPosition = 'center';
@@ -429,7 +479,7 @@
     injectSkipLink();
     // #26: Skip animations if user prefers reduced motion
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!prefersReduced) {
+    if (!prefersReduced && !mobileLite) {
       initAnimations();
     } else {
       // Force all hidden elements visible
@@ -439,6 +489,8 @@
       });
     }
 	    initImages();
+	    initHeroVideo();
+	    versionTrymaysiaAssets();
 	    polishGamesCatalog();
 	    normalizeAuthorsCard();
 	    initRipples();
@@ -450,12 +502,13 @@
     fixKikNaming();
     // Re-run after a short delay to catch dynamically rendered content
     setTimeout(() => {
-	      if (!prefersReduced) initAnimations();
+      if (!prefersReduced && !mobileLite) initAnimations();
 	      polishGamesCatalog();
 	      normalizeAuthorsCard();
 	      initRipples();
 	      fixGamesNavButton();
 	      initMobileMenuFallback();
+	      versionTrymaysiaAssets();
 	    }, 800);
 	    setTimeout(normalizeAuthorsCard, 1800);
 	    setTimeout(rescueStuckReveals, 1200);
@@ -505,7 +558,7 @@
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;
     rescueStuckReveals();
-    setTimeout(function () { rescueStuckReveals(); initAnimations(); }, 100);
+    if (!mobileLite) setTimeout(function () { rescueStuckReveals(); initAnimations(); }, 100);
   });
 
 })();

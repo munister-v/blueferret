@@ -2967,11 +2967,14 @@ const RUNTIME_JS = `(function(){
   // whole admin app ~1.5s after every save (nginx sub_filter injected it there
   // by mistake once; fixed at the nginx layer too, this is the backstop).
   if(location.pathname.indexOf('/admin')===0)return;
-  // Reveal-animation glitch: see the nginx sub_filter <head> injection for
-  // the actual fix (a getAnimations() sweep — Element.animate() patching
-  // didn't catch it, framer-motion drives these via the Animation/
-  // KeyframeEffect constructors directly, bypassing the prototype method).
-  var testimonialState={image:'',extra:''},testimonialObserver=null,testimonialTimer=0;
+  if(window.__bfPublicRuntime)return;
+  window.__bfPublicRuntime=1;
+  // Keep public runtime work scoped to the pages that need it. The previous
+  // nginx animation sweep walked every animation ten times per second and was
+  // especially expensive on mobile; CSS/JS now provides a static fallback.
+  var isHome=location.pathname==='/'||location.pathname==='/index.html';
+  var isMobile=window.matchMedia&&window.matchMedia('(max-width: 767px)').matches;
+  var testimonialState={image:'',extra:''},testimonialObserver=null,testimonialTimer=0,testimonialWatchDone=false;
   function apply(s){try{
     if(!s)return;
     var a=s.appearance||{},b=s.banner||{},m=s.maintenance||{},ig=s.integrations||{},g=s.general||{},hp=s.homepage||{};
@@ -2983,12 +2986,15 @@ const RUNTIME_JS = `(function(){
     if(b.enabled&&b.text){var el=ex||document.createElement('div');el.id='bf-banner';el.style.cssText='position:relative;z-index:9998;width:100%;padding:10px 16px;text-align:center;font:600 14px/1.4 Comfortaa,system-ui,sans-serif;background:'+(b.bg||'#2E9BE6')+';color:'+(b.fg||'#fff')+';';el.innerHTML=b.link?'<a href="'+b.link+'" style="color:inherit;text-decoration:underline">'+esc(b.text)+'</a>':esc(b.text);if(!ex)document.body.insertBefore(el,document.body.firstChild);}else if(ex)ex.remove();
     var mo=document.getElementById('bf-maintenance');
     if(m.enabled){if(!mo){mo=document.createElement('div');mo.id='bf-maintenance';mo.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0b1f33;color:#fff;font:500 20px/1.6 Comfortaa,system-ui,sans-serif;';mo.innerHTML='<div style="max-width:560px"><div style="font-size:40px;margin-bottom:16px">🦦</div><div>'+esc(m.message||'')+'</div></div>';document.body.appendChild(mo);document.documentElement.style.overflow='hidden';}}else if(mo){mo.remove();document.documentElement.style.overflow='';}
-    testimonialState.image=hp.testimonialImage||'';
-    testimonialState.extra=hp.testimonialExtraText||'';
-    applyTestimonialState();
-    watchTestimonialHydration();
-    setTimeout(applyTestimonialState,300);
-    setTimeout(applyTestimonialState,1200);
+    fixGamesNavLink();
+    if(isHome){
+      testimonialState.image=hp.testimonialImage||'';
+      testimonialState.extra=hp.testimonialExtraText||'';
+      applyTestimonialState();
+      watchTestimonialHydration();
+      setTimeout(applyTestimonialState,300);
+      setTimeout(applyTestimonialState,1200);
+    }
   }catch(e){}}
   function applyTestimonialState(){
     applyTestimonialImage(testimonialState.image);
@@ -3024,7 +3030,8 @@ const RUNTIME_JS = `(function(){
     }
   }
   function watchTestimonialHydration(){
-    if(testimonialObserver||!window.MutationObserver||!document.body)return;
+    if(!isHome||testimonialWatchDone||testimonialObserver||!window.MutationObserver||!document.body)return;
+    testimonialWatchDone=true;
     testimonialObserver=new MutationObserver(function(records){
       var changed=false;
       for(var i=0;i<records.length;i++){if(records[i].type==='childList'){changed=true;break;}}
@@ -3033,6 +3040,9 @@ const RUNTIME_JS = `(function(){
       testimonialTimer=setTimeout(applyTestimonialState,20);
     });
     testimonialObserver.observe(document.body,{childList:true,subtree:true});
+    setTimeout(function(){
+      if(testimonialObserver){testimonialObserver.disconnect();testimonialObserver=null;}
+    },3500);
   }
   // Portrait photo in a rounded rectangle on the left, the quote mark and both
   // text lines in a column on the right; stacks centred on narrow screens.
@@ -3095,12 +3105,8 @@ const RUNTIME_JS = `(function(){
   function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
   function load(){getJson('/api/public/site.json',8000).then(function(s){apply(s);startLiveRefresh(s);}).catch(function(){});}
-  // Live auto-refresh: poll publishedAt and reload if changed. 1.5s (was 5s)
-  // -- a visitor editing content in the admin now sees it land on the live
-  // site in ~1-2s instead of up to 5, at the cost of one small JSON fetch
-  // every 1.5s per open tab (negligible for this site's traffic). Paused
-  // while the tab is hidden and checked immediately on return, so a
-  // backgrounded tab doesn't keep polling for nothing.
+  // Live auto-refresh stays responsive without waking mobile tabs every 1.5s.
+  // Hidden tabs remain paused and are checked immediately on return.
   var lastPub=0, pollTimer=null;
   function startLiveRefresh(s){
     try{lastPub=(s&&s.general&&s.general.publishedAt)||0;}catch(e){}
@@ -3116,7 +3122,7 @@ const RUNTIME_JS = `(function(){
         }
       }).catch(function(){});
     }
-    pollTimer=setInterval(function(){ if(!document.hidden) checkOnce(); },1500);
+    pollTimer=setInterval(function(){ if(!document.hidden) checkOnce(); },isMobile?5000:3000);
     document.addEventListener('visibilitychange',function(){ if(!document.hidden) checkOnce(); });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){load();});else{load();}

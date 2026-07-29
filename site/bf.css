@@ -848,3 +848,51 @@ html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) > 
     transition: none !important;
   }
 }
+
+/* -- Mobile rendering budget ---------------------------------------------
+   The product pages are long and visually dense. On phones we keep the same
+   composition but remove continuous GPU effects, skip below-fold paint work
+   and constrain broad Tailwind `transition-all` rules to cheap properties. */
+@media (max-width: 767px) {
+  header {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  main *,
+  footer * {
+    animation: none !important;
+  }
+
+  main [class*="blur-3xl"],
+  footer [class*="blur-3xl"],
+  main .animate-lightning-flash,
+  main [class*="animate-lightning-bolt"] {
+    display: none !important;
+  }
+
+  main .drop-shadow-2xl,
+  main img[style*="drop-shadow"] {
+    filter: none !important;
+  }
+
+  main [class*="transition-all"],
+  footer [class*="transition-all"] {
+    transition-property: color, background-color, border-color, opacity !important;
+    transition-duration: 120ms !important;
+  }
+
+  main section:not(:first-child),
+  footer {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 720px;
+  }
+
+  .bf-reveal,
+  .bf-reveal-left,
+  .bf-reveal-scale {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
