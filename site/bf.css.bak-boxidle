@@ -930,27 +930,3 @@ a[href^="mailto:"] p {
   word-break: normal;
   overflow-wrap: anywhere;
 }
-
-/* ── Міна 33: коробка крутиться сама, поки React не перехопив сторінку ───── */
-@keyframes bf-box-idle {
-  from { transform: translateZ(0) rotateX(-7deg) rotateY(-13deg); }
-  to   { transform: translateZ(0) rotateX(-7deg) rotateY(347deg); }
-}
-html:not(.bf-hydrated) .cursor-grab {
-  animation: bf-box-idle 30s linear infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  html:not(.bf-hydrated) .cursor-grab { animation: none; }
-}
-/* Мобільний блок вище глушить УСІ анімації в main заради продуктивності
-   (`main * { animation: none !important }`), тому обертання коробки потребує
-   іменного винятку. Один transform-only кадр на GPU — та ціна, заради якої той
-   блок писався, від цього не страждає. */
-@media (max-width: 767px) {
-  html:not(.bf-hydrated) main .cursor-grab {
-    animation: bf-box-idle 30s linear infinite !important;
-  }
-}
-@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
-  html:not(.bf-hydrated) main .cursor-grab { animation: none !important; }
-}

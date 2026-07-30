@@ -785,42 +785,6 @@ function fixStageDescriptionTruncation() {
   try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
 }
 
-
-// Міна 34: the hero <video> poster points at the box cover, and that artwork
-// already carries the game's title — under the logo overlay it reads as the
-// title printed twice until the video paints its first frame (on a cold mobile
-// load, never). The value is baked into the [slug] chunk, so patching the HTML
-// alone is undone by hydration. Same recipe as fixStageDescriptionTruncation.
-function fixHeroPosterFallback() {
-  const root = path.join(SITE_ROOT, '_next', 'static', 'chunks');
-  const needle = 'heroBackgroundFallback:"/images/trymaysia/box-front-center-v11.jpg"';
-  const replacement = 'heroBackgroundFallback:"/images/trymaysia/moryaky-poster.jpg"';
-  const stack = [root];
-  while (stack.length) {
-    const dir = stack.pop();
-    let items; try { items = fs.readdirSync(dir); } catch { continue; }
-    for (const it of items) {
-      const full = path.join(dir, it); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { stack.push(full); continue; }
-      if (!it.endsWith('.js')) continue;
-      let content; try { content = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      if (!content.includes(needle)) continue;
-      const occurrences = content.split(needle).length - 1;
-      if (occurrences !== 1) { audit('system', 'chunk_sync_refused', { file: it, reason: 'ambiguous_occurrences', occurrences }); continue; }
-      content = content.split(needle).join(replacement);
-      try { assertValidJs(content, it); }
-      catch (e) { audit('system', 'chunk_sync_refused', { file: it, error: e.message }); continue; }
-      const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
-      const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + `-${hash}.js`;
-      if (newName === it) { writeAtomic(full, content); continue; }
-      writeAtomic(path.join(dir, newName), content);
-      try { fs.unlinkSync(full); } catch {}
-      relinkChunkEverywhere(it, newName);
-    }
-  }
-  try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
-}
-
 function relinkChunkEverywhere(oldName, newName) {
   (function walk(d) {
     let items; try { items = fs.readdirSync(d); } catch { return; }
@@ -3255,7 +3219,6 @@ const server = app.listen(PORT, HOST, () => {
       syncGamesChunkVisibility();
       syncGamesNavVisibility();
       fixStageDescriptionTruncation();
-      fixHeroPosterFallback();
       const testimonialFixed = reconcileHomeTestimonial();
       console.log('[blueferret-admin] games catalog and game pages regenerated on boot');
       if(testimonialFixed) console.log('[blueferret-admin] home testimonial reconciled with rendered page');

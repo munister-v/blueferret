@@ -637,32 +637,3 @@
   });
 
 })();
-
-/* Міна 33: позначити, що React перебрав сторінку — щоб таблиця стилів зупинила
-   власне обертання коробки й не заважала перетягуванню. Прапорець ставиться
-   ЛИШЕ за реальним виявленням React і лише ПІСЛЯ гідратації: мутація серверної
-   розмітки до React — вбивця гідратації (Міна 30). */
-(function flagHydrated() {
-  var deadline = Date.now() + 60000;
-  (function poll() {
-    // React fibers land only on the nodes it actually owns. The root bails
-    // out here and the tree is re-created, so document/html/body stay clean
-    // while <main> and the box carry the keys. Re-query every tick, because
-    // the node React renders is not the node the server sent.
-    var nodes = [document.querySelector('.cursor-grab'), document.querySelector('main'),
-                 document.body, document.documentElement];
-    for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i];
-      if (!n) continue;
-      var keys = Object.keys(n);
-      for (var j = 0; j < keys.length; j++) {
-        if (keys[j].indexOf("__react") === 0) {
-          document.documentElement.classList.add("bf-hydrated");
-          return;
-        }
-      }
-    }
-    if (Date.now() > deadline) return;
-    setTimeout(poll, 250);
-  })();
-})();
