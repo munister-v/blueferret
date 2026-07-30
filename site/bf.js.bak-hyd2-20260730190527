@@ -79,9 +79,7 @@
     'footer [class*="col-span"]',
   ];
 
-  // Renamed: every caller must go through the guarded initAnimations() below,
-  // so no path can mutate class names before React has hydrated.
-  function initAnimationsRaw() {
+  function initAnimations() {
     // Already animated elements (have inline opacity:0 transform) — handled by existing code
     // Add bf-reveal to new elements that don't already have animation
     const allEls = document.querySelectorAll(SELECTORS.join(','));
@@ -512,14 +510,6 @@
     function finish() { if (done) return; done = true; cb(); }
     (function poll() {
       if (done) return;
-      // Never let the timeout expire while the tab is in the background. A
-      // hidden tab has its timers throttled to about one tick a second and its
-      // hydration deprioritised, so the deadline arrives long before React
-      // does — and firing the fallback there is the worst of both worlds: it
-      // rewrites the class names, which is exactly what stops the hydration
-      // that was merely slow, and it does so on a page nobody is looking at.
-      // Reset the clock instead and let visibilitychange restart the race.
-      if (document.hidden) { started = Date.now(); return setTimeout(poll, 200); }
       var nodes = [document, document.documentElement, document.body,
                    document.body && document.body.firstElementChild];
       for (var i = 0; i < nodes.length; i++) {
@@ -535,19 +525,6 @@
     })();
   }
 
-  // Guarded entry point. Gating only init() was not enough: the
-  // visibilitychange handler at the bottom of this file also calls
-  // initAnimations(), and the browser fires visibilitychange whenever the tab
-  // is backgrounded or restored — so that path could still rewrite class names
-  // mid-hydration and abort it. Every call now waits for React.
-  function initAnimations() {
-    // A Next.js page announces itself with self.__next_f. On such a page a
-    // mutation before hydration is what breaks it, so wait; elsewhere there is
-    // nothing to wait for and the animation should start at once.
-    if (!self.__next_f) return initAnimationsRaw();
-    whenHydrated(initAnimationsRaw, 8000);
-  }
-
   // ── Run after DOM ready ──
   function init() {
     // #30: Inject skip-to-content link
@@ -555,7 +532,7 @@
     // #26: Skip animations if user prefers reduced motion
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!prefersReduced && !mobileLite) {
-      initAnimations();
+      whenHydrated(initAnimations, 3000);
     } else {
       // Force all hidden elements visible
       document.querySelectorAll('[style*="opacity:0"],[style*="opacity: 0"]').forEach(el => {

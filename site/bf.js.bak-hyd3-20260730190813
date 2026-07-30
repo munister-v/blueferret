@@ -512,14 +512,6 @@
     function finish() { if (done) return; done = true; cb(); }
     (function poll() {
       if (done) return;
-      // Never let the timeout expire while the tab is in the background. A
-      // hidden tab has its timers throttled to about one tick a second and its
-      // hydration deprioritised, so the deadline arrives long before React
-      // does — and firing the fallback there is the worst of both worlds: it
-      // rewrites the class names, which is exactly what stops the hydration
-      // that was merely slow, and it does so on a page nobody is looking at.
-      // Reset the clock instead and let visibilitychange restart the race.
-      if (document.hidden) { started = Date.now(); return setTimeout(poll, 200); }
       var nodes = [document, document.documentElement, document.body,
                    document.body && document.body.firstElementChild];
       for (var i = 0; i < nodes.length; i++) {
