@@ -896,24 +896,3 @@ html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) > 
     transition: none !important;
   }
 }
-
-/* ── Box faces that never got adopted by the 3D box ──────────────────────
-   The six faces of the Тримайся box are Next.js <Image fill>: they carry
-   position:absolute + inset:0 and expect a positioned, sized parent. When the
-   page hydrates, React nests each one inside its own face wrapper in
-   .cursor-grab and the box assembles. When hydration does NOT run — it is
-   intermittent on this page, observed at the same viewport width both ways —
-   the raw SSR markup stays, and there the six faces are direct children of the
-   hero wrapper with no sized parent. Each then stretches to the full hero
-   (measured 1255x1542) and six full-bleed photos cover the cover art. That is
-   the cover and box went wonky report.
-
-   The selector is deliberately the difference between the two states rather
-   than a viewport guess: hydrated, the faces are inside .cursor-grab and this
-   matches nothing at all; unhydrated, it matches and the overlays go away, so
-   the page reads correctly either way. It does mean the box is not shown on an
-   unhydrated load — that is the honest trade until the hydration itself is
-   fixed, and it beats the box eating the page. */
-.relative.z-10.px-4 > img[src*="/images/trymaysia/box-"] {
-  display: none !important;
-}

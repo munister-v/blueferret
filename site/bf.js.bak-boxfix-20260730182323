@@ -166,26 +166,6 @@
     }, { passive: true });
   }
 
-  // Time-based backstop. rescueStuckReveals() above runs only on scroll, and
-  // only rescues what is already on screen — anything off-screen is handed back
-  // to the same IntersectionObserver that may never deliver. The rule this site
-  // wrote for itself after the generated game pages shipped without one is that
-  // EVERY reveal mechanism needs a timeout forcing the final visible state.
-  // .bf-reveal had that guard only inside @media(max-width:767px) and
-  // prefers-reduced-motion, i.e. never on an ordinary desktop, so a load where
-  // the observer stays silent left the content hidden for good.
-  // Transition is cleared first: transitions are frozen while a tab is in the
-  // background, so adding .visible alone can leave computed opacity at 0.
-  setTimeout(function () {
-    var stuck = document.querySelectorAll(
-      '.bf-reveal:not(.visible), .bf-reveal-left:not(.visible), .bf-reveal-scale:not(.visible)'
-    );
-    for (var i = 0; i < stuck.length; i++) {
-      stuck[i].style.transition = 'none';
-      stuck[i].classList.add('visible');
-    }
-  }, 1800);
-
   // ── Mobile menu enhancements ──
   function enhanceMenu() {
     const nav = document.getElementById('mobile-site-nav');
