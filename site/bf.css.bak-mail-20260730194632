@@ -917,16 +917,3 @@ html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) > 
 .relative.z-10.px-4 > img[src*="/images/trymaysia/box-"] {
   display: none !important;
 }
-
-/* ── Contact card: the address on one line ───────────────────────────────
-   While Cloudflare's email obfuscation was on, this card showed the short
-   "[email protected]" placeholder. With obfuscation off the real address is
-   back and it misses a single line by 10px (needs 230, has 220) — and the
-   inherited word-break:break-all then chops it mid-word as "…gmail.co / m".
-   A step down in size buys ~14px, which is enough, and overflow-wrap keeps
-   narrow viewports from overflowing instead of breaking. */
-a[href^="mailto:"] p {
-  font-size: 15px;
-  word-break: normal;
-  overflow-wrap: anywhere;
-}
