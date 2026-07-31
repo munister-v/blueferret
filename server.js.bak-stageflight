@@ -829,51 +829,6 @@ function fixHeroPosterFallback() {
 // title (the chunk keys them by phase, the DB by title, and the titles are what
 // both agree on), and the search is bounded to the game's own object because
 // titles like "Виробництво" repeat across games.
-
-// Companion to syncGameStagesChunk: the same DB text also has to reach the RSC
-// flight data inlined in each game page, because that — not the chunk — is what
-// React replays on hydration. Anchored on the stage's title/content pair inside
-// the flight JSON, one match only, structure re-checked before the write.
-function syncGameStagesFlight(wanted) {
-  const escRe = (v) => String(v).replace(/[.*+?^$\{\}()|[\]\\]/g, '\\function syncGameStagesChunk() {');
-  const escFlight = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  (function walk(d) {
-    let items; try { items = fs.readdirSync(d); } catch { return; }
-    for (const it of items) {
-      if (it.startsWith('.') || it === '_next' || it === 'uploads' || it === 'cdn-cgi') continue;
-      const full = path.join(d, it); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { walk(full); continue; }
-      if (!it.endsWith('.html')) continue;
-      let html; try { html = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      if (!html.includes('\\"stages\\":')) continue;
-      const before = html;
-      let changed = 0;
-      for (const w of wanted) {
-        const re = new RegExp('(\\\\"title\\\\":\\\\"' + escRe(w.title) + '\\\\",\\\\"content\\\\":\\\\")([\\s\\S]*?)(\\\\")', 'g');
-        const hits = html.match(re);
-        if (!hits || hits.length !== 1) {
-          if (hits && hits.length > 1) audit('system', 'flight_stage_sync_refused', { file: it, title: w.title, occurrences: hits.length });
-          continue;
-        }
-        const encoded = escFlight(w.content);
-        const next = html.replace(re, (m, a, oldVal, z) => (oldVal === encoded ? m : a + encoded + z));
-        if (next === html) continue;
-        html = next; changed++;
-      }
-      if (!changed) continue;
-      // same guard the page-patch route uses for its raw-page replacements
-      if ((html.match(/data-bf-id=/g) || []).length !== (before.match(/data-bf-id=/g) || []).length
-          || !html.includes('</html>')) {
-        audit('system', 'flight_stage_sync_refused', { file: it, reason: 'structure_changed' });
-        continue;
-      }
-      writeBackup(full);
-      writeAtomic(full, html);
-      audit('system', 'flight_stage_sync', { file: it, stages: changed });
-    }
-  })(SITE_ROOT);
-}
-
 function syncGameStagesChunk() {
   let games; try { games = db.prepare('select slug, stages from games').all(); } catch { return; }
   const wanted = [];
@@ -933,7 +888,6 @@ function syncGameStagesChunk() {
       audit('system', 'chunk_sync_stages', { file: it, newName, stages: changed });
     }
   }
-  try { syncGameStagesFlight(wanted); } catch (e) { audit('system', 'flight_stage_sync_refused', { error: e.message }); }
   try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
 }
 

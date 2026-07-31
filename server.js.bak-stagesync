@@ -821,122 +821,6 @@ function fixHeroPosterFallback() {
   try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
 }
 
-
-// Міна 35: React draws the stages from the games array baked into the root
-// layout chunk, so a description edited in the game editor stayed invisible to
-// anyone whose React loaded — the DB, the generated HTML and the chunk each
-// held a different text. Push the DB copy into the chunk. Stages are matched by
-// title (the chunk keys them by phase, the DB by title, and the titles are what
-// both agree on), and the search is bounded to the game's own object because
-// titles like "Виробництво" repeat across games.
-
-// Companion to syncGameStagesChunk: the same DB text also has to reach the RSC
-// flight data inlined in each game page, because that — not the chunk — is what
-// React replays on hydration. Anchored on the stage's title/content pair inside
-// the flight JSON, one match only, structure re-checked before the write.
-function syncGameStagesFlight(wanted) {
-  const escRe = (v) => String(v).replace(/[.*+?^$\{\}()|[\]\\]/g, '\\function syncGameStagesChunk() {');
-  const escFlight = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  (function walk(d) {
-    let items; try { items = fs.readdirSync(d); } catch { return; }
-    for (const it of items) {
-      if (it.startsWith('.') || it === '_next' || it === 'uploads' || it === 'cdn-cgi') continue;
-      const full = path.join(d, it); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { walk(full); continue; }
-      if (!it.endsWith('.html')) continue;
-      let html; try { html = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      if (!html.includes('\\"stages\\":')) continue;
-      const before = html;
-      let changed = 0;
-      for (const w of wanted) {
-        const re = new RegExp('(\\\\"title\\\\":\\\\"' + escRe(w.title) + '\\\\",\\\\"content\\\\":\\\\")([\\s\\S]*?)(\\\\")', 'g');
-        const hits = html.match(re);
-        if (!hits || hits.length !== 1) {
-          if (hits && hits.length > 1) audit('system', 'flight_stage_sync_refused', { file: it, title: w.title, occurrences: hits.length });
-          continue;
-        }
-        const encoded = escFlight(w.content);
-        const next = html.replace(re, (m, a, oldVal, z) => (oldVal === encoded ? m : a + encoded + z));
-        if (next === html) continue;
-        html = next; changed++;
-      }
-      if (!changed) continue;
-      // same guard the page-patch route uses for its raw-page replacements
-      if ((html.match(/data-bf-id=/g) || []).length !== (before.match(/data-bf-id=/g) || []).length
-          || !html.includes('</html>')) {
-        audit('system', 'flight_stage_sync_refused', { file: it, reason: 'structure_changed' });
-        continue;
-      }
-      writeBackup(full);
-      writeAtomic(full, html);
-      audit('system', 'flight_stage_sync', { file: it, stages: changed });
-    }
-  })(SITE_ROOT);
-}
-
-function syncGameStagesChunk() {
-  let games; try { games = db.prepare('select slug, stages from games').all(); } catch { return; }
-  const wanted = [];
-  for (const g of games) {
-    for (const st of parseStages(g.stages)) {
-      if (!st || !st.title || !st.description) continue;
-      wanted.push({ slug: g.slug, title: String(st.title), content: String(st.description) });
-    }
-  }
-  if (!wanted.length) return;
-
-  const root = path.join(SITE_ROOT, '_next', 'static', 'chunks');
-  const stack = [root];
-  while (stack.length) {
-    const dir = stack.pop();
-    let items; try { items = fs.readdirSync(dir); } catch { continue; }
-    for (const it of items) {
-      const full = path.join(dir, it); let st; try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory()) { stack.push(full); continue; }
-      if (!it.endsWith('.js')) continue;
-      let content; try { content = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      if (!content.includes('"stages":{')) continue;
-
-      let changed = 0;
-      for (const w of wanted) {
-        const slugAt = content.indexOf('"slug":"' + w.slug + '"');
-        if (slugAt < 0) continue;
-        // the games array is a flat list of objects — the next slug key ends
-        // this game's window
-        let end = content.indexOf('"slug":"', slugAt + 8);
-        if (end < 0) end = content.length;
-        const win = content.slice(slugAt, end);
-        // NB: the braces in the class below are backslash-escaped so this text
-        // can live inside a template literal without starting an interpolation.
-        const re = new RegExp('("title":"' + w.title.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\function relinkChunkEverywhere(oldName, newName) {') + '","content":")((?:[^"\\\\]|\\\\.)*)(")');
-        const hits = win.match(new RegExp(re.source, 'g'));
-        if (!hits || hits.length !== 1) {
-          if (hits && hits.length > 1) audit('system', 'chunk_sync_refused', { file: it, slug: w.slug, title: w.title, reason: 'ambiguous_occurrences', occurrences: hits.length });
-          continue;
-        }
-        const encoded = JSON.stringify(w.content).slice(1, -1);
-        const nextWin = win.replace(re, (m, a, oldVal, z) => (oldVal === encoded ? m : a + encoded + z));
-        if (nextWin === win) continue;
-        content = content.slice(0, slugAt) + nextWin + content.slice(end);
-        changed++;
-      }
-      if (!changed) continue;
-
-      try { assertValidJs(content, it); }
-      catch (e) { audit('system', 'chunk_sync_refused', { file: it, error: e.message }); continue; }
-      const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
-      const newName = it.replace(/-[0-9a-f]{8,}\.js$/i, '') + '-' + hash + '.js';
-      if (newName === it) { writeAtomic(full, content); continue; }
-      writeAtomic(path.join(dir, newName), content);
-      try { fs.unlinkSync(full); } catch {}
-      relinkChunkEverywhere(it, newName);
-      audit('system', 'chunk_sync_stages', { file: it, newName, stages: changed });
-    }
-  }
-  try { syncGameStagesFlight(wanted); } catch (e) { audit('system', 'flight_stage_sync_refused', { error: e.message }); }
-  try { execFileSync('restorecon', ['-R', path.join(SITE_ROOT, '_next')], { stdio: 'ignore', timeout: 15000 }); } catch {}
-}
-
 function relinkChunkEverywhere(oldName, newName) {
   (function walk(d) {
     let items; try { items = fs.readdirSync(d); } catch { return; }
@@ -1305,7 +1189,7 @@ app.post('/api/admin/games', requireAuth, (req, res) => {
   writeGeneratedGamePage(gOne.get(info.lastInsertRowid));
   regenGamesCatalog();
   syncGamesChunkVisibility();
-  syncGamesNavVisibility(); syncGameStagesChunk();
+  syncGamesNavVisibility();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_create',{id:info.lastInsertRowid,slug:data.slug,publishedAt});
   res.status(201).json({...gameRow(gOne.get(info.lastInsertRowid)), publishedAt});
@@ -1325,7 +1209,7 @@ app.put('/api/admin/games/:id', requireAuth, (req, res) => {
   writeGeneratedGamePage(gOne.get(id));
   regenGamesCatalog();
   syncGamesChunkVisibility();
-  syncGamesNavVisibility(); syncGameStagesChunk();
+  syncGamesNavVisibility();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_update',{id,publishedAt,customSync});
   res.json({...gameRow(gOne.get(id)), publishedAt,customSync});
@@ -1354,7 +1238,7 @@ app.post('/api/admin/games/:id/restore', requireAuth, (req, res) => {
   writeGeneratedGamePage(gOne.get(id));
   regenGamesCatalog();
   syncGamesChunkVisibility();
-  syncGamesNavVisibility(); syncGameStagesChunk();
+  syncGamesNavVisibility();
   const publishedAt = bumpPublishedAt();
   audit(req.ip, 'game_restore', { id, historyId: histId, publishedAt });
   res.json({ ...gameRow(gOne.get(id)), publishedAt });
@@ -1367,7 +1251,7 @@ app.delete('/api/admin/games/:id', requireAuth, (req, res) => {
   gDel.run(id);
   regenGamesCatalog();
   syncGamesChunkVisibility();
-  syncGamesNavVisibility(); syncGameStagesChunk();
+  syncGamesNavVisibility();
   const publishedAt = bumpPublishedAt();
   audit(req.ip,'game_delete',{id,publishedAt});
   res.json({ok:true,publishedAt});
@@ -3369,10 +3253,9 @@ const server = app.listen(PORT, HOST, () => {
         writeGeneratedGamePage(row);
       }
       syncGamesChunkVisibility();
-      syncGamesNavVisibility(); syncGameStagesChunk();
+      syncGamesNavVisibility();
       fixStageDescriptionTruncation();
       fixHeroPosterFallback();
-      syncGameStagesChunk();
       const testimonialFixed = reconcileHomeTestimonial();
       console.log('[blueferret-admin] games catalog and game pages regenerated on boot');
       if(testimonialFixed) console.log('[blueferret-admin] home testimonial reconciled with rendered page');
