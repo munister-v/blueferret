@@ -2884,8 +2884,6 @@ app.patch('/api/admin/page-patch', requireAuth, (req, res) => {
       // site-content template rendered with a {slot} filled in.
       const matched = new Set((chunkSync && chunkSync.matchedVals) || []);
       for (const p of textPairs) {
-        // A malformed block (no origVal) must not take the whole save down.
-        if (!p || typeof p.oldVal !== 'string' || typeof p.newVal !== 'string') continue;
         if (matched.has(p.oldVal)) continue;
         // Testimonial copy is rendered as “ + dictionary value + ”. The page
         // editor sees the decorated DOM string, while the content bundle only
