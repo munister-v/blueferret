@@ -954,3 +954,16 @@ html:not(.bf-hydrated) .cursor-grab {
 @media (max-width: 767px) and (prefers-reduced-motion: reduce) {
   html:not(.bf-hydrated) main .cursor-grab { animation: none !important; }
 }
+
+/* Картки етапів: на вузьких екранах довге українське слово («Передзамовлення»)
+   не вміщається поруч із бейджем і ламається посередині. Ставимо бейдж під
+   заголовок — усі картки виглядають однаково і жодне слово не рветься.
+   Розмітка інлайнова (вона інжектиться в рукописні сторінки), тому медіа-запит
+   може жити тільки тут. */
+@media (max-width: 479px) {
+  [data-bf-stages] article > div:first-of-type {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+}

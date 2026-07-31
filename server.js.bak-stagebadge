@@ -379,12 +379,12 @@ function renderGameStagesHtml(stages, statusRaw) {
     const sid = `bf_stg${stgIdx++}`;
     html += `
       <article style="background:linear-gradient(135deg, ${isUn ? 'rgba(61,107,138,0.22) 0%, rgb(11,17,24) 48%' : 'rgb(9,13,19) 0%, rgb(12,18,26) 100%'});border:1px solid ${isUn ? 'rgb(22,34,48)' : 'rgb(15,23,33)'};border-radius:24px;padding:24px;position:relative;overflow:hidden">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isUn ? '16px' : '10px'};gap:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isUn ? '16px' : '10px'};gap:16px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
             <span data-bf-id="${sid}_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:${isUn ? 'rgba(61,107,138,0.23)' : 'rgba(61,107,138,0.14)'};border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
               ${stageLockSvg(isUn)}
             </span>
-            <h3 data-bf-id="${sid}_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,${isUn ? '.9' : '.55'});margin:0;min-width:0;overflow-wrap:break-word">${escapeHtml(stg.title)}</h3>
+            <h3 data-bf-id="${sid}_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,${isUn ? '.9' : '.55'});margin:0">${escapeHtml(stg.title)}</h3>
           </div>
           ${stg.label ? `<span data-bf-id="${sid}_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:${isUn ? 'rgba(61,107,138,0.26)' : 'rgba(216,226,240,0.11)'};color:${isUn ? '#bdf6df' : 'rgba(230,238,247,0.7)'};border:1px solid ${isUn ? 'rgba(61,107,138,0.6)' : 'rgba(190,205,224,0.22)'};white-space:nowrap">${escapeHtml(stg.label)}</span>` : ''}
         </div>
