@@ -666,3 +666,24 @@
     setTimeout(poll, 250);
   })();
 })();
+
+
+/* ── iOS: щоб :active узагалі спрацьовував на коробці ── bf-box-idle-ios-active ──────
+   Обертання негідратованої коробки висить на :active (bf-box-idle у bf.css):
+   анімація стоїть на паузі й іде, поки коробку тримають. На iOS Safari :active
+   не застосовується до звичайного div, поки на елементі або вище немає жодного
+   слухача дотику — давня примха, яку лікують порожнім слухачем. Без нього на
+   айфоні коробка не обертається взагалі, тобто прийом там просто не працює.
+
+   Слухач порожній і passive: нічого не робить, прокрутку не блокує. Сама
+   коробка вже має touch-action:none з розмітки, тож утримання не тягне
+   сторінку. Вішаємо ЛИШЕ поки сторінка не гідратована — після гідратації
+   коробку крутить React своїми pointer-подіями, і слухач там зайвий. */
+(function () {
+  var box = document.querySelector('.cursor-grab');
+  if (!box) return;
+  if (document.documentElement.classList.contains('bf-hydrated')) return;
+  var noop = function () {};
+  box.addEventListener('touchstart', noop, { passive: true });
+  box.addEventListener('touchend', noop, { passive: true });
+})();
