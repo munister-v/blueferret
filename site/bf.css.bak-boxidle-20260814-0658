@@ -931,38 +931,16 @@ a[href^="mailto:"] p {
   overflow-wrap: anywhere;
 }
 
-/* ── Міна 33: коробка обертається ЛИШЕ поки її тримають ───────────────────
-   Раніше тут стояло безумовне `animation: bf-box-idle 30s linear infinite`:
-   поки React не перехопив сторінку, коробка крутилась сама, по колу, вічно.
-   Замовник попросив, щоб вона рухалась тільки коли рух почала людина.
-
-   Анімація лишилась на місці, але за замовчуванням СТОЇТЬ НА ПАУЗІ і йде лише
-   поки коробку натиснуто. Саме пауза, а не зняття анімації: зупинена анімація
-   утримує поточний кадр, тож коробка завмирає там, де її відпустили, і не
-   стрибає у вихідне положення. Нульовий кадр збігається з інлайновим
-   transform, який приходить із сервера (rotateX(-7deg) rotateY(-13deg)), тому
-   на завантаженні нічого не смикається.
-
-   Гідратована сторінка сюди не потрапляє взагалі — селектор починається з
-   html:not(.bf-hydrated). Там коробку крутить React перетягуванням, і це вже
-   дія людини.
-
-   Якщо на iOS :active не спрацює (там він примхливий), коробка просто лишиться
-   нерухомою — а це і є те, що просив замовник. */
+/* ── Міна 33: коробка крутиться сама, поки React не перехопив сторінку ───── */
 @keyframes bf-box-idle {
   from { transform: translateZ(0) rotateX(-7deg) rotateY(-13deg); }
   to   { transform: translateZ(0) rotateX(-7deg) rotateY(347deg); }
 }
 html:not(.bf-hydrated) .cursor-grab {
   animation: bf-box-idle 30s linear infinite;
-  animation-play-state: paused;
-}
-html:not(.bf-hydrated) .cursor-grab:active {
-  animation-play-state: running;
 }
 @media (prefers-reduced-motion: reduce) {
-  html:not(.bf-hydrated) .cursor-grab,
-  html:not(.bf-hydrated) .cursor-grab:active { animation: none; }
+  html:not(.bf-hydrated) .cursor-grab { animation: none; }
 }
 /* Мобільний блок вище глушить УСІ анімації в main заради продуктивності
    (`main * { animation: none !important }`), тому обертання коробки потребує
@@ -971,15 +949,10 @@ html:not(.bf-hydrated) .cursor-grab:active {
 @media (max-width: 767px) {
   html:not(.bf-hydrated) main .cursor-grab {
     animation: bf-box-idle 30s linear infinite !important;
-    animation-play-state: paused !important;
-  }
-  html:not(.bf-hydrated) main .cursor-grab:active {
-    animation-play-state: running !important;
   }
 }
 @media (max-width: 767px) and (prefers-reduced-motion: reduce) {
-  html:not(.bf-hydrated) main .cursor-grab,
-  html:not(.bf-hydrated) main .cursor-grab:active { animation: none !important; }
+  html:not(.bf-hydrated) main .cursor-grab { animation: none !important; }
 }
 
 /* Картки етапів: на вузьких екранах довге українське слово («Передзамовлення»)
