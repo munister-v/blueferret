@@ -743,6 +743,10 @@
 
   function move(e) {
     if (!dragging) return;
+    /* Гідратація може статись ПОСЕРЕД тяги: тоді React перемальовує коробку
+       своїм transform, а ми пишемо свій у той самий елемент. Вікно вузьке, але
+       воно є, тож перевіряємо не лише на натисканні. */
+    if (hydrated()) { dragging = false; detach(); return; }
     var dx = e.clientX - lastX, dy = e.clientY - lastY;
     lastX = e.clientX;
     lastY = e.clientY;
