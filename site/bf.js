@@ -687,3 +687,74 @@
   box.addEventListener('touchstart', noop, { passive: true });
   box.addEventListener('touchend', noop, { passive: true });
 })();
+
+
+/* ── Перетягування коробки, коли React не приїхав ── bf-box-manual-drag ─────────
+   Гідратація на сторінці гри переміжна: React кидає mismatch (#418), а вихідник
+   застосунку втрачено ще при міграції сайту, тож полагодити її нічим. Коли він
+   таки приїхав — коробку крутить він сам, і ми не втручаємось. Коли ні —
+   раніше лишалась або нерухома коробка, або обертання з постійною швидкістю
+   на утриманні. Тут вона просто йде за пальцем, як і має.
+
+   Рухається ТІЛЬКИ поки тягнуть: ні автообертання, ні інерції після відпускання
+   — рівно те, що просив замовник. Коефіцієнти й обмеження нахилу взяті з
+   реалізації React, щоб дві поведінки не розходились.
+
+   Забираємо анімацію класом на <html>, а не інлайновим стилем: мобільне правило
+   в bf.css оголошене з !important і інлайн його не перебʼє. */
+(function () {
+  var box = document.querySelector('.cursor-grab');
+  if (!box) return;
+
+  var html = document.documentElement;
+  var hydrated = function () { return html.classList.contains('bf-hydrated'); };
+  if (hydrated()) return;
+
+  var rx = -7, ry = -13;       // те саме, що в SSR-розмітці й у нульовому кадрі
+  var dragging = false, lastX = 0, lastY = 0, taken = false;
+
+  function apply() {
+    box.style.transform = 'translateZ(0) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+  }
+
+  function detach() {
+    box.removeEventListener('pointerdown', down);
+    box.removeEventListener('pointermove', move);
+    box.removeEventListener('pointerup', up);
+    box.removeEventListener('pointercancel', up);
+    html.classList.remove('bf-box-manual');
+  }
+
+  function down(e) {
+    if (hydrated()) { detach(); return; }
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    if (!taken) {
+      html.classList.add('bf-box-manual');
+      box.style.transition = 'none';
+      taken = true;
+      apply();
+    }
+    if (e.pointerId != null && box.setPointerCapture) {
+      try { box.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+  }
+
+  function move(e) {
+    if (!dragging) return;
+    var dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    ry += dx * 0.22;
+    rx = Math.max(-30, Math.min(30, rx - dy * 0.2));
+    apply();
+  }
+
+  function up() { dragging = false; }
+
+  box.addEventListener('pointerdown', down);
+  box.addEventListener('pointermove', move);
+  box.addEventListener('pointerup', up);
+  box.addEventListener('pointercancel', up);
+})();
