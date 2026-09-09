@@ -72,10 +72,26 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 .pp-val{font-size:16px;font-weight:600;color:rgba(255,255,255,.85)}
 /* ── ABOUT GRID ── */
 .gp-about-grid{display:grid;grid-template-columns:1.05fr 1.1fr;gap:40px;align-items:center;margin-top:40px}
-.gp-about-visual{background:radial-gradient(circle at 50% 20%, rgba(255,255,255,0.05) 0%, transparent 60%), rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;display:flex;align-items:center;justify-content:center;min-height:420px;perspective:1000px}
+.gp-about-visual{--gpbox-box:300px;--gpbox-depth:calc(var(--gpbox-box) * 0.2564);background:radial-gradient(circle at 50% 20%, rgba(255,255,255,0.05) 0%, transparent 60%), rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;display:flex;align-items:center;justify-content:center;min-height:420px;perspective:2100px}
 .gp-3d-box{width:280px;border-radius:12px;box-shadow:0 30px 60px -20px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.1);transition:transform 0.4s cubic-bezier(0.2,0.8,0.2,1);transform:rotateY(-10deg) rotateX(5deg)}
 .gp-about-visual:hover .gp-3d-box{transform:rotateY(0deg) rotateX(0deg) scale(1.05)}
 .gp-3d-box img{width:100%;height:auto;border-radius:12px;display:block}
+/* ── Real 3D box (6 uploaded faces) — used instead of .gp-3d-box when a game
+   has all six box_faces set. Drag-to-rotate, own local script below, no
+   dependency on bf.js (draft game pages don't load it). ── */
+.gpbox{margin:0 auto;cursor:grab}
+.gpbox:active{cursor:grabbing}
+.gpbox img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none}
+.gpbox-face{position:absolute;left:50%;top:50%;backface-visibility:hidden;border-radius:3px;overflow:hidden;box-shadow:0 0 24px -10px rgba(0,0,0,.5) inset}
+.gpbox-face-front,.gpbox-face-back{width:var(--gpbox-box);height:var(--gpbox-box);margin-left:calc(var(--gpbox-box) / -2);margin-top:calc(var(--gpbox-box) / -2)}
+.gpbox-face-front{transform:translateZ(calc(var(--gpbox-depth) / 2))}
+.gpbox-face-back{transform:rotateY(180deg) translateZ(calc(var(--gpbox-depth) / 2))}
+.gpbox-face-right,.gpbox-face-left{width:var(--gpbox-depth);height:var(--gpbox-box);margin-left:calc(var(--gpbox-depth) / -2);margin-top:calc(var(--gpbox-box) / -2)}
+.gpbox-face-right{transform:rotateY(90deg) translateZ(calc(var(--gpbox-box) / 2))}
+.gpbox-face-left{transform:rotateY(-90deg) translateZ(calc(var(--gpbox-box) / 2))}
+.gpbox-face-top,.gpbox-face-bottom{width:var(--gpbox-box);height:var(--gpbox-depth);margin-left:calc(var(--gpbox-box) / -2);margin-top:calc(var(--gpbox-depth) / -2)}
+.gpbox-face-top{transform:rotateX(90deg) translateZ(calc(var(--gpbox-box) / 2))}
+.gpbox-face-bottom{transform:rotateX(-90deg) translateZ(calc(var(--gpbox-box) / 2))}
 .gp-about-content{background:linear-gradient(180deg, rgba(255,255,255,.03) 0%, transparent 100%);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;box-shadow:0 22px 50px -20px rgba(0,0,0,.5)}
 .gp-desc{font-size:16px;line-height:1.7;color:rgba(255,255,255,.66)}
 .gp-desc p{margin-bottom:16px}
@@ -92,7 +108,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
   .gp-about-grid{grid-template-columns:1fr;gap:24px}
-  .gp-about-visual{min-height:300px;padding:20px}
+  .gp-about-visual{min-height:300px;padding:20px;--gpbox-box:210px}
   .gp-3d-box{width:220px}
   .gp-about-content{padding:24px}
   .pp-grid{grid-template-columns:repeat(2,1fr)}
@@ -168,9 +184,20 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
   <div class="gp-inner">
     <div class="gp-about-grid">
       <div class="gp-about-visual rv">
+        <% if (boxFacesReady) { %>
+        <div class="gpbox" style="width:var(--gpbox-box);height:var(--gpbox-box);position:relative;transform-style:preserve-3d;transform:translateZ(0) rotateX(-7deg) rotateY(-13deg);transition:transform .08s ease-out;will-change:transform;touch-action:none">
+          <div class="gpbox-face gpbox-face-front"><img src="<%= boxFaces.front %>" alt="<%= title %> — лицьова сторона коробки" draggable="false" loading="eager"></div>
+          <div class="gpbox-face gpbox-face-back"><img src="<%= boxFaces.back %>" alt="<%= title %> — зворотна сторона коробки" draggable="false" loading="lazy"></div>
+          <div class="gpbox-face gpbox-face-right"><img src="<%= boxFaces.right %>" alt="" draggable="false" loading="lazy"></div>
+          <div class="gpbox-face gpbox-face-left"><img src="<%= boxFaces.left %>" alt="" draggable="false" loading="lazy"></div>
+          <div class="gpbox-face gpbox-face-top"><img src="<%= boxFaces.top %>" alt="" draggable="false" loading="lazy"></div>
+          <div class="gpbox-face gpbox-face-bottom"><img src="<%= boxFaces.bottom %>" alt="" draggable="false" loading="lazy"></div>
+        </div>
+        <% } else { %>
         <div class="gp-3d-box">
           <img src="<%= cover %>" alt="<%= title %>" loading="lazy">
         </div>
+        <% } %>
       </div>
       
       <div class="gp-about-content rv" style="transition-delay:0.1s">
@@ -191,6 +218,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
   </div>
 </section>
 
+<%- renderGameFilesHtml(g.files, title) %>
+
 <%- renderGameGalleryHtml(g.gallery, title) %>
 
 <%- renderGameStagesHtml(g.stages, statusRaw) %>
@@ -209,6 +238,41 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 </footer>
 
 </div>
+<% if (boxFacesReady) { %>
+<script>
+(function(){
+  var box = document.querySelector('.gpbox');
+  if (!box) return;
+  var rx = -7, ry = -13, dragging = false, lastX = 0, lastY = 0;
+  var SENS_Y = 0.5, SENS_X = 0.42;
+  function apply() {
+    box.style.transform = 'translateZ(0) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+  }
+  function down(e) {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    box.style.transition = 'none';
+    if (e.pointerId != null && box.setPointerCapture) { try { box.setPointerCapture(e.pointerId); } catch (err) {} }
+  }
+  function move(e) {
+    if (!dragging) return;
+    var dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    ry += dx * SENS_Y;
+    rx = Math.max(-40, Math.min(40, rx - dy * SENS_X));
+    apply();
+  }
+  function up() {
+    if (!dragging) return;
+    dragging = false;
+    box.style.transition = 'transform .25s ease-out';
+  }
+  box.addEventListener('pointerdown', down);
+  box.addEventListener('pointermove', move);
+  box.addEventListener('pointerup', up);
+  box.addEventListener('pointercancel', up);
+})();
+</script>
+<% } %>
 <script>
 (function(){
   var els=document.querySelectorAll('.rv');

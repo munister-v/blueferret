@@ -305,6 +305,28 @@ function parseGameLinks(v) {
   const arr = Array.isArray(v) ? v : (()=>{ try { return JSON.parse(v||'[]'); } catch { return []; } })();
   return arr.map(l => ({ label: cleanText(l&&l.label), url: sanitizeHref(l&&l.url) })).filter(l => l.label && l.url);
 }
+// box_faces: the six face images of a real 3D CSS box (front/back/left/right/
+// top/bottom) on the game's "about" card. All six URLs must be present for the
+// generated page to render the real box -- otherwise it falls back to the
+// original flat cover-image card, so games that never set this up (druha-gra,
+// tretya-gra, any future game) look exactly as before.
+const BOX_FACE_KEYS = ['front','back','left','right','top','bottom'];
+function sanitizeBoxFaces(v) {
+  const o = (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+  const out = {};
+  for (const k of BOX_FACE_KEYS) out[k] = cleanText(o[k] || '');
+  return out;
+}
+function parseBoxFaces(v) {
+  if (v && typeof v === 'object') return sanitizeBoxFaces(v);
+  try { return sanitizeBoxFaces(JSON.parse(v || '{}')); } catch { return sanitizeBoxFaces({}); }
+}
+// files: downloadable materials (rules PDF, expansions, etc.), rendered as
+// their own "Файли" section between the about card and the gallery/stages.
+function parseGameFiles(v) {
+  const arr = Array.isArray(v) ? v : (()=>{ try { return JSON.parse(v||'[]'); } catch { return []; } })();
+  return arr.map(f => ({ label: cleanText(f&&f.label), url: sanitizeHref(f&&f.url) })).filter(f => f.label && f.url);
+}
 function gamePageMode(r){
   if(!r||!r.slug)return 'missing';
   const file=path.join(SITE_ROOT,'igry',r.slug,'index.html');
@@ -312,7 +334,7 @@ function gamePageMode(r){
   try{return fs.readFileSync(file,'utf8').includes('data-bf-generated-game="true"')?'generated':'custom';}
   catch{return 'missing';}
 }
-function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), stages: parseStages(r.stages), links: parseGameLinks(r.links), always_visible: r.always_visible==null?1:(r.always_visible?1:0), page_mode:gamePageMode(r) } : null; }
+function gameRow(r) { return r ? { ...r, gallery: parseGallery(r.gallery), stages: parseStages(r.stages), links: parseGameLinks(r.links), box_faces: parseBoxFaces(r.box_faces), files: parseGameFiles(r.files), always_visible: r.always_visible==null?1:(r.always_visible?1:0), page_mode:gamePageMode(r) } : null; }
 
 function syncCustomGamePage(before,after){
   if(!before||!after||gamePageMode(before)!=='custom')return null;
@@ -339,6 +361,27 @@ function stageLockSvg(open, size) {
   return open
     ? `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="rgba(189,246,223,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`
     : `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+}
+function renderGameFilesHtml(files, title) {
+  const items = (Array.isArray(files) ? files : []).filter(f => f && f.url && f.label);
+  if (!items.length) return '';
+  const fileIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/></svg>`;
+  const downloadIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M20 21H4"/></svg>`;
+  return `<section class="gp-section" id="files" style="background:rgba(0,0,0,0.2)">
+  <div class="gp-inner">
+    <div class="rv" style="text-align:center;margin-bottom:32px">
+      <p class="gp-eyebrow">Матеріали</p>
+      <h2 class="gp-stitle" style="margin-bottom:0">Файли</h2>
+    </div>
+    <div class="rv" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">
+      ${items.map(f => `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener" download style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px 18px;text-decoration:none;color:inherit;transition:all .2s ease" onmouseover="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='var(--accent)'" onmouseout="this.style.background='rgba(255,255,255,.03)';this.style.borderColor='rgba(255,255,255,.08)'">
+        <span style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;color:var(--accent)">${fileIcon}</span>
+        <span style="flex:1;min-width:0;font-weight:600;font-size:14.5px;color:rgba(255,255,255,.88);overflow-wrap:anywhere">${escapeHtml(f.label)}</span>
+        <span style="flex-shrink:0;color:rgba(255,255,255,.35)">${downloadIcon}</span>
+      </a>`).join('')}
+    </div>
+  </div>
+</section>`;
 }
 function renderGameGalleryHtml(gallery, title) {
   const imgs = (Array.isArray(gallery) ? gallery : []).filter(Boolean);
@@ -630,12 +673,18 @@ function generatedGameHtml(g) {
     author && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-building"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg></div><div class="pp-label">ВИДАВЕЦЬ</div><div class="pp-val" data-bf-id="bf_g_author">${author}</div></div>`,
   ].filter(Boolean).join('');
 
+  const boxFacesSrc = g.box_faces || {};
+  const boxFaces = {};
+  for (const k of BOX_FACE_KEYS) boxFaces[k] = escapeHtml(boxFacesSrc[k] || '');
+  const boxFacesReady = BOX_FACE_KEYS.every(k => boxFaces[k]);
+
   const gameTpl = fs.readFileSync(path.join(__dirname, 'views', 'game.ejs'), 'utf8');
   return ejs.render(gameTpl, {
     g, title, metaDesc, escapeHtml, coverAbs, bgColor, accentColor,
     isVideoBg, heroBg, heroLogo, statusLabel, subtitle, buy,
     passportCards, cover, descHtml, year,
-    renderGameGalleryHtml, renderGameStagesHtml, statusRaw
+    renderGameGalleryHtml, renderGameStagesHtml, renderGameFilesHtml, statusRaw,
+    boxFaces, boxFacesReady
   });
 }
 function writeGeneratedGamePage(row) {
@@ -1249,9 +1298,9 @@ function syncHtmlTexts(pairs){
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,stages,links,always_visible,author,bg_color,accent_color,hero_bg_url,hero_logo_url,players,age,duration,buy_url,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@stages,@links,@always_visible,@author,@bg_color,@accent_color,@hero_bg_url,@hero_logo_url,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,stages=@stages,links=@links,always_visible=@always_visible,author=@author,bg_color=@bg_color,accent_color=@accent_color,hero_bg_url=@hero_bg_url,hero_logo_url=@hero_logo_url,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,stages,links,box_faces,files,always_visible,author,bg_color,accent_color,hero_bg_url,hero_logo_url,players,age,duration,buy_url,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@stages,@links,@box_faces,@files,@always_visible,@author,@bg_color,@accent_color,@hero_bg_url,@hero_logo_url,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,stages=@stages,links=@links,box_faces=@box_faces,files=@files,always_visible=@always_visible,author=@author,bg_color=@bg_color,accent_color=@accent_color,hero_bg_url=@hero_bg_url,hero_logo_url=@hero_logo_url,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 const ghIns = db.prepare('INSERT INTO game_history(game_id,ts,snapshot) VALUES(?,?,?)');
 const ghAll = db.prepare('SELECT id,ts FROM game_history WHERE game_id=? ORDER BY ts DESC');
@@ -1282,9 +1331,12 @@ function gameBody(b, ex={}) {
     description: normalizeTextValue(stage && stage.description, { multiline:true }),
   }));
   const links = b.links!==undefined ? parseGameLinks(b.links) : parseGameLinks(ex.links);
+  const box_faces = b.box_faces!==undefined ? sanitizeBoxFaces(b.box_faces) : parseBoxFaces(ex.box_faces);
+  const files = b.files!==undefined ? parseGameFiles(b.files) : parseGameFiles(ex.files);
   return { slug, title:cleanText(b.title??ex.title), subtitle:cleanText(b.subtitle??ex.subtitle??''), description:normalizeTextValue(b.description??ex.description??'', { multiline:true }),
     status:b.status||ex.status||'published', cover_url:cleanText(b.cover_url??ex.cover_url??''),
     gallery:JSON.stringify(gallery), stages:JSON.stringify(stages), links:JSON.stringify(links),
+    box_faces:JSON.stringify(box_faces), files:JSON.stringify(files),
     always_visible:(b.always_visible!==undefined?!!b.always_visible:(ex.always_visible==null?true:!!ex.always_visible))?1:0,
     author:cleanText(b.author??ex.author??''), bg_color:cleanText(b.bg_color??ex.bg_color??''), accent_color:cleanText(b.accent_color??ex.accent_color??''),
     hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''), hero_logo_url:cleanText(b.hero_logo_url??ex.hero_logo_url??''),
@@ -1603,6 +1655,41 @@ function getAllImages(dir, prefix) {
   }
   return results;
 }
+
+// Raw document upload (rules PDFs and similar), separate from the image
+// endpoint above: those always go through sharp, which would corrupt a PDF.
+// Stored as-is under UPLOADS, same folder the image endpoint writes to, so
+// the existing /uploads/ nginx static route and backup jobs cover it too.
+const uploadDoc = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20*1024*1024 },
+  fileFilter: (_r, f, cb) => {
+    if (!/\.(pdf|docx?|zip|pptx?|xlsx?)$/i.test(f.originalname)) {
+      const err = new Error('unsupported_file_type');
+      err.statusCode = 415;
+      return cb(err);
+    }
+    cb(null, true);
+  },
+});
+app.post('/api/admin/upload-file', requireAuth, (req, res, next) => {
+  uploadDoc.single('file')(req, res, err => { if (err) return next(err); next(); });
+}, (req, res) => {
+  if (!req.file) return res.status(400).json({error:'no file'});
+  try {
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    const base = path.basename(req.file.originalname, ext).replace(/[^a-z0-9а-яіїєґ]/gi,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'file';
+    const filename = `${base}-${Date.now()}${ext}`;
+    const full = path.join(UPLOADS, filename);
+    fs.writeFileSync(full, req.file.buffer);
+    const url = `/uploads/${filename}`;
+    audit(req.ip,'upload_file',{url});
+    res.json({ ok:true, url, filename, size:req.file.buffer.length });
+  } catch(e) {
+    console.error('File upload error:', e);
+    res.status(500).json({error:'upload_failed'});
+  }
+});
 
 app.get('/api/admin/media', requireAuth, (_req, res) => {
   try {

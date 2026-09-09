@@ -7,7 +7,7 @@ let activeTab='dashboard';
 let pickerCallback=null;
 // editor state
 let editingGame=null;
-let gameGallery=[], gameStages=[], gameLinks=[];
+let gameGallery=[], gameStages=[], gameLinks=[], gameFiles=[];
 let editorFormDirty=false;
 
 function hasUnsavedWork(){
@@ -308,6 +308,7 @@ function openGameEditor(id){
   gameGallery=editingGame?parseArrayValue(editingGame.gallery):[];
   gameStages=editingGame?parseArrayValue(editingGame.stages):[];
   gameLinks=editingGame?parseArrayValue(editingGame.links).filter(l=>l&&(l.label||l.url)):[];
+  gameFiles=editingGame?parseArrayValue(editingGame.files).filter(f=>f&&(f.label||f.url)):[];
   activeTab='game-editor'; render();
 }
 function parseArrayValue(value){
@@ -372,6 +373,33 @@ function renderGameEditor(){
           <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_cover',updatePreview)">📁</button>
         </div>
         ${g.cover_url?`<img id="g_cover_thumb" class="img-thumb" src="${esc(g.cover_url)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="g_cover_thumb">Немає зображення</div>`}
+      </div>
+
+      <div class="ged-section">
+        <h4>Коробка (3D)</h4>
+        <div style="font-size:11.5px;color:var(--txt-m);margin-bottom:12px">Завантажте всі 6 граней — тоді на сторінці замість пласкої обкладинки буде справжня об'ємна коробка, яку можна крутити мишкою/пальцем. Без хоч однієї грані лишається пласка картинка (обкладинка вище).</div>
+        ${['front','back','left','right','top','bottom'].map(k=>{
+          const val=g.box_faces&&g.box_faces[k]||'';
+          const lbl={front:'Перед',back:'Зад',left:'Лівий бік',right:'Правий бік',top:'Верх',bottom:'Низ'}[k];
+          return `<div class="field"><label class="flbl">${lbl}</label>
+            <div class="img-pick">
+              <input type="url" id="g_box_${k}" value="${esc(val)}" placeholder="https://..." oninput="onBoxFaceInput('${k}')">
+              <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_box_${k}',()=>onBoxFaceInput('${k}'))">📁</button>
+            </div>
+            ${val?`<img id="g_box_${k}_thumb" class="img-thumb" src="${esc(val)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="g_box_${k}_thumb">Немає зображення</div>`}
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="ged-section">
+        <h4>Файли</h4>
+        <div id="filesList"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button type="button" class="btn btn-g btn-sm" style="flex:1" onclick="addGameFile()">+ Додати файл</button>
+          <button type="button" class="btn btn-g btn-sm" style="flex:1" onclick="$('#fileUploadInput').click()">📎 Завантажити (PDF, ZIP…)</button>
+        </div>
+        <input type="file" id="fileUploadInput" accept=".pdf,.doc,.docx,.zip,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="uploadGameFileFromInput(this)">
+        <div style="font-size:11.5px;color:var(--txt-m);margin-top:8px">Окрема секція «Файли» на сторінці гри — правила PDF, додаткові матеріали тощо.</div>
       </div>
 
       <div class="ged-section">
@@ -528,6 +556,7 @@ function renderGameEditor(){
   renderGallery();
   renderStages();
   renderLinks();
+  renderFiles();
   updatePreview();
 }
 
@@ -615,6 +644,45 @@ function onCoverInput(){
   updatePreview();
 }
 window.onCoverInput=onCoverInput;
+
+function onBoxFaceInput(k){
+  const url=$('#g_box_'+k)?.value||'';
+  const th=$('#g_box_'+k+'_thumb');
+  if(th){
+    if(url){th.outerHTML=`<img id="g_box_${k}_thumb" class="img-thumb" src="${esc(url)}" onerror="this.style.display='none'">`;}
+    else{th.outerHTML=`<div class="img-thumb-empty" id="g_box_${k}_thumb">Немає зображення</div>`;}
+  }
+}
+window.onBoxFaceInput=onBoxFaceInput;
+
+function renderFiles(){
+  const box=$('#filesList'); if(!box)return;
+  box.innerHTML=gameFiles.map((f,i)=>`
+    <div class="row2" style="align-items:end;gap:8px;margin-bottom:8px">
+      <div class="field" style="margin:0"><label class="flbl">Назва</label>
+        <input type="text" value="${esc(f.label||'')}" oninput="updateGameFile(${i},'label',this.value)" placeholder="Напр., Правила гри (PDF)"></div>
+      <div class="field" style="margin:0"><label class="flbl">Посилання</label>
+        <input type="text" value="${esc(f.url||'')}" oninput="updateGameFile(${i},'url',this.value)" placeholder="https:// або /uploads/..."></div>
+      <button class="btn btn-sm" style="background:rgba(239,68,68,.15);color:#ef4444;border:none;height:38px;flex-shrink:0" onclick="removeGameFile(${i})" title="Видалити">✕</button>
+    </div>`).join('') || `<div style="font-size:12px;color:var(--txt-m)">Файлів немає.</div>`;
+}
+window.addGameFile=function(){ gameFiles.push({label:'',url:''}); renderFiles(); };
+window.removeGameFile=function(i){ gameFiles.splice(i,1); renderFiles(); };
+window.updateGameFile=function(i,k,v){ if(gameFiles[i]) gameFiles[i][k]=v; };
+async function uploadGameFileFromInput(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  try{
+    const r=await api('POST','/api/admin/upload-file',fd);
+    const label=file.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').trim();
+    gameFiles.push({label:label||file.name,url:r.url});
+    renderFiles();
+    toast('Файл завантажено ✓','ok');
+  }catch(e){toast('Помилка завантаження: '+e.message,'er');}
+  input.value='';
+}
+window.uploadGameFileFromInput=uploadGameFileFromInput;
 
 function renderStages(){
   const c=$('#g_stages_container'); if(!c)return;
@@ -740,6 +808,8 @@ async function saveGame(){
       description:$('#g_desc')?.value,status:$('#g_status')?.value,
       cover_url:$('#g_cover')?.value,gallery:gameGallery,stages:gameStages,
       links:gameLinks.filter(l=>l.label?.trim()&&l.url?.trim()),
+      files:gameFiles.filter(f=>f.label?.trim()&&f.url?.trim()),
+      box_faces:{front:$('#g_box_front')?.value||'',back:$('#g_box_back')?.value||'',left:$('#g_box_left')?.value||'',right:$('#g_box_right')?.value||'',top:$('#g_box_top')?.value||'',bottom:$('#g_box_bottom')?.value||''},
       always_visible:!!$('#g_always_visible')?.checked,
       author:$('#g_author')?.value, bg_color:$('#g_bg_color')?.value, accent_color:$('#g_accent_color')?.value,
       hero_bg_url:$('#g_hero_bg')?.value, hero_logo_url:$('#g_hero_logo')?.value,
