@@ -378,13 +378,18 @@ function renderGameEditor(){
       <div class="ged-section">
         <h4>Коробка (3D)</h4>
         <div style="font-size:11.5px;color:var(--txt-m);margin-bottom:12px">Завантажте всі 6 граней — тоді на сторінці замість пласкої обкладинки буде справжня об'ємна коробка, яку можна крутити мишкою/пальцем. Без хоч однієї грані лишається пласка картинка (обкладинка вище).</div>
+        <button type="button" class="btn btn-p btn-sm" style="width:100%;margin-bottom:14px" onclick="$('#boxAllInput').click()">🖼 Завантажити всі 6 одразу</button>
+        <div style="font-size:11px;color:var(--txt-m);margin:-8px 0 14px">Виберіть одразу 6 файлів у порядку: перед, зад, лівий бік, правий бік, верх, низ.</div>
+        <input type="file" id="boxAllInput" accept="image/*" multiple style="display:none" onchange="uploadAllBoxFaces(this)">
         ${['front','back','left','right','top','bottom'].map(k=>{
           const val=g.box_faces&&g.box_faces[k]||'';
           const lbl={front:'Перед',back:'Зад',left:'Лівий бік',right:'Правий бік',top:'Верх',bottom:'Низ'}[k];
           return `<div class="field"><label class="flbl">${lbl}</label>
             <div class="img-pick">
               <input type="url" id="g_box_${k}" value="${esc(val)}" placeholder="https://..." oninput="onBoxFaceInput('${k}')">
-              <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_box_${k}',()=>onBoxFaceInput('${k}'))">📁</button>
+              <button type="button" class="btn btn-g btn-sm" title="Завантажити з диска" onclick="$('#boxFaceInput_${k}').click()">🖼</button>
+              <input type="file" id="boxFaceInput_${k}" accept="image/*" style="display:none" onchange="uploadBoxFace('${k}',this)">
+              <button type="button" class="btn btn-g btn-sm" title="Вибрати з медіатеки" onclick="openPickerFor('g_box_${k}',()=>onBoxFaceInput('${k}'))">📁</button>
             </div>
             ${val?`<img id="g_box_${k}_thumb" class="img-thumb" src="${esc(val)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="g_box_${k}_thumb">Немає зображення</div>`}
           </div>`;
@@ -398,7 +403,7 @@ function renderGameEditor(){
           <button type="button" class="btn btn-g btn-sm" style="flex:1" onclick="addGameFile()">+ Додати файл</button>
           <button type="button" class="btn btn-g btn-sm" style="flex:1" onclick="$('#fileUploadInput').click()">📎 Завантажити (PDF, ZIP…)</button>
         </div>
-        <input type="file" id="fileUploadInput" accept=".pdf,.doc,.docx,.zip,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="uploadGameFileFromInput(this)">
+        <input type="file" id="fileUploadInput" accept=".pdf,.doc,.docx,.zip,.ppt,.pptx,.xls,.xlsx" multiple style="display:none" onchange="uploadGameFileFromInput(this)">
         <div style="font-size:11.5px;color:var(--txt-m);margin-top:8px">Окрема секція «Файли» на сторінці гри — правила PDF, додаткові матеріали тощо.</div>
       </div>
 
@@ -655,6 +660,42 @@ function onBoxFaceInput(k){
 }
 window.onBoxFaceInput=onBoxFaceInput;
 
+async function uploadBoxFace(k,input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  try{
+    const r=await api('POST','/api/admin/upload',fd);
+    const el=$('#g_box_'+k); if(el)el.value=r.url;
+    onBoxFaceInput(k);
+    updatePreview();
+  }catch(e){toast('Помилка завантаження: '+e.message,'er');}
+  input.value='';
+}
+window.uploadBoxFace=uploadBoxFace;
+
+async function uploadAllBoxFaces(input){
+  const files=[...(input.files||[])];
+  if(!files.length)return;
+  const order=['front','back','left','right','top','bottom'];
+  if(files.length!==6)toast(`Вибрано ${files.length} файл(ів), а не 6 — заповню перші ${Math.min(files.length,6)} граней у порядку перед/зад/лівий/правий/верх/низ`,'i');
+  let ok=0;
+  for(let i=0;i<Math.min(files.length,6);i++){
+    const fd=new FormData();fd.append('file',files[i]);
+    try{
+      const r=await api('POST','/api/admin/upload',fd);
+      const k=order[i];
+      const el=$('#g_box_'+k); if(el)el.value=r.url;
+      onBoxFaceInput(k);
+      ok++;
+    }catch(e){toast(files[i].name+': '+e.message,'er');}
+  }
+  if(ok)toast(`Завантажено ${ok} граней ✓`,'ok');
+  updatePreview();
+  input.value='';
+}
+window.uploadAllBoxFaces=uploadAllBoxFaces;
+
 function renderFiles(){
   const box=$('#filesList'); if(!box)return;
   box.innerHTML=gameFiles.map((f,i)=>`
@@ -670,16 +711,20 @@ window.addGameFile=function(){ gameFiles.push({label:'',url:''}); renderFiles();
 window.removeGameFile=function(i){ gameFiles.splice(i,1); renderFiles(); };
 window.updateGameFile=function(i,k,v){ if(gameFiles[i]) gameFiles[i][k]=v; };
 async function uploadGameFileFromInput(input){
-  const file=input.files&&input.files[0];
-  if(!file)return;
-  const fd=new FormData();fd.append('file',file);
-  try{
-    const r=await api('POST','/api/admin/upload-file',fd);
-    const label=file.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').trim();
-    gameFiles.push({label:label||file.name,url:r.url});
-    renderFiles();
-    toast('Файл завантажено ✓','ok');
-  }catch(e){toast('Помилка завантаження: '+e.message,'er');}
+  const files=[...(input.files||[])];
+  if(!files.length)return;
+  let ok=0;
+  for(const file of files){
+    const fd=new FormData();fd.append('file',file);
+    try{
+      const r=await api('POST','/api/admin/upload-file',fd);
+      const label=file.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').trim();
+      gameFiles.push({label:label||file.name,url:r.url});
+      ok++;
+    }catch(e){toast(file.name+': '+e.message,'er');}
+  }
+  renderFiles();
+  if(ok)toast(files.length>1?`Завантажено ${ok} з ${files.length} файлів ✓`:'Файл завантажено ✓','ok');
   input.value='';
 }
 window.uploadGameFileFromInput=uploadGameFileFromInput;
