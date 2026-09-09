@@ -72,10 +72,19 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 .pp-val{font-size:16px;font-weight:600;color:rgba(255,255,255,.85)}
 /* ── ABOUT GRID ── */
 .gp-about-grid{display:grid;grid-template-columns:1.05fr 1.1fr;gap:40px;align-items:center;margin-top:40px}
-.gp-about-visual{background:radial-gradient(circle at 50% 20%, rgba(255,255,255,0.05) 0%, transparent 60%), rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;display:flex;align-items:center;justify-content:center;min-height:420px;perspective:1000px}
-.gp-3d-box{width:280px;border-radius:12px;box-shadow:0 30px 60px -20px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.1);transition:transform 0.4s cubic-bezier(0.2,0.8,0.2,1);transform:rotateY(-10deg) rotateX(5deg)}
-.gp-about-visual:hover .gp-3d-box{transform:rotateY(0deg) rotateX(0deg) scale(1.05)}
-.gp-3d-box img{width:100%;height:auto;border-radius:12px;display:block}
+.gp-about-visual{--nk-box:240px;--nk-depth:calc(var(--nk-box) * 0.2564);background:radial-gradient(circle at 50% 20%, rgba(255,255,255,0.05) 0%, transparent 60%), rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;display:flex;align-items:center;justify-content:center;min-height:420px;perspective:1700px}
+.nk-box{margin:0 auto}
+.nk-box img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none}
+.nk-face{position:absolute;left:50%;top:50%;backface-visibility:hidden;border-radius:3px;overflow:hidden;box-shadow:0 0 24px -10px rgba(0,0,0,.5) inset}
+.nk-face-front,.nk-face-back{width:var(--nk-box);height:var(--nk-box);margin-left:calc(var(--nk-box) / -2);margin-top:calc(var(--nk-box) / -2)}
+.nk-face-front{transform:translateZ(calc(var(--nk-depth) / 2))}
+.nk-face-back{transform:rotateY(180deg) translateZ(calc(var(--nk-depth) / 2))}
+.nk-face-right,.nk-face-left{width:var(--nk-depth);height:var(--nk-box);margin-left:calc(var(--nk-depth) / -2);margin-top:calc(var(--nk-box) / -2)}
+.nk-face-right{transform:rotateY(90deg) translateZ(calc(var(--nk-box) / 2))}
+.nk-face-left{transform:rotateY(-90deg) translateZ(calc(var(--nk-box) / 2))}
+.nk-face-top,.nk-face-bottom{width:var(--nk-box);height:var(--nk-depth);margin-left:calc(var(--nk-box) / -2);margin-top:calc(var(--nk-depth) / -2)}
+.nk-face-top{transform:rotateX(90deg) translateZ(calc(var(--nk-box) / 2))}
+.nk-face-bottom{transform:rotateX(-90deg) translateZ(calc(var(--nk-box) / 2))}
 .gp-about-content{background:linear-gradient(180deg, rgba(255,255,255,.03) 0%, transparent 100%);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;box-shadow:0 22px 50px -20px rgba(0,0,0,.5)}
 .gp-desc{font-size:16px;line-height:1.7;color:rgba(255,255,255,.66)}
 .gp-desc p{margin-bottom:16px}
@@ -93,7 +102,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 @media(max-width:768px){
   .gp-about-grid{grid-template-columns:1fr;gap:24px}
   .gp-about-visual{min-height:300px;padding:20px}
-  .gp-3d-box{width:220px}
+  .gp-about-visual{--nk-box:170px}
   .gp-about-content{padding:24px}
   .pp-grid{grid-template-columns:repeat(2,1fr)}
 }
@@ -162,8 +171,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
   <div class="gp-inner">
     <div class="gp-about-grid">
       <div class="gp-about-visual rv">
-        <div class="gp-3d-box">
-          <img src="/images/placeholder-game.svg" alt="Ничка" loading="lazy">
+        <div class="cursor-grab nk-box" style="width:var(--nk-box);height:var(--nk-box);position:relative;transform-style:preserve-3d;transform:translateZ(0) rotateX(-7deg) rotateY(-13deg);transition:transform .08s ease-out;will-change:transform;touch-action:none">
+          <div class="nk-face nk-face-front"><img src="/images/nuchka/front.webp" alt="Ничка — лицьова сторона коробки" draggable="false" loading="eager"></div>
+          <div class="nk-face nk-face-back"><img src="/images/nuchka/back.webp" alt="Ничка — зворотна сторона коробки" draggable="false" loading="lazy"></div>
+          <div class="nk-face nk-face-right"><img src="/images/nuchka/right.webp" alt="" draggable="false" loading="lazy"></div>
+          <div class="nk-face nk-face-left"><img src="/images/nuchka/left.webp" alt="" draggable="false" loading="lazy"></div>
+          <div class="nk-face nk-face-top"><img src="/images/nuchka/top.webp" alt="" draggable="false" loading="lazy"></div>
+          <div class="nk-face nk-face-bottom"><img src="/images/nuchka/bottom.webp" alt="" draggable="false" loading="lazy"></div>
         </div>
       </div>
       
