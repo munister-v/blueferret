@@ -356,115 +356,47 @@ function syncCustomGamePage(before,after){
 // Stage lock icons as inline SVG — the 🔓 emoji renders as a *closed* gold
 // padlock in several system fonts (indistinguishable from 🔒), so the open
 // state was invisible to visitors. SVG open/closed shackles are unambiguous.
-function stageLockSvg(open, size, stroke) {
+function stageLockSvg(open, size) {
   const s = size || 18;
-  const c = stroke || (open ? 'rgba(189,246,223,.95)' : 'rgba(230,238,247,.85)');
   return open
-    ? `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`
-    : `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+    ? `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="rgba(189,246,223,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`
+    : `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
 }
-// Per-game light/dark palette. bg_color is admin-chosen per game (dark navy by
-// default, light pastel for e.g. Nichka), but every section used to hardcode
-// white-on-dark, which is invisible or muddy grey on a light page. One token
-// set per mode, resolved once and threaded through every section renderer so
-// the hero, passport, files, gallery, stages and footer all agree.
-// The dark values are byte-for-byte the previous hardcoded ones, so the
-// hand-crafted pages that get renderGameStagesHtml() injected (trymaysia)
-// render exactly as before.
-function relLuminance(hex) {
-  let h = String(hex || '').replace('#', '').trim();
-  if (h.length === 3) h = h.split('').map(c => c + c).join('');
-  if (!/^[0-9a-fA-F]{6}$/.test(h)) return 0;
-  const chan = v => { const c = parseInt(v, 16) / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-  return 0.2126 * chan(h.slice(0, 2)) + 0.7152 * chan(h.slice(2, 4)) + 0.0722 * chan(h.slice(4, 6));
-}
-function gameThemeTokens(isLight) {
-  return isLight ? {
-    isLight: true,
-    text1: '#0f172a', text2: 'rgba(15,23,42,.72)', text3: 'rgba(15,23,42,.48)', text4: 'rgba(15,23,42,.32)',
-    surface1: 'rgba(15,23,42,.04)', surface2: 'rgba(15,23,42,.07)',
-    border1: 'rgba(15,23,42,.08)', border2: 'rgba(15,23,42,.14)',
-    heroScrim: 'rgba(255,255,255,.1)', sectionTint: 'rgba(15,23,42,.035)',
-    footerGrad: 'linear-gradient(180deg,transparent,rgba(15,23,42,.06))',
-    shadowSoft: 'rgba(15,23,42,.16)', heroTitleShadow: '0 4px 32px rgba(255,255,255,.85)',
-    heroSubShadow: '0 2px 12px rgba(255,255,255,.7)', footerLogoFilter: 'none',
-    bandBg: '#f4f7fa', galleryBg: '#f4f7fa',
-    bandEyebrow: 'rgba(15,23,42,.45)', bandHeading: '#0f172a', bandSub: 'rgba(15,23,42,.55)',
-    stageOpenBg: 'linear-gradient(135deg, rgba(0,159,227,0.12) 0%, #ffffff 48%)', stageOpenBorder: '#cfdce8',
-    stageLockBg: 'linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%)', stageLockBorder: '#e5ebf2',
-    stageIconOpenBg: 'rgba(0,159,227,0.14)', stageIconLockBg: 'rgba(15,23,42,0.05)', stageIconBorder: 'rgba(0,159,227,0.45)',
-    stageIconOpenStroke: 'rgba(11,111,156,.95)', stageIconLockStroke: 'rgba(15,23,42,.45)',
-    stageTitleOpen: '#0f172a', stageTitleLock: 'rgba(15,23,42,.5)',
-    stageDescOpen: 'rgba(15,23,42,.7)', stageDescLock: 'rgba(15,23,42,.4)',
-    labelOpenBg: 'rgba(0,159,227,0.12)', labelOpenFg: '#0b6f9c', labelOpenBorder: 'rgba(0,159,227,0.45)',
-    labelLockBg: 'rgba(15,23,42,0.05)', labelLockFg: 'rgba(15,23,42,.5)', labelLockBorder: 'rgba(15,23,42,0.12)',
-    galleryTileBg: '#eef2f7', galleryTileBorder: 'rgba(15,23,42,.08)',
-    fileBandBg: 'rgba(15,23,42,.035)', fileCardBg: 'rgba(15,23,42,.03)', fileCardHover: 'rgba(15,23,42,.06)',
-    fileCardBorder: 'rgba(15,23,42,.1)', fileIconBg: 'rgba(15,23,42,.06)',
-    fileLabel: '#0f172a', fileArrow: 'rgba(15,23,42,.4)',
-  } : {
-    isLight: false,
-    text1: '#ffffff', text2: 'rgba(255,255,255,.65)', text3: 'rgba(255,255,255,.4)', text4: 'rgba(255,255,255,.3)',
-    surface1: 'rgba(255,255,255,.03)', surface2: 'rgba(255,255,255,.06)',
-    border1: 'rgba(255,255,255,.05)', border2: 'rgba(255,255,255,.1)',
-    heroScrim: 'rgba(0,0,0,.3)', sectionTint: 'rgba(0,0,0,.2)',
-    footerGrad: 'linear-gradient(180deg,transparent,rgba(0,0,0,.5))',
-    shadowSoft: 'rgba(0,0,0,.5)', heroTitleShadow: '0 4px 48px rgba(0,0,0,.65)',
-    heroSubShadow: '0 2px 10px rgba(0,0,0,.5)', footerLogoFilter: 'saturate(0) brightness(2)',
-    bandBg: 'rgb(9,13,19)', galleryBg: 'rgb(7,11,16)',
-    bandEyebrow: 'rgba(255,255,255,.35)', bandHeading: 'rgba(255,255,255,.92)', bandSub: 'rgba(255,255,255,.45)',
-    stageOpenBg: 'linear-gradient(135deg, rgba(61,107,138,0.22) 0%, rgb(11,17,24) 48%)', stageOpenBorder: 'rgb(22,34,48)',
-    stageLockBg: 'linear-gradient(135deg, rgb(9,13,19) 0%, rgb(12,18,26) 100%)', stageLockBorder: 'rgb(15,23,33)',
-    stageIconOpenBg: 'rgba(61,107,138,0.23)', stageIconLockBg: 'rgba(61,107,138,0.14)', stageIconBorder: 'rgba(61,107,138,0.55)',
-    stageIconOpenStroke: 'rgba(189,246,223,.95)', stageIconLockStroke: 'rgba(230,238,247,.85)',
-    stageTitleOpen: 'rgba(255,255,255,.9)', stageTitleLock: 'rgba(255,255,255,.55)',
-    stageDescOpen: 'rgba(255,255,255,.6)', stageDescLock: 'rgba(255,255,255,.35)',
-    labelOpenBg: 'rgba(61,107,138,0.26)', labelOpenFg: '#bdf6df', labelOpenBorder: 'rgba(61,107,138,0.6)',
-    labelLockBg: 'rgba(216,226,240,0.11)', labelLockFg: 'rgba(230,238,247,0.7)', labelLockBorder: 'rgba(190,205,224,0.22)',
-    galleryTileBg: '#0f172a', galleryTileBorder: 'rgba(255,255,255,.06)',
-    fileBandBg: 'rgba(0,0,0,0.2)', fileCardBg: 'rgba(255,255,255,.03)', fileCardHover: 'rgba(255,255,255,.06)',
-    fileCardBorder: 'rgba(255,255,255,.08)', fileIconBg: 'rgba(255,255,255,.06)',
-    fileLabel: 'rgba(255,255,255,.88)', fileArrow: 'rgba(255,255,255,.35)',
-  };
-}
-function renderGameFilesHtml(files, title, t) {
-  t = t || gameThemeTokens(false);
+function renderGameFilesHtml(files, title) {
   const items = (Array.isArray(files) ? files : []).filter(f => f && f.url && f.label);
   if (!items.length) return '';
   const fileIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/></svg>`;
   const downloadIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M20 21H4"/></svg>`;
-  return `<section class="gp-section" id="files" style="background:${t.fileBandBg}">
+  return `<section class="gp-section" id="files" style="background:rgba(0,0,0,0.2)">
   <div class="gp-inner">
     <div class="rv" style="text-align:center;margin-bottom:32px">
       <p class="gp-eyebrow">Матеріали</p>
       <h2 class="gp-stitle" style="margin-bottom:0">Файли</h2>
     </div>
     <div class="rv" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">
-      ${items.map(f => `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener" download style="display:flex;align-items:center;gap:14px;background:${t.fileCardBg};border:1px solid ${t.fileCardBorder};border-radius:16px;padding:16px 18px;text-decoration:none;color:inherit;transition:all .2s ease" onmouseover="this.style.background='${t.fileCardHover}';this.style.borderColor='var(--accent)'" onmouseout="this.style.background='${t.fileCardBg}';this.style.borderColor='${t.fileCardBorder}'">
-        <span style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:${t.fileIconBg};display:flex;align-items:center;justify-content:center;color:var(--accent)">${fileIcon}</span>
-        <span style="flex:1;min-width:0;font-weight:600;font-size:14.5px;color:${t.fileLabel};overflow-wrap:anywhere">${escapeHtml(f.label)}</span>
-        <span style="flex-shrink:0;color:${t.fileArrow}">${downloadIcon}</span>
+      ${items.map(f => `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener" download style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px 18px;text-decoration:none;color:inherit;transition:all .2s ease" onmouseover="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='var(--accent)'" onmouseout="this.style.background='rgba(255,255,255,.03)';this.style.borderColor='rgba(255,255,255,.08)'">
+        <span style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;color:var(--accent)">${fileIcon}</span>
+        <span style="flex:1;min-width:0;font-weight:600;font-size:14.5px;color:rgba(255,255,255,.88);overflow-wrap:anywhere">${escapeHtml(f.label)}</span>
+        <span style="flex-shrink:0;color:rgba(255,255,255,.35)">${downloadIcon}</span>
       </a>`).join('')}
     </div>
   </div>
 </section>`;
 }
-function renderGameGalleryHtml(gallery, title, t) {
-  t = t || gameThemeTokens(false);
+function renderGameGalleryHtml(gallery, title) {
   const imgs = (Array.isArray(gallery) ? gallery : []).filter(Boolean);
   if (!imgs.length) return '';
-  return `<section style="background-color:${t.galleryBg};padding:64px 24px">
+  return `<section style="background-color:rgb(7,11,16);padding:64px 24px">
   <div style="max-width:1120px;margin:0 auto">
-    <p style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:${t.bandEyebrow};margin:0 0 12px">Галерея</p>
-    <h2 style="font-size:clamp(26px,4vw,40px);font-weight:800;color:${t.bandHeading};margin:0 0 28px;letter-spacing:-.02em">Ближче до гри</h2>
+    <p style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 12px">Галерея</p>
+    <h2 style="font-size:clamp(26px,4vw,40px);font-weight:800;color:rgba(255,255,255,.92);margin:0 0 28px;letter-spacing:-.02em">Ближче до гри</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
-      ${imgs.map(u => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener" style="display:block;border-radius:16px;overflow:hidden;background:${t.galleryTileBg};border:1px solid ${t.galleryTileBorder}"><img src="${escapeHtml(u)}" alt="${escapeHtml(title)}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block"></a>`).join('')}
+      ${imgs.map(u => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener" style="display:block;border-radius:16px;overflow:hidden;background:#0f172a;border:1px solid rgba(255,255,255,.06)"><img src="${escapeHtml(u)}" alt="${escapeHtml(title)}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block"></a>`).join('')}
     </div>
   </div>
 </section>`;
 }
-function renderGameStagesHtml(stages, statusRaw, t) {
-  t = t || gameThemeTokens(false);
+function renderGameStagesHtml(stages, statusRaw) {
   if (!stages || stages.length === 0) return '';
   // Everything inline-styled: this HTML gets injected into HAND-CRAFTED pages
   // (trymaysia) via the BF_STAGES markers, where none of the generated-template
@@ -476,12 +408,12 @@ function renderGameStagesHtml(stages, statusRaw, t) {
   // from the `stages` DB column every time. Real edits go through the game editor.
   // The data-bf-id values below are DETERMINISTIC for the same reason: regeneration
   // must not churn them, or every restart would look like a mass id loss.
-  let html = `<section data-bf-stages="true" style="background-color:${t.bandBg};padding:72px 24px">
+  let html = `<section data-bf-stages="true" style="background-color:rgb(9,13,19);padding:72px 24px">
   <div style="max-width:880px;margin:0 auto">
     <div style="margin-bottom:32px">
-      <p data-bf-id="bf_stg_eyebrow" style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:${t.bandEyebrow};margin:0 0 12px">Прогрес</p>
-      <h2 data-bf-id="bf_stg_heading" style="font-size:clamp(26px,4vw,40px);font-weight:800;color:${t.bandHeading};margin:0 0 12px;letter-spacing:-.02em">Етапи проєкту</h2>
-      <p data-bf-id="bf_stg_subtitle" style="color:${t.bandSub};font-size:15px;margin:0">Стан запуску кожного етапу.</p>
+      <p data-bf-id="bf_stg_eyebrow" style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 12px">Прогрес</p>
+      <h2 data-bf-id="bf_stg_heading" style="font-size:clamp(26px,4vw,40px);font-weight:800;color:rgba(255,255,255,.92);margin:0 0 12px;letter-spacing:-.02em">Етапи проєкту</h2>
+      <p data-bf-id="bf_stg_subtitle" style="color:rgba(255,255,255,.45);font-size:15px;margin:0">Стан запуску кожного етапу.</p>
     </div>
     <div style="display:grid;gap:20px">`;
   let stgIdx = 0;
@@ -489,17 +421,17 @@ function renderGameStagesHtml(stages, statusRaw, t) {
     const isUn = stg.status === 'unlocked';
     const sid = `bf_stg${stgIdx++}`;
     html += `
-      <article style="background:${isUn ? t.stageOpenBg : t.stageLockBg};border:1px solid ${isUn ? t.stageOpenBorder : t.stageLockBorder};border-radius:24px;padding:24px;position:relative;overflow:hidden">
+      <article style="background:linear-gradient(135deg, ${isUn ? 'rgba(61,107,138,0.22) 0%, rgb(11,17,24) 48%' : 'rgb(9,13,19) 0%, rgb(12,18,26) 100%'});border:1px solid ${isUn ? 'rgb(22,34,48)' : 'rgb(15,23,33)'};border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isUn ? '16px' : '10px'};gap:16px">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="${sid}_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:${isUn ? t.stageIconOpenBg : t.stageIconLockBg};border:1px solid ${t.stageIconBorder};flex-shrink:0">
-              ${stageLockSvg(isUn, 18, isUn ? t.stageIconOpenStroke : t.stageIconLockStroke)}
+            <span data-bf-id="${sid}_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:${isUn ? 'rgba(61,107,138,0.23)' : 'rgba(61,107,138,0.14)'};border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
+              ${stageLockSvg(isUn)}
             </span>
-            <h3 data-bf-id="${sid}_title" style="font-size:22px;font-weight:600;color:${isUn ? t.stageTitleOpen : t.stageTitleLock};margin:0;min-width:0;overflow-wrap:break-word">${escapeHtml(stg.title)}</h3>
+            <h3 data-bf-id="${sid}_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,${isUn ? '.9' : '.55'});margin:0;min-width:0;overflow-wrap:break-word">${escapeHtml(stg.title)}</h3>
           </div>
-          ${stg.label ? `<span data-bf-id="${sid}_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:${isUn ? t.labelOpenBg : t.labelLockBg};color:${isUn ? t.labelOpenFg : t.labelLockFg};border:1px solid ${isUn ? t.labelOpenBorder : t.labelLockBorder};white-space:nowrap">${escapeHtml(stg.label)}</span>` : ''}
+          ${stg.label ? `<span data-bf-id="${sid}_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:${isUn ? 'rgba(61,107,138,0.26)' : 'rgba(216,226,240,0.11)'};color:${isUn ? '#bdf6df' : 'rgba(230,238,247,0.7)'};border:1px solid ${isUn ? 'rgba(61,107,138,0.6)' : 'rgba(190,205,224,0.22)'};white-space:nowrap">${escapeHtml(stg.label)}</span>` : ''}
         </div>
-        <div data-bf-id="${sid}_desc" style="color:${isUn ? t.stageDescOpen : t.stageDescLock};font-size:15px;line-height:1.6">
+        <div data-bf-id="${sid}_desc" style="color:rgba(255,255,255,${isUn ? '.6' : '.35'});font-size:15px;line-height:1.6">
           ${escapeHtml(stg.description || (isUn ? '' : 'Секція ще не заповнена'))}
         </div>
       </article>`;
@@ -729,14 +661,37 @@ function generatedGameHtml(g) {
   const isVideoBg = heroBg.endsWith('.mp4') || heroBg.endsWith('.webm');
   const heroLogo = escapeHtml(g.hero_logo_url || '');
 
-  // Light or dark page: the admin's explicit choice wins ("light"/"dark"),
-  // otherwise auto-detect from how bright the chosen bg_color is.
-  const themeMode = cleanText(g.theme || '').toLowerCase();
-  const isLight = themeMode === 'light' ? true
-    : themeMode === 'dark' ? false
-    : relLuminance(bgColor) > 0.6;
-  const theme = gameThemeTokens(isLight);
-
+  // Game pages let admins pick an arbitrary bg_color per game (dark navy by
+  // default, but light pastel for e.g. a light-themed game like Nichka).
+  // The template used to hardcode white text/glass-surfaces everywhere,
+  // which is invisible or muddy-grey on a light background. Derive a simple
+  // light/dark flag from relative luminance and pick a matching set of
+  // text/surface tokens so any bg_color renders with readable contrast.
+  function relLuminance(hex) {
+    let h = String(hex || '').replace('#', '').trim();
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return 0;
+    const chan = v => { const c = parseInt(v, 16) / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    return 0.2126 * chan(h.slice(0, 2)) + 0.7152 * chan(h.slice(2, 4)) + 0.0722 * chan(h.slice(4, 6));
+  }
+  const isLight = relLuminance(bgColor) > 0.6;
+  const theme = isLight ? {
+    text1: '#0f172a', text2: 'rgba(15,23,42,.72)', text3: 'rgba(15,23,42,.48)', text4: 'rgba(15,23,42,.32)',
+    surface1: 'rgba(15,23,42,.04)', surface2: 'rgba(15,23,42,.07)',
+    border1: 'rgba(15,23,42,.08)', border2: 'rgba(15,23,42,.14)',
+    heroScrim: 'rgba(255,255,255,.1)', sectionTint: 'rgba(15,23,42,.035)',
+    footerGrad: 'linear-gradient(180deg,transparent,rgba(15,23,42,.06))',
+    shadowSoft: 'rgba(15,23,42,.16)', heroTitleShadow: '0 4px 32px rgba(255,255,255,.85)',
+    heroSubShadow: '0 2px 12px rgba(255,255,255,.7)', footerLogoFilter: 'none',
+  } : {
+    text1: '#ffffff', text2: 'rgba(255,255,255,.65)', text3: 'rgba(255,255,255,.4)', text4: 'rgba(255,255,255,.3)',
+    surface1: 'rgba(255,255,255,.03)', surface2: 'rgba(255,255,255,.06)',
+    border1: 'rgba(255,255,255,.05)', border2: 'rgba(255,255,255,.1)',
+    heroScrim: 'rgba(0,0,0,.3)', sectionTint: 'rgba(0,0,0,.2)',
+    footerGrad: 'linear-gradient(180deg,transparent,rgba(0,0,0,.5))',
+    shadowSoft: 'rgba(0,0,0,.5)', heroTitleShadow: '0 4px 48px rgba(0,0,0,.65)',
+    heroSubShadow: '0 2px 10px rgba(0,0,0,.5)', footerLogoFilter: 'saturate(0) brightness(2)',
+  };
 
   const rawDesc = (g.description || '').trim() || 'Опис гри скоро з\'явиться.';
   const metaDesc = escapeHtml(rawDesc.replace(/\n/g,' ').slice(0, 155));
@@ -1375,9 +1330,9 @@ function syncHtmlTexts(pairs){
 const gAll  = db.prepare('SELECT * FROM games ORDER BY sort_order,id');
 const gOne  = db.prepare('SELECT * FROM games WHERE id=?');
 const gSlug = db.prepare('SELECT * FROM games WHERE slug=?');
-const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,stages,links,box_faces,files,always_visible,author,bg_color,accent_color,theme,hero_bg_url,hero_logo_url,players,age,duration,buy_url,sort_order,created_at,updated_at)
-  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@stages,@links,@box_faces,@files,@always_visible,@author,@bg_color,@accent_color,@theme,@hero_bg_url,@hero_logo_url,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
-const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,stages=@stages,links=@links,box_faces=@box_faces,files=@files,always_visible=@always_visible,author=@author,bg_color=@bg_color,accent_color=@accent_color,theme=@theme,hero_bg_url=@hero_bg_url,hero_logo_url=@hero_logo_url,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
+const gIns  = db.prepare(`INSERT INTO games(slug,title,subtitle,description,status,cover_url,gallery,stages,links,box_faces,files,always_visible,author,bg_color,accent_color,hero_bg_url,hero_logo_url,players,age,duration,buy_url,sort_order,created_at,updated_at)
+  VALUES(@slug,@title,@subtitle,@description,@status,@cover_url,@gallery,@stages,@links,@box_faces,@files,@always_visible,@author,@bg_color,@accent_color,@hero_bg_url,@hero_logo_url,@players,@age,@duration,@buy_url,@sort_order,@t,@t)`);
+const gUpd  = db.prepare(`UPDATE games SET slug=@slug,title=@title,subtitle=@subtitle,description=@description,status=@status,cover_url=@cover_url,gallery=@gallery,stages=@stages,links=@links,box_faces=@box_faces,files=@files,always_visible=@always_visible,author=@author,bg_color=@bg_color,accent_color=@accent_color,hero_bg_url=@hero_bg_url,hero_logo_url=@hero_logo_url,players=@players,age=@age,duration=@duration,buy_url=@buy_url,sort_order=@sort_order,updated_at=@t WHERE id=@id`);
 const gDel  = db.prepare('DELETE FROM games WHERE id=?');
 const ghIns = db.prepare('INSERT INTO game_history(game_id,ts,snapshot) VALUES(?,?,?)');
 const ghAll = db.prepare('SELECT id,ts FROM game_history WHERE game_id=? ORDER BY ts DESC');
@@ -1416,7 +1371,6 @@ function gameBody(b, ex={}) {
     box_faces:JSON.stringify(box_faces), files:JSON.stringify(files),
     always_visible:(b.always_visible!==undefined?!!b.always_visible:(ex.always_visible==null?true:!!ex.always_visible))?1:0,
     author:cleanText(b.author??ex.author??''), bg_color:cleanText(b.bg_color??ex.bg_color??''), accent_color:cleanText(b.accent_color??ex.accent_color??''),
-    theme:(v => v === 'light' || v === 'dark' ? v : '')(cleanText(b.theme??ex.theme??'').toLowerCase()),
     hero_bg_url:cleanText(b.hero_bg_url??ex.hero_bg_url??''), hero_logo_url:cleanText(b.hero_logo_url??ex.hero_logo_url??''),
     players:cleanText(b.players??ex.players??''), age:cleanText(b.age??ex.age??''), duration:cleanText(b.duration??ex.duration??''), buy_url:sanitizeHref(b.buy_url??ex.buy_url??''),
     sort_order:b.sort_order??ex.sort_order??0, t:Date.now() };

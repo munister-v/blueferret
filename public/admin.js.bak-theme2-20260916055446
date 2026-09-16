@@ -443,15 +443,7 @@ function renderGameEditor(){
 
       <div class="ged-section" style="border-left: 2px solid #009fe3; padding-left: 14px;">
         <h4>Дизайн та оформлення</h4>
-        <div class="field"><label class="flbl">Тема сторінки</label>
-          <select id="g_theme" onchange="updatePreview()">
-            <option value="" ${!g.theme?'selected':''}>Авто (за кольором фону)</option>
-            <option value="light" ${g.theme==='light'?'selected':''}>Світла (темний текст)</option>
-            <option value="dark" ${g.theme==='dark'?'selected':''}>Темна (світлий текст)</option>
-          </select>
-          <div style="font-size:11.5px;color:var(--txt-m);margin-top:6px">Керує кольором тексту, карток і секцій «Файли», «Галерея», «Етапи проєкту». На «Авто» тема визначається яскравістю кольору фону.</div>
-        </div>
-        <div class="row2" style="margin-top:12px">
+        <div class="row2">
           <div class="field"><label class="flbl">Колір фону</label>
             <div style="display:flex;gap:8px">
               <input type="color" id="g_bg_color_sw" value="${esc(g.bg_color||'#070b10')}" oninput="syncColorSwatch('g_bg_color',this.value)" style="width:40px;height:38px;padding:2px;border-radius:8px;cursor:pointer;flex-shrink:0;border:1.5px solid var(--glass-border);background:transparent">
@@ -865,7 +857,6 @@ async function saveGame(){
       box_faces:{front:$('#g_box_front')?.value||'',back:$('#g_box_back')?.value||'',left:$('#g_box_left')?.value||'',right:$('#g_box_right')?.value||'',top:$('#g_box_top')?.value||'',bottom:$('#g_box_bottom')?.value||''},
       always_visible:!!$('#g_always_visible')?.checked,
       author:$('#g_author')?.value, bg_color:$('#g_bg_color')?.value, accent_color:$('#g_accent_color')?.value,
-      theme:$('#g_theme')?.value||'',
       hero_bg_url:$('#g_hero_bg')?.value, hero_logo_url:$('#g_hero_logo')?.value,
       players:$('#g_players')?.value,age:$('#g_age')?.value,duration:$('#g_duration')?.value,
       buy_url:$('#g_buy')?.value,sort_order:+$('#g_sort')?.value||0};

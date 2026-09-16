@@ -216,7 +216,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:va
       </div>
       
       <div class="gp-about-content rv" style="transition-delay:0.1s">
-        <span class="gp-kicker" style="margin-bottom:16px"><%= statusLabel %></span>
+        <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6" style="background:var(--surface-1);color:var(--accent);border:1px solid var(--border-2)"><%= statusLabel %></span>
         <h3 class="gp-stitle" style="font-size:28px">Що за гра?</h3>
         <div style="width:100%;height:1px;background:var(--border-2);margin-bottom:24px"></div>
         <div class="gp-desc"><%- descHtml %></div>
@@ -233,11 +233,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:va
   </div>
 </section>
 
-<%- renderGameFilesHtml(g.files, title, theme) %>
+<%- renderGameFilesHtml(g.files, title) %>
 
-<%- renderGameGalleryHtml(g.gallery, title, theme) %>
+<%- renderGameGalleryHtml(g.gallery, title) %>
 
-<%- renderGameStagesHtml(g.stages, statusRaw, theme) %>
+<%- renderGameStagesHtml(g.stages, statusRaw) %>
 
 </main>
 

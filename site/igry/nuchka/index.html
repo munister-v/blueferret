@@ -22,10 +22,25 @@
 :root {
   --bg-main: #ffffff;
   --accent: #009fe3;
+  --text-1: #0f172a;
+  --text-2: rgba(15,23,42,.72);
+  --text-3: rgba(15,23,42,.48);
+  --text-4: rgba(15,23,42,.32);
+  --surface-1: rgba(15,23,42,.04);
+  --surface-2: rgba(15,23,42,.07);
+  --border-1: rgba(15,23,42,.08);
+  --border-2: rgba(15,23,42,.14);
+  --hero-scrim: rgba(255,255,255,.1);
+  --section-tint: rgba(15,23,42,.035);
+  --footer-grad: linear-gradient(180deg,transparent,rgba(15,23,42,.06));
+  --shadow-soft: rgba(15,23,42,.16);
+  --hero-title-shadow: 0 4px 32px rgba(255,255,255,.85);
+  --hero-sub-shadow: 0 2px 12px rgba(255,255,255,.7);
+  --footer-logo-filter: none;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#fff;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:var(--text-1);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 /* ── HEADER ── */
 .gp-header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:100;background:rgba(0,0,0,.6);border-bottom:1px solid rgba(255,255,255,.05);backdrop-filter:blur(14px)}
 .gp-logo{display:flex;align-items:center;gap:12px;text-decoration:none}
@@ -41,39 +56,39 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 .gp-hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
 .gp-hero-bg{position:absolute;inset:0}
 .gp-hero-bg img, .gp-hero-bg video{width:100%;height:100%;object-fit:cover;object-position:center top}
-.gp-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,var(--bg-main) 0%, transparent 46%, var(--bg-main) 100%), rgba(0,0,0,0.3)}
+.gp-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,var(--bg-main) 0%, transparent 46%, var(--bg-main) 100%), var(--hero-scrim)}
 .gp-hero-body{position:relative;z-index:10;text-align:center;padding:40px 24px;max-width:820px;display:flex;flex-direction:column;align-items:center}
-.gp-kicker{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:99px;padding:8px 20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:var(--accent);margin-bottom:24px;backdrop-filter:blur(10px)}
-.gp-hero-logo{width:88vw;max-width:600px;height:auto;filter:drop-shadow(0 20px 40px rgba(0,0,0,0.5));animation:float 6s ease-in-out infinite}
+.gp-kicker{display:inline-flex;align-items:center;gap:8px;background:var(--surface-1);border:1px solid var(--border-2);border-radius:99px;padding:8px 20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:var(--accent);margin-bottom:24px;backdrop-filter:blur(10px)}
+.gp-hero-logo{width:88vw;max-width:600px;height:auto;filter:drop-shadow(0 20px 40px var(--shadow-soft));animation:float 6s ease-in-out infinite}
 @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
-.gp-hero-title{font-size:clamp(52px,10vw,110px);font-weight:900;line-height:.88;letter-spacing:-.04em;color:#fff;text-shadow:0 4px 48px rgba(0,0,0,.65);margin-bottom:18px}
-.gp-hero-sub{font-size:clamp(16px,2.5vw,21px);color:rgba(255,255,255,.65);max-width:560px;margin:24px auto 32px;line-height:1.5;text-shadow:0 2px 10px rgba(0,0,0,.5)}
-.gp-hero-scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,.5);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;cursor:pointer}
+.gp-hero-title{font-size:clamp(52px,10vw,110px);font-weight:900;line-height:.88;letter-spacing:-.04em;color:var(--text-1);text-shadow:var(--hero-title-shadow);margin-bottom:18px}
+.gp-hero-sub{font-size:clamp(16px,2.5vw,21px);color:var(--text-2);max-width:560px;margin:24px auto 32px;line-height:1.5;text-shadow:var(--hero-sub-shadow)}
+.gp-hero-scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-3);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;cursor:pointer}
 .gp-hero-scroll svg{width:24px;height:24px;animation:gpBounce 2.2s ease-in-out infinite}
 @keyframes gpBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
 /* ── BUTTONS ── */
 .gp-btn-p{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 28px;border-radius:14px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 10px 28px -10px var(--accent);transition:all .2s;text-transform:uppercase;letter-spacing:.05em}
 .gp-btn-p:hover{filter:brightness(1.1);transform:translateY(-2px);box-shadow:0 16px 36px -10px var(--accent)}
-.gp-btn-s{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 24px;border-radius:14px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);font-weight:600;font-size:15px;text-decoration:none;border:1px solid rgba(255,255,255,.1);transition:all .2s}
-.gp-btn-s:hover{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2)}
+.gp-btn-s{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 24px;border-radius:14px;background:var(--surface-2);color:var(--text-2);font-weight:600;font-size:15px;text-decoration:none;border:1px solid var(--border-2);transition:all .2s}
+.gp-btn-s:hover{background:var(--surface-2);color:var(--text-1);border-color:var(--accent)}
 .gp-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
 /* ── SECTIONS ── */
 .gp-section{padding:80px 24px;position:relative}
 .gp-inner{max-width:1024px;margin:0 auto}
-.gp-eyebrow{font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:16px}
-.gp-stitle{font-size:clamp(30px,4vw,48px);font-weight:800;color:rgba(255,255,255,.9);margin-bottom:16px;letter-spacing:-.02em}
+.gp-eyebrow{font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:var(--text-4);margin-bottom:16px}
+.gp-stitle{font-size:clamp(30px,4vw,48px);font-weight:800;color:var(--text-1);margin-bottom:16px;letter-spacing:-.02em}
 /* ── PASSPORT ── */
 .pp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px}
-.pp-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:16px;padding:24px;transition:all .3s ease}
-.pp-card:hover{background:rgba(255,255,255,.06);transform:translateY(-4px);border-color:var(--accent)}
+.pp-card{background:var(--surface-1);border:1px solid var(--border-1);border-radius:16px;padding:24px;transition:all .3s ease}
+.pp-card:hover{background:var(--surface-2);transform:translateY(-4px);border-color:var(--accent)}
 .pp-ico{margin-bottom:12px;color:var(--accent);opacity:.8}
 .pp-ico svg{width:20px;height:20px}
-.pp-label{font-size:11px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px}
-.pp-val{font-size:16px;font-weight:600;color:rgba(255,255,255,.85)}
+.pp-label{font-size:11px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--text-4);margin-bottom:6px}
+.pp-val{font-size:16px;font-weight:600;color:var(--text-1)}
 /* ── ABOUT GRID ── */
 .gp-about-grid{display:grid;grid-template-columns:1.05fr 1.1fr;gap:40px;align-items:center;margin-top:40px}
-.gp-about-visual{--gpbox-box:300px;--gpbox-depth:calc(var(--gpbox-box) * 0.2564);background:radial-gradient(circle at 50% 20%, rgba(255,255,255,0.05) 0%, transparent 60%), rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;display:flex;align-items:center;justify-content:center;min-height:420px;perspective:2100px}
-.gp-3d-box{width:280px;border-radius:12px;box-shadow:0 30px 60px -20px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.1);transition:transform 0.4s cubic-bezier(0.2,0.8,0.2,1);transform:rotateY(-10deg) rotateX(5deg)}
+.gp-about-visual{--gpbox-box:300px;--gpbox-depth:calc(var(--gpbox-box) * 0.2564);background:radial-gradient(circle at 50% 20%, var(--surface-1) 0%, transparent 60%), var(--section-tint);border:1px solid var(--border-1);border-radius:24px;padding:40px;display:flex;align-items:center;justify-content:center;min-height:420px;perspective:2100px}
+.gp-3d-box{width:280px;border-radius:12px;box-shadow:0 30px 60px -20px var(--shadow-soft), 0 0 0 1px var(--border-2);transition:transform 0.4s cubic-bezier(0.2,0.8,0.2,1);transform:rotateY(-10deg) rotateX(5deg)}
 .gp-about-visual:hover .gp-3d-box{transform:rotateY(0deg) rotateX(0deg) scale(1.05)}
 .gp-3d-box img{width:100%;height:auto;border-radius:12px;display:block}
 /* ── Real 3D box (6 uploaded faces) — used instead of .gp-3d-box when a game
@@ -92,19 +107,19 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 .gpbox-face-top,.gpbox-face-bottom{width:var(--gpbox-box);height:var(--gpbox-depth);margin-left:calc(var(--gpbox-box) / -2);margin-top:calc(var(--gpbox-depth) / -2)}
 .gpbox-face-top{transform:rotateX(90deg) translateZ(calc(var(--gpbox-box) / 2))}
 .gpbox-face-bottom{transform:rotateX(-90deg) translateZ(calc(var(--gpbox-box) / 2))}
-.gp-about-content{background:linear-gradient(180deg, rgba(255,255,255,.03) 0%, transparent 100%);border:1px solid rgba(255,255,255,.05);border-radius:24px;padding:40px;box-shadow:0 22px 50px -20px rgba(0,0,0,.5)}
-.gp-desc{font-size:16px;line-height:1.7;color:rgba(255,255,255,.66)}
+.gp-about-content{background:linear-gradient(180deg, var(--surface-1) 0%, transparent 100%);border:1px solid var(--border-1);border-radius:24px;padding:40px;box-shadow:0 22px 50px -20px var(--shadow-soft)}
+.gp-desc{font-size:16px;line-height:1.7;color:var(--text-2)}
 .gp-desc p{margin-bottom:16px}
 .gp-desc p:last-child{margin-bottom:0}
 /* ── FOOTER ── */
-.gp-footer{background:linear-gradient(180deg,transparent,rgba(0,0,0,.5));padding:80px 24px 40px;border-top:1px solid rgba(255,255,255,.05);position:relative;overflow:hidden}
+.gp-footer{background:var(--footer-grad);padding:80px 24px 40px;border-top:1px solid var(--border-1);position:relative;overflow:hidden}
 .gp-footer::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5}
 .gp-footer-inner{max-width:1024px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
 .gp-footer-logo{display:flex;align-items:center;gap:12px}
-.gp-footer-logo img{width:36px;height:36px;object-fit:contain;opacity:.8;filter:saturate(0) brightness(2)}
-.gp-footer-brand{font-weight:800;font-size:18px;color:rgba(255,255,255,.9)}
-.gp-footer-desc{color:rgba(255,255,255,.4);font-size:14px;max-width:300px;line-height:1.6}
-.gp-footer-copy{color:rgba(255,255,255,.3);font-size:13px;margin-top:20px}
+.gp-footer-logo img{width:36px;height:36px;object-fit:contain;opacity:.8;filter:var(--footer-logo-filter)}
+.gp-footer-brand{font-weight:800;font-size:18px;color:var(--text-1)}
+.gp-footer-desc{color:var(--text-3);font-size:14px;max-width:300px;line-height:1.6}
+.gp-footer-copy{color:var(--text-4);font-size:13px;margin-top:20px}
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
   .gp-about-grid{grid-template-columns:1fr;gap:24px}
@@ -162,12 +177,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
   </div>
 </section>
 
-<section class="gp-section" id="passport" style="background:rgba(0,0,0,0.2)">
+<section class="gp-section" id="passport" style="background:var(--section-tint)">
   <div class="gp-inner">
     <div class="rv text-center" style="text-align:center;margin-bottom:40px">
       <p class="gp-eyebrow">Про гру</p>
       <h2 class="gp-stitle">Паспорт пригоди</h2>
-      <p style="color:rgba(255,255,255,0.4);max-width:600px;margin:0 auto">Коротко про формат гри, щоб одразу зрозуміти, чого чекати.</p>
+      <p style="color:var(--text-3);max-width:600px;margin:0 auto">Коротко про формат гри, щоб одразу зрозуміти, чого чекати.</p>
     </div>
     
     <div class="pp-grid rv"><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></div><div class="pp-label">ГРАВЦІ</div><div class="pp-val" data-bf-id="bf_g_players">2</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div class="pp-label">ТРИВАЛІСТЬ</div><div class="pp-val" data-bf-id="bf_g_duration">~10 хв</div></div><div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-baby"><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M15 12h.01"/><path d="M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/><path d="M9 12h.01"/></svg></div><div class="pp-label">ВІК</div><div class="pp-val" data-bf-id="bf_g_age">8+</div></div></div>
@@ -191,9 +206,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
       </div>
       
       <div class="gp-about-content rv" style="transition-delay:0.1s">
-        <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6" style="background:rgba(255,255,255,0.05);color:var(--accent);border:1px solid rgba(255,255,255,0.1)">Чернетка</span>
+        <span class="gp-kicker" style="margin-bottom:16px">Чернетка</span>
         <h3 class="gp-stitle" style="font-size:28px">Що за гра?</h3>
-        <div style="width:100%;height:1px;background:rgba(255,255,255,0.1);margin-bottom:24px"></div>
+        <div style="width:100%;height:1px;background:var(--border-2);margin-bottom:24px"></div>
         <div class="gp-desc"><p data-bf-id="bf_g_desc0">Стратегічна та динамічна дуель у буденних декораціях. Станьте тхором, який ховає корм по квартирі, або господарем, що намагається знайти всі схованки!</p></div>
         
         <div class="gp-actions">
@@ -210,67 +225,67 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-main);color:#f
 
 
 
-<section data-bf-stages="true" style="background-color:rgb(9,13,19);padding:72px 24px">
+<section data-bf-stages="true" style="background-color:#f4f7fa;padding:72px 24px">
   <div style="max-width:880px;margin:0 auto">
     <div style="margin-bottom:32px">
-      <p data-bf-id="bf_stg_eyebrow" style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.35);margin:0 0 12px">Прогрес</p>
-      <h2 data-bf-id="bf_stg_heading" style="font-size:clamp(26px,4vw,40px);font-weight:800;color:rgba(255,255,255,.92);margin:0 0 12px;letter-spacing:-.02em">Етапи проєкту</h2>
-      <p data-bf-id="bf_stg_subtitle" style="color:rgba(255,255,255,.45);font-size:15px;margin:0">Стан запуску кожного етапу.</p>
+      <p data-bf-id="bf_stg_eyebrow" style="font-size:12px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(15,23,42,.45);margin:0 0 12px">Прогрес</p>
+      <h2 data-bf-id="bf_stg_heading" style="font-size:clamp(26px,4vw,40px);font-weight:800;color:#0f172a;margin:0 0 12px;letter-spacing:-.02em">Етапи проєкту</h2>
+      <p data-bf-id="bf_stg_subtitle" style="color:rgba(15,23,42,.55);font-size:15px;margin:0">Стан запуску кожного етапу.</p>
     </div>
     <div style="display:grid;gap:20px">
-      <article style="background:linear-gradient(135deg, rgba(61,107,138,0.22) 0%, rgb(11,17,24) 48%);border:1px solid rgb(22,34,48);border-radius:24px;padding:24px;position:relative;overflow:hidden">
+      <article style="background:linear-gradient(135deg, rgba(0,159,227,0.12) 0%, #ffffff 48%);border:1px solid #cfdce8;border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:16px">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="bf_stg0_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.23);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(189,246,223,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+            <span data-bf-id="bf_stg0_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(0,159,227,0.14);border:1px solid rgba(0,159,227,0.45);flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(11,111,156,.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
             </span>
-            <h3 data-bf-id="bf_stg0_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,.9);margin:0;min-width:0;overflow-wrap:break-word">Анонс</h3>
+            <h3 data-bf-id="bf_stg0_title" style="font-size:22px;font-weight:600;color:#0f172a;margin:0;min-width:0;overflow-wrap:break-word">Анонс</h3>
           </div>
-          <span data-bf-id="bf_stg0_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(61,107,138,0.26);color:#bdf6df;border:1px solid rgba(61,107,138,0.6);white-space:nowrap">ВІДКРИТО</span>
+          <span data-bf-id="bf_stg0_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(0,159,227,0.12);color:#0b6f9c;border:1px solid rgba(0,159,227,0.45);white-space:nowrap">ВІДКРИТО</span>
         </div>
-        <div data-bf-id="bf_stg0_desc" style="color:rgba(255,255,255,.6);font-size:15px;line-height:1.6">
+        <div data-bf-id="bf_stg0_desc" style="color:rgba(15,23,42,.7);font-size:15px;line-height:1.6">
           Перша гра видавництва Blue Ferret. Затишна дуель, яка вже скоро опиниться на вашому столі!
         </div>
       </article>
-      <article style="background:linear-gradient(135deg, rgb(9,13,19) 0%, rgb(12,18,26) 100%);border:1px solid rgb(15,23,33);border-radius:24px;padding:24px;position:relative;overflow:hidden">
+      <article style="background:linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%);border:1px solid #e5ebf2;border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:16px">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="bf_stg1_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.14);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span data-bf-id="bf_stg1_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(15,23,42,0.05);border:1px solid rgba(0,159,227,0.45);flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(15,23,42,.45)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </span>
-            <h3 data-bf-id="bf_stg1_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,.55);margin:0;min-width:0;overflow-wrap:break-word">Передзамовлення</h3>
+            <h3 data-bf-id="bf_stg1_title" style="font-size:22px;font-weight:600;color:rgba(15,23,42,.5);margin:0;min-width:0;overflow-wrap:break-word">Передзамовлення</h3>
           </div>
-          <span data-bf-id="bf_stg1_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(216,226,240,0.11);color:rgba(230,238,247,0.7);border:1px solid rgba(190,205,224,0.22);white-space:nowrap">СКОРО</span>
+          <span data-bf-id="bf_stg1_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(15,23,42,0.05);color:rgba(15,23,42,.5);border:1px solid rgba(15,23,42,0.12);white-space:nowrap">СКОРО</span>
         </div>
-        <div data-bf-id="bf_stg1_desc" style="color:rgba(255,255,255,.35);font-size:15px;line-height:1.6">
+        <div data-bf-id="bf_stg1_desc" style="color:rgba(15,23,42,.4);font-size:15px;line-height:1.6">
           Секція ще не заповнена
         </div>
       </article>
-      <article style="background:linear-gradient(135deg, rgb(9,13,19) 0%, rgb(12,18,26) 100%);border:1px solid rgb(15,23,33);border-radius:24px;padding:24px;position:relative;overflow:hidden">
+      <article style="background:linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%);border:1px solid #e5ebf2;border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:16px">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="bf_stg2_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.14);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span data-bf-id="bf_stg2_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(15,23,42,0.05);border:1px solid rgba(0,159,227,0.45);flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(15,23,42,.45)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </span>
-            <h3 data-bf-id="bf_stg2_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,.55);margin:0;min-width:0;overflow-wrap:break-word">Виробництво</h3>
+            <h3 data-bf-id="bf_stg2_title" style="font-size:22px;font-weight:600;color:rgba(15,23,42,.5);margin:0;min-width:0;overflow-wrap:break-word">Виробництво</h3>
           </div>
-          <span data-bf-id="bf_stg2_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(216,226,240,0.11);color:rgba(230,238,247,0.7);border:1px solid rgba(190,205,224,0.22);white-space:nowrap">СКОРО</span>
+          <span data-bf-id="bf_stg2_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(15,23,42,0.05);color:rgba(15,23,42,.5);border:1px solid rgba(15,23,42,0.12);white-space:nowrap">СКОРО</span>
         </div>
-        <div data-bf-id="bf_stg2_desc" style="color:rgba(255,255,255,.35);font-size:15px;line-height:1.6">
+        <div data-bf-id="bf_stg2_desc" style="color:rgba(15,23,42,.4);font-size:15px;line-height:1.6">
           Секція ще не заповнена
         </div>
       </article>
-      <article style="background:linear-gradient(135deg, rgb(9,13,19) 0%, rgb(12,18,26) 100%);border:1px solid rgb(15,23,33);border-radius:24px;padding:24px;position:relative;overflow:hidden">
+      <article style="background:linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%);border:1px solid #e5ebf2;border-radius:24px;padding:24px;position:relative;overflow:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:16px">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <span data-bf-id="bf_stg3_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(61,107,138,0.14);border:1px solid rgba(61,107,138,0.55);flex-shrink:0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(230,238,247,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span data-bf-id="bf_stg3_icon" style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:50%;background:rgba(15,23,42,0.05);border:1px solid rgba(0,159,227,0.45);flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(15,23,42,.45)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </span>
-            <h3 data-bf-id="bf_stg3_title" style="font-size:22px;font-weight:600;color:rgba(255,255,255,.55);margin:0;min-width:0;overflow-wrap:break-word">У вільному продажі</h3>
+            <h3 data-bf-id="bf_stg3_title" style="font-size:22px;font-weight:600;color:rgba(15,23,42,.5);margin:0;min-width:0;overflow-wrap:break-word">У вільному продажі</h3>
           </div>
-          <span data-bf-id="bf_stg3_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(216,226,240,0.11);color:rgba(230,238,247,0.7);border:1px solid rgba(190,205,224,0.22);white-space:nowrap">СКОРО</span>
+          <span data-bf-id="bf_stg3_label" style="font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;border-radius:8px;background:rgba(15,23,42,0.05);color:rgba(15,23,42,.5);border:1px solid rgba(15,23,42,0.12);white-space:nowrap">СКОРО</span>
         </div>
-        <div data-bf-id="bf_stg3_desc" style="color:rgba(255,255,255,.35);font-size:15px;line-height:1.6">
+        <div data-bf-id="bf_stg3_desc" style="color:rgba(15,23,42,.4);font-size:15px;line-height:1.6">
           Секція ще не заповнена
         </div>
       </article></div></div></section>
