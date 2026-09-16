@@ -406,9 +406,6 @@ function gameThemeTokens(isLight) {
     fileBandBg: 'rgba(15,23,42,.035)', fileCardBg: 'rgba(15,23,42,.03)', fileCardHover: 'rgba(15,23,42,.06)',
     fileCardBorder: 'rgba(15,23,42,.1)', fileIconBg: 'rgba(15,23,42,.06)',
     fileLabel: '#0f172a', fileArrow: 'rgba(15,23,42,.4)',
-    headerBg: 'rgba(255,255,255,.92)', headerBorder: 'rgba(15,23,42,.08)', headerShadow: '0 1px 20px -8px rgba(15,23,42,.1)',
-    headerLogo: '#0f172a', headerSub: 'rgba(15,23,42,.45)',
-    headerNav: 'rgba(15,23,42,.55)', headerNavHover: '#0f172a', headerNavHoverBg: 'rgba(15,23,42,.05)', headerActiveBg: 'rgba(15,23,42,.08)',
   } : {
     isLight: false,
     text1: '#ffffff', text2: 'rgba(255,255,255,.65)', text3: 'rgba(255,255,255,.4)', text4: 'rgba(255,255,255,.3)',
@@ -436,9 +433,6 @@ function gameThemeTokens(isLight) {
     fileBandBg: 'rgba(0,0,0,0.2)', fileCardBg: 'rgba(255,255,255,.03)', fileCardHover: 'rgba(255,255,255,.06)',
     fileCardBorder: 'rgba(255,255,255,.08)', fileIconBg: 'rgba(255,255,255,.06)',
     fileLabel: 'rgba(255,255,255,.88)', fileArrow: 'rgba(255,255,255,.35)',
-    headerBg: 'rgba(0,0,0,.6)', headerBorder: 'rgba(255,255,255,.05)', headerShadow: 'none',
-    headerLogo: '#ffffff', headerSub: '#94a3b8',
-    headerNav: '#94a3b8', headerNavHover: '#ffffff', headerNavHoverBg: 'rgba(255,255,255,.09)', headerActiveBg: 'rgba(255,255,255,.12)',
   };
 }
 function renderGameFilesHtml(files, title, t) {

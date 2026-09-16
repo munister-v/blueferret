@@ -406,9 +406,6 @@ function gameThemeTokens(isLight) {
     fileBandBg: 'rgba(15,23,42,.035)', fileCardBg: 'rgba(15,23,42,.03)', fileCardHover: 'rgba(15,23,42,.06)',
     fileCardBorder: 'rgba(15,23,42,.1)', fileIconBg: 'rgba(15,23,42,.06)',
     fileLabel: '#0f172a', fileArrow: 'rgba(15,23,42,.4)',
-    headerBg: 'rgba(255,255,255,.92)', headerBorder: 'rgba(15,23,42,.08)', headerShadow: '0 1px 20px -8px rgba(15,23,42,.1)',
-    headerLogo: '#0f172a', headerSub: 'rgba(15,23,42,.45)',
-    headerNav: 'rgba(15,23,42,.55)', headerNavHover: '#0f172a', headerNavHoverBg: 'rgba(15,23,42,.05)', headerActiveBg: 'rgba(15,23,42,.08)',
   } : {
     isLight: false,
     text1: '#ffffff', text2: 'rgba(255,255,255,.65)', text3: 'rgba(255,255,255,.4)', text4: 'rgba(255,255,255,.3)',
@@ -436,9 +433,6 @@ function gameThemeTokens(isLight) {
     fileBandBg: 'rgba(0,0,0,0.2)', fileCardBg: 'rgba(255,255,255,.03)', fileCardHover: 'rgba(255,255,255,.06)',
     fileCardBorder: 'rgba(255,255,255,.08)', fileIconBg: 'rgba(255,255,255,.06)',
     fileLabel: 'rgba(255,255,255,.88)', fileArrow: 'rgba(255,255,255,.35)',
-    headerBg: 'rgba(0,0,0,.6)', headerBorder: 'rgba(255,255,255,.05)', headerShadow: 'none',
-    headerLogo: '#ffffff', headerSub: '#94a3b8',
-    headerNav: '#94a3b8', headerNavHover: '#ffffff', headerNavHoverBg: 'rgba(255,255,255,.09)', headerActiveBg: 'rgba(255,255,255,.12)',
   };
 }
 function renderGameFilesHtml(files, title, t) {
@@ -764,17 +758,6 @@ function generatedGameHtml(g) {
     author && `<div class="pp-card"><div class="pp-ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-building"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg></div><div class="pp-label">ВИДАВЕЦЬ</div><div class="pp-val" data-bf-id="bf_g_author">${author}</div></div>`,
   ].filter(Boolean).join('');
 
-  const stageList = Array.isArray(g.stages) ? g.stages.filter(s => s && s.title) : [];
-  const stagesOpen = stageList.filter(s => s.status === 'unlocked').length;
-  const stageProgress = {
-    total: stageList.length,
-    open: stagesOpen,
-    pct: stageList.length ? Math.round(stagesOpen / stageList.length * 100) : 0,
-    currentTitle: escapeHtml(
-      (stageList.filter(s => s.status === 'unlocked').slice(-1)[0] || {}).title || statusLabel
-    ),
-  };
-
   const boxFacesSrc = g.box_faces || {};
   const boxFaces = {};
   for (const k of BOX_FACE_KEYS) boxFaces[k] = escapeHtml(boxFacesSrc[k] || '');
@@ -784,7 +767,7 @@ function generatedGameHtml(g) {
   return ejs.render(gameTpl, {
     g, title, metaDesc, escapeHtml, coverAbs, bgColor, accentColor, theme,
     isVideoBg, heroBg, heroLogo, statusLabel, subtitle, buy,
-    passportCards, cover, descHtml, year, stageProgress,
+    passportCards, cover, descHtml, year,
     renderGameGalleryHtml, renderGameStagesHtml, renderGameFilesHtml, statusRaw,
     boxFaces, boxFacesReady
   });
