@@ -872,15 +872,7 @@ function syncGamesChunkVisibility() {
 function syncGamesNavVisibility() {
   const root = path.join(SITE_ROOT, '_next', 'static', 'chunks');
   const condRe = /hidden:(?:"[^"]*"!==e\.slug|!\[[^\]]*\]\.includes\(e\.slug\))/;
-  // The dropdown maps over a game list frozen into the bundle at migration
-  // time (trymaysia/druha-gra/tretya-gra), so a game created later (nuchka)
-  // never appeared no matter its status. Swap that source for the DB list —
-  // same order and same status filter as the catalog page.
-  const navRe = /\.\.\.(?:\w+\.A|\[[^\]]*\])\.map\(e=>\(\{href:`\/igry\/\$\{e\.slug\}`/;
-  const navGames = gAll.all().filter(r => !['archived','hidden','draft'].includes(r.status));
-  const navList = JSON.stringify(navGames.map(r => ({ slug: r.slug, name: cleanText(r.title || r.slug).replace(/[\[\]]/g, '') })));
-  const newNav = '...' + navList + '.map(e=>({href:`/igry/${e.slug}`';
-  const visibleSlugs = navGames.filter(r => (r.always_visible==null?1:r.always_visible)).map(r => r.slug);
+  const visibleSlugs = gAll.all().filter(r => (r.always_visible==null?1:r.always_visible)).map(r => r.slug);
   const newCond = `hidden:!${JSON.stringify(visibleSlugs)}.includes(e.slug)`;
   const stack = [root];
   while (stack.length) {
@@ -891,9 +883,9 @@ function syncGamesNavVisibility() {
       if (st.isDirectory()) { stack.push(full); continue; }
       if (!it.endsWith('.js')) continue;
       let content; try { content = fs.readFileSync(full, 'utf8'); } catch { continue; }
-      if (!condRe.test(content) || !navRe.test(content)) continue;
-      if (content.match(condRe)[0] === newCond && content.match(navRe)[0] === newNav) continue;
-      content = content.replace(condRe, () => newCond).replace(navRe, () => newNav);
+      if (!condRe.test(content)) continue;
+      if (content.match(condRe)[0] === newCond) continue;
+      content = content.replace(condRe, newCond);
       try { assertValidJs(content, it); }
       catch (e) { audit('system', 'chunk_sync_refused', { file: it, error: e.message }); continue; }
       const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
