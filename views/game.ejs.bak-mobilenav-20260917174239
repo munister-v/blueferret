@@ -68,10 +68,7 @@ body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg-main);colo
 .gp-nav a{color:var(--header-nav);text-decoration:none;font-weight:500;font-size:14px;padding:8px 14px;border-radius:10px;transition:color .2s,background .2s}
 .gp-nav a:hover{color:var(--header-nav-hover);background:var(--header-nav-hover-bg)}
 .gp-nav a.active{color:var(--header-nav-hover);font-weight:700;background:var(--header-active-bg)}
-/* Phones: the nav used to be display:none with no replacement, leaving the
-   logo as the only way off the page. Three links fit if the wordmark goes. */
-@media(max-width:768px){.gp-header{padding:0 12px}.gp-logo>div{display:none}.gp-nav{gap:2px}.gp-nav a{font-size:13px;padding:8px 10px;white-space:nowrap}}
-@media(max-width:340px){.gp-nav a{font-size:12px;padding:8px 7px}}
+@media(max-width:768px){.gp-nav{display:none}}
 /* ── HERO ── */
 .gp-hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
 .gp-hero-bg{position:absolute;inset:0}

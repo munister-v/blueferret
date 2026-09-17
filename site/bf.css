@@ -1011,39 +1011,14 @@ html.bf-box-manual main .cursor-grab {
   animation: none !important;
 }
 
-/* -- Catalog cards: one look for every game ---------------------------------
-   The polish above was written per-slug for trymaysia only, so any game added
-   later (nuchka) fell back to the raw bold/4:3 utility markup. Same box ratio,
-   typography, spacing and arrow button for all cards; only trymaysia keeps its
-   navy backdrop + contain-fit box art. */
-main [data-bf-games-grid] > a > div:first-child {
-  aspect-ratio: 16 / 9 !important;
-  min-height: 170px !important;
-  height: auto !important;
+/* -- Catalog cards: equal image boxes --------------------------------------
+   Cards stretch to the tallest one in the row; without this the image box of
+   the card with the longer description shrank (flex-shrink) below 16:10. */
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:first-child {
+  flex: 0 0 auto !important;
 }
-main [data-bf-games-grid] > a > div:nth-child(2) {
-  padding: 26px 22px 22px !important;
-}
-main [data-bf-games-grid] > a h2 {
+html.bf-games-catalog main [data-bf-games-grid="true"] [data-bf-id^="bf_cat_"][data-bf-id$="_title"] {
   font-family: inherit !important;
   font-weight: 400 !important;
-  letter-spacing: -0.015em !important;
-  color: #132238 !important;
-  margin-bottom: 14px !important;
-}
-main [data-bf-games-grid] > a p {
-  color: #41536b !important;
-  line-height: 1.72 !important;
-}
-main [data-bf-games-grid] > a > div:first-child [aria-hidden="true"] {
-  width: 44px !important;
-  height: 44px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 14px !important;
-  box-shadow: 0 10px 22px -14px rgba(15,23,42,.55) !important;
-}
-@media (max-width: 640px) {
-  main [data-bf-games-grid] > a > div:first-child { min-height: 156px !important; }
+  letter-spacing: -0.02em !important;
 }
