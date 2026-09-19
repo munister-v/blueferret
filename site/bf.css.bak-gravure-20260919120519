@@ -1,0 +1,1024 @@
+/* ===== Blue Ferret Site Enhancements ===== */
+
+/* ── Games catalog readability overrides ── */
+[data-bf-static-igry],
+[data-bf-static-igry] h1,
+[data-bf-static-igry] h2,
+[data-bf-static-igry] h3,
+[data-bf-static-igry] p,
+[data-bf-static-igry] a,
+[data-bf-static-igry] span,
+[data-bf-static-igry] button {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+[data-bf-static-igry] .heading-2 {
+  font-weight: 850 !important;
+  letter-spacing: -0.035em !important;
+  color: #102033 !important;
+}
+
+main .heading-2,
+main h2.heading-2,
+main .heading-3,
+main h1[class*="heading"],
+main h2[class*="heading"],
+main h1[class*="tracking-tight"] {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+[data-bf-static-igry] a[href="/igry/trymaysia/"] > div:first-child img,
+[data-bf-static-igry] a[href$="/igry/trymaysia/"] > div:first-child img,
+main a[href="/igry/trymaysia/"] > div:first-child img,
+main a[href$="/igry/trymaysia/"] > div:first-child img {
+  object-fit: contain !important;
+  object-position: center !important;
+  padding: 10px 12px 0 !important;
+  background: #263d57 !important;
+}
+
+[data-bf-static-igry] a[href="/igry/trymaysia/"] > div:first-child,
+[data-bf-static-igry] a[href$="/igry/trymaysia/"] > div:first-child,
+main a[href="/igry/trymaysia/"] > div:first-child,
+main a[href$="/igry/trymaysia/"] > div:first-child {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,.16), transparent 34%),
+    #263d57 !important;
+}
+
+main a[href^="/igry/"] h2,
+main a[href^="/igry/"] p,
+main a[href^="/igry/"] span {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+/* ── Smooth scroll ── */
+html { scroll-behavior: smooth; }
+* { -webkit-tap-highlight-color: transparent; }
+
+/* ── Mobile menu improvements ── */
+#mobile-site-nav {
+  transition: box-shadow .3s ease !important;
+}
+#mobile-site-nav::before {
+  content: '';
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--bf-accent) 40%, var(--kik-accent) 70%, transparent);
+  margin-bottom: 8px;
+}
+/* Enhanced nav links */
+#mobile-site-nav a {
+  position: relative;
+  overflow: hidden;
+  transition: all .2s cubic-bezier(.4,0,.2,1) !important;
+}
+#mobile-site-nav a::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--bf-accent);
+  transform: scaleY(0);
+  transition: transform .2s cubic-bezier(.4,0,.2,1);
+}
+#mobile-site-nav a:hover::after,
+#mobile-site-nav a[class*="bg-[var(--bf-accent)]"]::after { transform: scaleY(1); }
+/* Section dividers */
+#mobile-site-nav > div > [class*="px-4 py-2"] {
+  position: relative;
+  letter-spacing: .12em;
+}
+#mobile-site-nav > div > [class*="px-4 py-2"]::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  background: var(--bf-accent);
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 2px;
+  opacity: .6;
+}
+/* Overlay backdrop enhancement */
+[class*="fixed inset-0 z-40"] {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* ── Header scroll shadow ── */
+header {
+  transition: box-shadow .3s ease, background .3s ease !important;
+}
+header.scrolled {
+  box-shadow: 0 4px 30px -8px rgba(0,0,0,.15) !important;
+}
+
+/* ── Page transitions ── */
+main { animation: pageFadeIn .4s ease both; }
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Scroll-triggered animations ── */
+.bf-reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity .65s cubic-bezier(.22,1,.36,1), transform .65s cubic-bezier(.22,1,.36,1);
+}
+.bf-reveal.visible { opacity: 1; transform: translateY(0); }
+.bf-reveal-left  { opacity: 0; transform: translateX(-32px); transition: opacity .6s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.22,1,.36,1); }
+.bf-reveal-left.visible { opacity: 1; transform: translateX(0); }
+.bf-reveal-scale { opacity: 0; transform: scale(.94); transition: opacity .55s ease, transform .55s cubic-bezier(.22,1,.36,1); }
+.bf-reveal-scale.visible { opacity: 1; transform: scale(1); }
+
+/* Stagger delays for grid children */
+.bf-stagger > *:nth-child(1)  { transition-delay: 0ms !important; }
+.bf-stagger > *:nth-child(2)  { transition-delay: 80ms !important; }
+.bf-stagger > *:nth-child(3)  { transition-delay: 160ms !important; }
+.bf-stagger > *:nth-child(4)  { transition-delay: 240ms !important; }
+.bf-stagger > *:nth-child(5)  { transition-delay: 320ms !important; }
+.bf-stagger > *:nth-child(6)  { transition-delay: 400ms !important; }
+
+/* ── Card hover polish ── */
+[class*="rounded-2xl"][class*="border"] {
+  transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, border-color .2s ease !important;
+}
+
+/* ── Footer enhancements ── */
+footer .bf-reveal { opacity: 0; transform: translateY(24px); }
+footer .bf-reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* Footer social icon hover */
+footer a[href*="instagram"],
+footer a[href*="facebook"],
+footer a[href*="t.me"] {
+  transition: transform .2s ease, opacity .2s ease !important;
+}
+footer a[href*="instagram"]:hover,
+footer a[href*="facebook"]:hover,
+footer a[href*="t.me"]:hover {
+  transform: translateY(-3px) scale(1.08) !important;
+  opacity: 1 !important;
+}
+
+/* Footer nav link underline animation */
+footer nav a, footer ul a {
+  position: relative;
+  display: inline-block;
+}
+footer nav a::after, footer ul a::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: -2px;
+  width: 0; height: 1.5px;
+  background: var(--bf-accent);
+  transition: width .25s ease;
+  border-radius: 2px;
+}
+footer nav a:hover::after, footer ul a:hover::after { width: 100%; }
+
+/* ── Button ripple effect ── */
+.bf-ripple { position: relative; overflow: hidden; }
+.bf-ripple::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle, rgba(255,255,255,.3) 0%, transparent 60%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform .4s ease, opacity .4s ease;
+}
+.bf-ripple:active::after { transform: scale(2); opacity: 1; transition: 0s; }
+
+/* ── Scroll progress bar ── */
+#bf-scroll-progress {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, var(--bf-accent), var(--kik-accent));
+  transform-origin: left;
+  transform: scaleX(0);
+  z-index: 999;
+  transition: transform .1s linear;
+  pointer-events: none;
+}
+
+/* ── Back to top button ── */
+#bf-back-top {
+  position: fixed;
+  bottom: 24px; right: 20px;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: var(--bf-accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 20px rgba(0,159,227,.4);
+  opacity: 0;
+  transform: translateY(12px) scale(.9);
+  transition: opacity .3s ease, transform .3s cubic-bezier(.22,1,.36,1);
+  z-index: 90;
+  pointer-events: none;
+}
+#bf-back-top.show {
+  opacity: 1; transform: none; pointer-events: auto;
+}
+#bf-back-top:hover { background: #0077b3; transform: translateY(-2px); }
+
+/* ── Hydration-safe mobile menu fallback ── */
+html.bf-mobile-menu-open,
+html.bf-mobile-menu-open body {
+  overflow: hidden;
+}
+
+#bf-mobile-menu-fallback[hidden] {
+  display: none !important;
+}
+
+#bf-mobile-menu-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+#bf-mobile-menu-fallback.is-open {
+  pointer-events: auto;
+}
+
+.bf-mm-backdrop {
+  position: absolute;
+  inset: 0;
+  display: block !important;
+  width: 100%;
+  min-height: 100%;
+  padding: 0;
+  border: 0;
+  background: rgba(15, 23, 42, .42);
+  opacity: 0;
+  transition: opacity .22s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#bf-mobile-menu-fallback.is-open .bf-mm-backdrop {
+  opacity: 1;
+}
+
+.bf-mm-panel {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top));
+  right: 10px;
+  left: 10px;
+  max-height: calc(100dvh - 20px - env(safe-area-inset-top));
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, .08);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(0,159,227,.13), transparent 36%),
+    #fff;
+  box-shadow: 0 28px 80px -36px rgba(15, 23, 42, .48);
+  opacity: 0;
+  transform: translateY(-14px) scale(.98);
+  transition: opacity .22s ease, transform .22s cubic-bezier(.22,1,.36,1);
+}
+
+#bf-mobile-menu-fallback.is-open .bf-mm-panel {
+  opacity: 1;
+  transform: none;
+}
+
+.bf-mm-head {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 2px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, .08);
+}
+
+.bf-mm-head strong {
+  color: #0f172a;
+  font-size: 20px;
+  letter-spacing: -.03em;
+}
+
+.bf-mm-head button {
+  display: inline-flex !important;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 16px;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.bf-mm-links {
+  display: grid;
+  gap: 8px;
+  padding: 16px 0;
+}
+
+.bf-mm-links a,
+.bf-mm-kik {
+  display: flex !important;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -.025em;
+  text-decoration: none;
+}
+
+.bf-mm-links a::after {
+  content: "→";
+  color: var(--bf-accent);
+}
+
+.bf-mm-kik {
+  display: grid !important;
+  align-items: start;
+  min-height: 96px;
+  margin-top: 4px;
+  background: linear-gradient(135deg, rgba(75,178,114,.14), rgba(0,159,227,.1));
+}
+
+.bf-mm-kik span,
+.bf-mm-kik small {
+  display: block;
+}
+
+.bf-mm-kik small {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* ── Image lazy load fade ── */
+img[loading="lazy"] {
+  transition: opacity .4s ease;
+}
+img[loading="lazy"]:not([src]) { opacity: 0; }
+
+/* ── Focus styles ── */
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--bf-accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ── Mobile improvements ── */
+@media (max-width: 768px) {
+  /* Prevent horizontal scroll */
+  body { overflow-x: hidden; }
+
+  /* Touch-friendly tap targets.
+     NB: never set `display` on the bare `a, button` selector here. bf.css is
+     unlayered while Tailwind utilities live in @layer utilities, so an
+     unlayered `display:inline-flex` beats even `.block` and turns every
+     block-level card link into a shrink-to-fit box — which then sizes its
+     grid `auto` column to max-content and overflows the viewport on mobile.
+     The targeted nav/CTA re-apply further down handles real tap targets. */
+  a, button { min-height: 44px; }
+
+  /* Better text rendering */
+  h1, h2, h3 { text-wrap: balance; }
+}
+
+/* ── Selection color ── */
+::selection { background: rgba(0,159,227,.2); color: inherit; }
+
+/* ══════════════════════════════════════════
+   Audit fixes — 2026-07-10
+   ══════════════════════════════════════════ */
+
+/* ── #5: Sticky header on ALL viewports ── */
+header {
+  position: sticky !important;
+  top: 0 !important;
+}
+
+/* ── #8: Hero 100dvh instead of 100vh ── */
+section[class*="min-h-[100vh]"] {
+  min-height: 100dvh !important;
+  min-height: 100svh !important;
+}
+
+/* ── #7: Don't force min-height on inline links/buttons globally ── */
+@media (max-width: 768px) {
+  /* Only apply min-height to interactive nav/CTA elements, not all links */
+  a, button { min-height: auto; }
+  nav a, nav button,
+  [class*="bf-mm"] a,
+  [class*="bf-mm"] button,
+  a[class*="rounded-full"],
+  a[class*="rounded-2xl"],
+  button[aria-label] { min-height: 44px; display: inline-flex; align-items: center; }
+
+  /* #10: Bigger tags on small screens */
+  span[class*="rounded-xl"][class*="font-semibold"] {
+    font-size: 13px !important;
+    padding: 8px 14px !important;
+  }
+
+  /* #13: Hide scroll progress bar on mobile (no sticky header context) */
+  #bf-scroll-progress {
+    height: 2px;
+  }
+}
+
+/* ── #26: Respect prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .bf-reveal, .bf-reveal-left, .bf-reveal-scale {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .bf-ripple::after { display: none; }
+  #bf-scroll-progress { display: none; }
+}
+
+/* ── #27: Back-to-top focus ring ── */
+#bf-back-top:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* ── #30: Skip-to-content link ── */
+.bf-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 10000;
+  padding: 12px 24px;
+  background: var(--bf-accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: 0 0 12px 0;
+  white-space: nowrap;
+}
+.bf-skip-link:focus {
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+/* -- Catalog game card visual polish -- */
+[data-bf-games-grid] > a[href*="trymaysia"] {
+  border-color: rgba(0,159,227,.30) !important;
+  box-shadow: 0 16px 42px -34px rgba(15,23,42,.50), inset 0 0 0 1px rgba(255,255,255,.72) !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child {
+  min-height: 170px !important;
+  aspect-ratio: 16 / 9 !important;
+  background:
+    radial-gradient(circle at 52% 8%, rgba(255,255,255,.16), transparent 30%),
+    linear-gradient(135deg, #203a55 0%, #14273b 58%, #0f1b2a 100%) !important;
+  border-bottom: 1px solid rgba(0,159,227,.16) !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child img {
+  object-fit: contain !important;
+  object-position: center !important;
+  padding: 12px 18px 10px !important;
+  transform: scale(.98) !important;
+  filter: saturate(.96) contrast(1.03) !important;
+  background: transparent !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(15,23,42,.04), rgba(15,23,42,.22));
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child + div {
+  padding-top: 28px !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] h2 {
+  font-family: inherit !important;
+  letter-spacing: -0.015em !important;
+  font-weight: 400 !important;
+  color: #132238 !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] p {
+  color: #41536b !important;
+  line-height: 1.72 !important;
+}
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child a,
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child button,
+[data-bf-games-grid] > a[href*="trymaysia"] > div:first-child [class*="rounded"]:has(svg) {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 22px -14px rgba(15,23,42,.55) !important;
+}
+@media (max-width: 640px) {
+  [data-bf-games-grid] > a[href*="trymaysia"] > div:first-child {
+    min-height: 150px !important;
+  }
+  [data-bf-games-grid] > a[href*="trymaysia"] > div:first-child img {
+    padding: 10px 14px 8px !important;
+  }
+}
+
+/* -- Catalog game card hydration-safe fixes -- */
+main a[href="/igry/trymaysia/"] {
+  min-height: 0 !important;
+  border-color: rgba(0,159,227,.34) !important;
+  box-shadow: 0 18px 44px -34px rgba(15,23,42,.52), inset 0 0 0 1px rgba(255,255,255,.76) !important;
+}
+main a[href="/igry/trymaysia/"] > div:first-child {
+  display: block !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 170px !important;
+  flex: 0 0 auto !important;
+  aspect-ratio: 16 / 9 !important;
+  background:
+    radial-gradient(circle at 52% 8%, rgba(255,255,255,.16), transparent 30%),
+    linear-gradient(135deg, #203a55 0%, #14273b 58%, #0f1b2a 100%) !important;
+  border-bottom: 1px solid rgba(0,159,227,.16) !important;
+}
+main a[href="/igry/trymaysia/"] > div:first-child img {
+  object-fit: contain !important;
+  object-position: center !important;
+  padding: 12px 18px 10px !important;
+  transform: scale(.98) !important;
+  filter: saturate(.96) contrast(1.03) !important;
+  background: transparent !important;
+}
+main a[href="/igry/trymaysia/"] > div:nth-child(2) {
+  padding-top: 28px !important;
+}
+main a[href="/igry/trymaysia/"] h2 {
+  font-family: inherit !important;
+  letter-spacing: -0.015em !important;
+  font-weight: 400 !important;
+  color: #132238 !important;
+}
+
+/* Catalogue typography: match the lighter body-copy voice instead of the
+   heavy utility weights captured in the old static build. */
+html.bf-games-catalog main h1.heading-2,
+html.bf-games-catalog main [data-bf-id="bf_cat_trymaysia_title"],
+html.bf-games-catalog main [data-bf-id="bf_cat_druha-gra_title"],
+html.bf-games-catalog main [data-bf-id="bf_cat_tretya-gra_title"] {
+  font-family: inherit !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.02em !important;
+}
+html.bf-games-catalog main p.text-lead,
+html.bf-games-catalog main p.text-lead b,
+html.bf-games-catalog main [data-bf-id="bf_23a70ecb"],
+html.bf-games-catalog main [data-bf-id="bf_f7100a22"],
+html.bf-games-catalog main [data-bf-id="bf_009cee3f"] {
+  font-family: inherit !important;
+  font-weight: 400 !important;
+}
+main a[href="/igry/trymaysia/"] p {
+  color: #41536b !important;
+  line-height: 1.72 !important;
+}
+@media (max-width: 640px) {
+  main a[href="/igry/trymaysia/"] > div:first-child {
+    min-height: 156px !important;
+  }
+  main a[href="/igry/trymaysia/"] > div:first-child img {
+    padding: 10px 14px 8px !important;
+  }
+}
+
+/* -- Catalog card reveal safety -- */
+main a[href^="/igry/"] h2.bf-reveal,
+main a[href^="/igry/"] .bf-reveal {
+  opacity: 1 !important;
+  transform: none !important;
+}
+main a[href="/igry/trymaysia/"] > div:nth-child(2) {
+  padding: 26px 22px 22px !important;
+}
+main a[href="/igry/trymaysia/"] h2 {
+  margin-bottom: 14px !important;
+}
+
+/* -- bf-vertical-rhythm ---------------------------------------------------
+   Every section carried its own large py-* padding, so the gap between two
+   blocks was the SUM of both: 144+144=288px between "Хто ми" and "Те, що ми
+   цінуємо", and 112+192=304px before the closing CTA. That read as empty
+   voids rather than breathing room. One scale for all sections instead, so
+   the distance between blocks is predictable across the whole site.
+   The hero is untouched — it has no py-* class (min-h-[100vh] instead).      */
+main section[class^="py-"],
+main section[class*=" py-"] {
+  padding-top: 88px !important;
+  padding-bottom: 88px !important;
+}
+@media (max-width: 1023px) {
+  main section[class^="py-"],
+  main section[class*=" py-"] {
+    padding-top: 64px !important;
+    padding-bottom: 64px !important;
+  }
+}
+@media (max-width: 639px) {
+  main section[class^="py-"],
+  main section[class*=" py-"] {
+    padding-top: 48px !important;
+    padding-bottom: 48px !important;
+  }
+}
+
+/* -- Refined games catalogue ----------------------------------------------
+   A quieter, editorial surface: fewer decorative effects, one elevation
+   scale and consistent image/content proportions across all game cards. */
+html.bf-games-catalog body,
+html.bf-games-catalog main,
+html.bf-games-catalog main section[data-bf-static-igry="true"] {
+  background: #f7f9fa !important;
+}
+
+html.bf-games-catalog main [data-bf-id="bf_db93ff56"],
+html.bf-games-catalog main [data-bf-id="bf_30c79f5b"],
+html.bf-games-catalog main [data-bf-id="bf_6da04788"] {
+  display: none !important;
+}
+
+html.bf-games-catalog main section[data-bf-static-igry="true"] > div:first-child {
+  padding-top: 72px !important;
+  padding-bottom: 56px !important;
+}
+
+html.bf-games-catalog main section[data-bf-static-igry="true"] > div:first-child > div:last-child {
+  max-width: 760px !important;
+}
+
+html.bf-games-catalog main section[data-bf-static-igry="true"] .badge-gradient {
+  padding: 0 0 14px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html.bf-games-catalog main h1.heading-2 {
+  margin-bottom: 20px !important;
+  color: #172333 !important;
+  font-size: clamp(2.25rem, 5vw, 4rem) !important;
+  line-height: 1.08 !important;
+}
+
+html.bf-games-catalog main p.text-lead {
+  max-width: 660px !important;
+  color: #526274 !important;
+  font-size: clamp(1rem, 1.6vw, 1.18rem) !important;
+  line-height: 1.72 !important;
+}
+
+html.bf-games-catalog main [data-bf-id="bf_f7100a22"],
+html.bf-games-catalog main [data-bf-id="bf_009cee3f"] {
+  min-height: 36px !important;
+  padding: 7px 13px !important;
+  border: 1px solid #d9e2e6 !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, .66) !important;
+  box-shadow: none !important;
+  color: #5a6877 !important;
+  letter-spacing: .01em !important;
+}
+
+html.bf-games-catalog main section[data-bf-static-igry="true"] > div:nth-child(2) {
+  padding-bottom: 104px !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] {
+  gap: 24px !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a {
+  overflow: hidden !important;
+  border: 1px solid #dbe4e8 !important;
+  border-radius: 22px !important;
+  background: #fff !important;
+  box-shadow: 0 16px 44px -34px rgba(20, 37, 54, .32) !important;
+  transform: none !important;
+  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a:hover {
+  border-color: #c4d6dd !important;
+  box-shadow: 0 22px 48px -32px rgba(20, 37, 54, .42) !important;
+  transform: translateY(-2px) !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a:focus-visible {
+  outline: 3px solid rgba(0, 159, 227, .35) !important;
+  outline-offset: 4px !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:first-child {
+  width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 16 / 10 !important;
+  border-bottom: 1px solid rgba(23, 35, 51, .08) !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:first-child > div:nth-of-type(1) {
+  background: linear-gradient(180deg, transparent 55%, rgba(10, 22, 34, .36)) !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] [data-bf-id$="_status"] {
+  padding: 7px 11px !important;
+  border: 1px solid rgba(23, 35, 51, .12) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, .92) !important;
+  box-shadow: none !important;
+  color: #4f5f70 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:first-child [aria-hidden="true"] {
+  display: inline-flex !important;
+  width: 44px !important;
+  height: 44px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  border: 1px solid rgba(23, 35, 51, .12) !important;
+  border-radius: 13px !important;
+  background: rgba(255, 255, 255, .92) !important;
+  box-shadow: none !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) {
+  padding: 26px 24px 24px !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] h2 {
+  margin: 0 0 14px !important;
+  color: #1b2a3b !important;
+  font-size: clamp(1.4rem, 2vw, 1.7rem) !important;
+  line-height: 1.22 !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] p {
+  margin-bottom: 24px !important;
+  color: #566678 !important;
+  font-size: 1rem !important;
+  line-height: 1.68 !important;
+}
+
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) > span:last-child {
+  gap: 8px !important;
+  color: #147ba8 !important;
+  font-size: .9rem !important;
+  font-weight: 500 !important;
+  transition: color .2s ease, gap .2s ease !important;
+}
+
+@media (max-width: 639px) {
+  html.bf-games-catalog main section[data-bf-static-igry="true"] > div:first-child {
+    padding: 48px 20px 40px !important;
+  }
+  html.bf-games-catalog main h1.heading-2 {
+    font-size: 2.25rem !important;
+  }
+  html.bf-games-catalog main p.text-lead {
+    font-size: 1rem !important;
+    line-height: 1.65 !important;
+  }
+  html.bf-games-catalog main section[data-bf-static-igry="true"] > div:nth-child(2) {
+    padding-inline: 16px !important;
+    padding-bottom: 72px !important;
+  }
+  html.bf-games-catalog main [data-bf-games-grid="true"] {
+    gap: 18px !important;
+  }
+  html.bf-games-catalog main [data-bf-games-grid="true"] > a {
+    border-radius: 18px !important;
+  }
+  html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) {
+    padding: 22px 20px 21px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.bf-games-catalog main [data-bf-games-grid="true"] > a {
+    transition: none !important;
+  }
+}
+
+/* -- Mobile rendering budget ---------------------------------------------
+   The product pages are long and visually dense. On phones we keep the same
+   composition but remove continuous GPU effects, skip below-fold paint work
+   and constrain broad Tailwind `transition-all` rules to cheap properties. */
+@media (max-width: 767px) {
+  header {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  main *,
+  footer * {
+    animation: none !important;
+  }
+
+  main [class*="blur-3xl"],
+  footer [class*="blur-3xl"],
+  main .animate-lightning-flash,
+  main [class*="animate-lightning-bolt"] {
+    display: none !important;
+  }
+
+  main .drop-shadow-2xl,
+  main img[style*="drop-shadow"] {
+    filter: none !important;
+  }
+
+  main [class*="transition-all"],
+  footer [class*="transition-all"] {
+    transition-property: color, background-color, border-color, opacity !important;
+    transition-duration: 120ms !important;
+  }
+
+  main section:not(:first-child),
+  footer {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 720px;
+  }
+
+  .bf-reveal,
+  .bf-reveal-left,
+  .bf-reveal-scale {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── Box faces that never got adopted by the 3D box ──────────────────────
+   The six faces of the Тримайся box are Next.js <Image fill>: they carry
+   position:absolute + inset:0 and expect a positioned, sized parent. When the
+   page hydrates, React nests each one inside its own face wrapper in
+   .cursor-grab and the box assembles. When hydration does NOT run — it is
+   intermittent on this page, observed at the same viewport width both ways —
+   the raw SSR markup stays, and there the six faces are direct children of the
+   hero wrapper with no sized parent. Each then stretches to the full hero
+   (measured 1255x1542) and six full-bleed photos cover the cover art. That is
+   the cover and box went wonky report.
+
+   The selector is deliberately the difference between the two states rather
+   than a viewport guess: hydrated, the faces are inside .cursor-grab and this
+   matches nothing at all; unhydrated, it matches and the overlays go away, so
+   the page reads correctly either way. It does mean the box is not shown on an
+   unhydrated load — that is the honest trade until the hydration itself is
+   fixed, and it beats the box eating the page. */
+.relative.z-10.px-4 > img[src*="/images/trymaysia/box-"] {
+  display: none !important;
+}
+
+/* ── Contact card: the address on one line ───────────────────────────────
+   While Cloudflare's email obfuscation was on, this card showed the short
+   "[email protected]" placeholder. With obfuscation off the real address is
+   back and it misses a single line by 10px (needs 230, has 220) — and the
+   inherited word-break:break-all then chops it mid-word as "…gmail.co / m".
+   A step down in size buys ~14px, which is enough, and overflow-wrap keeps
+   narrow viewports from overflowing instead of breaking. */
+a[href^="mailto:"] p {
+  font-size: 15px;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+/* ── Міна 33: коробка обертається ЛИШЕ поки її тримають ───────────────────
+   Раніше тут стояло безумовне `animation: bf-box-idle 30s linear infinite`:
+   поки React не перехопив сторінку, коробка крутилась сама, по колу, вічно.
+   Замовник попросив, щоб вона рухалась тільки коли рух почала людина.
+
+   Анімація лишилась на місці, але за замовчуванням СТОЇТЬ НА ПАУЗІ і йде лише
+   поки коробку натиснуто. Саме пауза, а не зняття анімації: зупинена анімація
+   утримує поточний кадр, тож коробка завмирає там, де її відпустили, і не
+   стрибає у вихідне положення. Нульовий кадр збігається з інлайновим
+   transform, який приходить із сервера (rotateX(-7deg) rotateY(-13deg)), тому
+   на завантаженні нічого не смикається.
+
+   Гідратована сторінка сюди не потрапляє взагалі — селектор починається з
+   html:not(.bf-hydrated). Там коробку крутить React перетягуванням, і це вже
+   дія людини.
+
+   Якщо на iOS :active не спрацює (там він примхливий), коробка просто лишиться
+   нерухомою — а це і є те, що просив замовник. */
+@keyframes bf-box-idle {
+  from { transform: translateZ(0) rotateX(-7deg) rotateY(-13deg); }
+  to   { transform: translateZ(0) rotateX(-7deg) rotateY(347deg); }
+}
+html:not(.bf-hydrated) .cursor-grab {
+  animation: bf-box-idle 30s linear infinite;
+  animation-play-state: paused;
+}
+html:not(.bf-hydrated) .cursor-grab:active {
+  animation-play-state: running;
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not(.bf-hydrated) .cursor-grab,
+  html:not(.bf-hydrated) .cursor-grab:active { animation: none; }
+}
+/* Мобільний блок вище глушить УСІ анімації в main заради продуктивності
+   (`main * { animation: none !important }`), тому обертання коробки потребує
+   іменного винятку. Один transform-only кадр на GPU — та ціна, заради якої той
+   блок писався, від цього не страждає. */
+@media (max-width: 767px) {
+  html:not(.bf-hydrated) main .cursor-grab {
+    animation: bf-box-idle 30s linear infinite !important;
+    animation-play-state: paused !important;
+  }
+  html:not(.bf-hydrated) main .cursor-grab:active {
+    animation-play-state: running !important;
+  }
+}
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  html:not(.bf-hydrated) main .cursor-grab,
+  html:not(.bf-hydrated) main .cursor-grab:active { animation: none !important; }
+}
+
+/* Картки етапів: на вузьких екранах довге українське слово («Передзамовлення»)
+   не вміщається поруч із бейджем і ламається посередині. Ставимо бейдж під
+   заголовок — усі картки виглядають однаково і жодне слово не рветься.
+   Розмітка інлайнова (вона інжектиться в рукописні сторінки), тому медіа-запит
+   може жити тільки тут. */
+@media (max-width: 479px) {
+  [data-bf-stages] article > div:first-of-type {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+}
+
+
+/* ── Ручне обертання забирає коробку в себе ── bf-box-manual ───────────────
+   Коли bf.js бачить, що React не приїхав, він сам вішає перетягування на
+   коробку і ставить цей клас на <html>. Тоді CSS-обертання має піти геть
+   повністю: інлайновий transform від перетягування програє БУДЬ-ЯКІЙ анімації,
+   а мобільне правило вище оголошене з !important, тож `box.style.animation`
+   його не перебʼє. Тому знімаємо анімацію теж через !important і ставимо це
+   правило В КІНЦІ файлу — за однакової специфічності виграє останнє.
+
+   Правило нічого не робить, поки класу немає, тобто на звичайному
+   завантаженні (гідратованому чи ні) поведінка та сама, що й була. */
+html.bf-box-manual .cursor-grab,
+html.bf-box-manual main .cursor-grab {
+  animation: none !important;
+}
+
+/* -- Catalog cards: equal image boxes --------------------------------------
+   Cards stretch to the tallest one in the row; without this the image box of
+   the card with the longer description shrank (flex-shrink) below 16:10. */
+html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:first-child {
+  flex: 0 0 auto !important;
+}
+html.bf-games-catalog main [data-bf-games-grid="true"] [data-bf-id^="bf_cat_"][data-bf-id$="_title"] {
+  font-family: inherit !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.02em !important;
+}
