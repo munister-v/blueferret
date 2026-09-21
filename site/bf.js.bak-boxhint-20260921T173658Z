@@ -762,34 +762,3 @@
   box.addEventListener('pointerup', up);
   box.addEventListener('pointercancel', up);
 })();
-
-
-/* ── Підказка над коробкою на сторінці "Тримайся" ── bf-box-hint-trymaysia ───────
-   На цій сторінці коробка (.cursor-grab) таки гідратується (див. flagHydrated
-   вище), а мутація серверної розмітки ДО гідратації сама є причиною розсинхрону
-   (Міна 30 у коментарі до flagHydrated). Тому підказку не пишемо в HTML — встав-
-   ляємо через DOM вже після монтування й перевіряємо періодично протягом кількох
-   секунд: якщо React встигне перемалювати картку заново, підказка з'явиться знову,
-   а не зникне назавжди після одного разу. */
-(function () {
-  if (!/\/igry\/trymaysia\/?(?:[/?#]|$)/.test(location.pathname)) return;
-
-  function ensure() {
-    var box = document.querySelector('.cursor-grab');
-    if (!box) return;
-    var card = box.closest('.rounded-3xl');
-    if (!card || card.querySelector('.bf-box-hint-dark')) return;
-    card.classList.add('bf-box-hint-host');
-    var hint = document.createElement('div');
-    hint.className = 'bf-box-hint-dark';
-    hint.innerHTML = '<p>Зазирніть з усіх боків</p><p>Крутіть коробочку мишкою або пальцем.</p>';
-    card.insertBefore(hint, card.firstChild);
-  }
-
-  var deadline = Date.now() + 15000;
-  (function poll() {
-    ensure();
-    if (Date.now() > deadline) return;
-    setTimeout(poll, 300);
-  })();
-})();

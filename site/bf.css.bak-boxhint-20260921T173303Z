@@ -1022,30 +1022,3 @@ html.bf-games-catalog main [data-bf-games-grid="true"] [data-bf-id^="bf_cat_"][d
   font-weight: 400 !important;
   letter-spacing: -0.02em !important;
 }
-
-/* ── Підказка над коробкою на сторінці "Тримайся" ── bf-box-hint-trymaysia ───────
-   Вставляється через bf.js (не в HTML — гідратація тут реальна, і зайвий вузол
-   у серверній розмітці сам провокує розсинхрон, див. коментар у bf.js). */
-.bf-box-hint-host {
-  flex-direction: column;
-  gap: 14px;
-}
-.bf-box-hint-dark {
-  text-align: center;
-  padding: 0 8px;
-  position: relative;
-  z-index: 2;
-}
-.bf-box-hint-dark p {
-  margin: 0;
-  color: #e7edf5;
-}
-.bf-box-hint-dark p:first-child {
-  font-size: 15px;
-  font-weight: 600;
-}
-.bf-box-hint-dark p:last-child {
-  margin-top: 4px;
-  font-size: 13px;
-  color: rgba(231, 237, 245, 0.62);
-}
