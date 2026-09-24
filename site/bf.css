@@ -1038,14 +1038,20 @@ html.bf-games-catalog main [data-bf-games-grid="true"] [data-bf-id^="bf_cat_"][d
 }
 .bf-box-hint-dark p {
   margin: 0;
-  color: #e7edf5;
-}
-.bf-box-hint-dark p:first-child {
-  font-size: 15px;
-  font-weight: 600;
-}
-.bf-box-hint-dark p:last-child {
-  margin-top: 4px;
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
   color: rgba(231, 237, 245, 0.62);
 }
+.bf-box-hint-dark svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  opacity: .7;
+}
+
+/* scaled box wrapper (sm:scale-[1.02] md:scale-[1.1]) grows over the hint */
+@media (min-width: 640px) { .bf-box-hint-dark { margin-bottom: 26px; } }
+@media (min-width: 768px) { .bf-box-hint-dark { margin-bottom: 40px; } }

@@ -15,7 +15,7 @@
 <meta name="twitter:title" content="Ничка | Blue Ferret">
 <meta name="twitter:image" content="https://blueferret.com.ua/uploads/media-1789219634434.webp">
 <link rel="shortcut icon" href="/favicon.ico">
-<link rel="stylesheet" href="/bf.css?v=33">
+<link rel="stylesheet" href="/bf.css?v=37">
 <style>
 /* Same face the rest of the site uses (the Next.js bundle self-hosts it, but
    this page doesn't load that bundle — so declare it here too). */
@@ -120,13 +120,14 @@ body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg-main);colo
 .pp-val{font-size:16px;font-weight:600;color:var(--text-1)}
 /* ── ABOUT GRID ── */
 .gp-about-grid{display:grid;grid-template-columns:1.05fr 1.1fr;gap:40px;align-items:center;margin-top:40px}
-.gp-about-visual{--gpbox-box:300px;--gpbox-depth:calc(var(--gpbox-box) * 0.2564);background:radial-gradient(circle at 50% 20%, var(--surface-1) 0%, transparent 60%), var(--section-tint);border:1px solid var(--border-1);border-radius:24px;padding:40px;display:flex;align-items:center;justify-content:center;min-height:420px;perspective:2100px}
+.gp-about-visual{--gpbox-box:300px;--gpbox-depth:calc(var(--gpbox-box) * 0.2564);background:radial-gradient(circle at 50% 20%, var(--surface-1) 0%, transparent 60%), var(--section-tint);border:1px solid var(--border-1);border-radius:24px;padding:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:420px;perspective:2100px}
 .gp-3d-box{width:280px;border-radius:12px;box-shadow:0 30px 60px -20px var(--shadow-soft), 0 0 0 1px var(--border-2);transition:transform 0.4s cubic-bezier(0.2,0.8,0.2,1);transform:rotateY(-10deg) rotateX(5deg)}
 .gp-about-visual:hover .gp-3d-box{transform:rotateY(0deg) rotateX(0deg) scale(1.05)}
 .gp-3d-box img{width:100%;height:auto;border-radius:12px;display:block}
 /* ── Real 3D box (6 uploaded faces) — used instead of .gp-3d-box when a game
    has all six box_faces set. Drag-to-rotate, own local script below, no
    dependency on bf.js (draft game pages don't load it). ── */
+.gp-box-hint{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 16px;font-size:14px;color:var(--text-3);text-align:center}.gp-box-hint svg{width:16px;height:16px;flex:none;opacity:.7}
 .gpbox{margin:0 auto;cursor:grab}
 .gpbox:active{cursor:grabbing}
 .gpbox img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none}
@@ -144,15 +145,36 @@ body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg-main);colo
 .gp-desc{font-size:16px;line-height:1.7;color:var(--text-2)}
 .gp-desc p{margin-bottom:16px}
 .gp-desc p:last-child{margin-bottom:0}
-/* ── FOOTER ── */
-.gp-footer{background:var(--footer-grad);padding:80px 24px 40px;border-top:1px solid var(--border-1);position:relative;overflow:hidden}
-.gp-footer::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5}
-.gp-footer-inner{max-width:1024px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
-.gp-footer-logo{display:flex;align-items:center;gap:12px}
-.gp-footer-logo img{width:36px;height:36px;object-fit:contain;opacity:.8;filter:var(--footer-logo-filter)}
-.gp-footer-brand{font-weight:700;font-size:18px;color:var(--text-1)}
-.gp-footer-desc{color:var(--text-3);font-size:14px;max-width:300px;line-height:1.6}
-.gp-footer-copy{color:var(--text-4);font-size:13px;margin-top:20px}
+/* ── FOOTER (same structure as the rest of the site; white on light theme) ── */
+.gp-footer{position:relative;overflow:hidden;background:#ffffff;border-top:1px solid var(--border-1)}
+.gp-footer::before{content:'';display:block;height:3px;background:linear-gradient(90deg,transparent,rgba(0,159,227,.8) 25%,rgba(75,178,114,.7) 50%,rgba(245,165,36,.6) 75%,transparent)}
+.gp-ft{max-width:1152px;margin:0 auto;padding:88px 32px 40px}
+.gp-ft-grid{display:grid;grid-template-columns:5fr 4fr 3fr;gap:56px}
+.gp-ft-logo{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-bottom:24px;transition:transform .3s}
+.gp-ft-logo:hover{transform:scale(1.05)}
+.gp-ft-logo img{width:32px;height:32px;object-fit:contain}
+.gp-ft-brand h3{font-weight:700;font-size:24px;letter-spacing:-.01em;color:var(--text-1);margin-bottom:16px}
+.gp-ft-brand p{color:var(--text-3);font-size:15px;line-height:1.7;max-width:384px}
+.gp-ft h4{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.2em;color:var(--text-3);margin-bottom:24px}
+.gp-ft-nav{list-style:none;display:flex;flex-direction:column;gap:16px}
+.gp-ft-nav a,.gp-ft-mail{display:inline-flex;align-items:center;gap:10px;color:var(--text-2);text-decoration:none;font-size:15px;transition:color .3s}
+.gp-ft-nav a:hover,.gp-ft-mail:hover{color:#009fe3}
+.gp-ft-nav a:hover .gp-ft-dot{background:#009fe3;transform:scale(1.25)}
+.gp-ft-dot{width:6px;height:6px;border-radius:99px;background:var(--text-4);transition:all .3s;flex:none}
+.gp-ft-nav svg{width:16px;height:16px;opacity:.5;transition:all .3s;flex:none}
+.gp-ft-nav a:hover svg{opacity:1;transform:scale(1.1)}
+.gp-ft-mail{margin-bottom:24px;word-break:break-all}
+.gp-ft-mail svg{width:16px;height:16px;flex:none}
+.gp-ft-social{display:flex;gap:12px}
+.gp-ft-social a{display:inline-flex;padding:14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border-1);color:var(--text-2);transition:all .3s}
+.gp-ft-social a:hover{transform:scale(1.1);color:#fff;border-color:transparent}
+.gp-ft-social a.ig:hover{background:#009fe3;box-shadow:0 0 25px -5px rgba(0,159,227,.5)}
+.gp-ft-social a.fb:hover{background:#4bb272;box-shadow:0 0 25px -5px rgba(75,178,114,.5)}
+.gp-ft-social a.tg:hover{background:#14b8a6;box-shadow:0 0 25px -5px rgba(20,184,166,.5)}
+.gp-ft-social svg{width:20px;height:20px}
+.gp-ft-bottom{margin-top:80px;padding-top:40px;border-top:1px solid var(--border-1)}
+.gp-ft-bottom p{font-size:14px;color:var(--text-4)}
+@media(max-width:768px){.gp-ft{padding:80px 20px 36px}.gp-ft-grid{grid-template-columns:1fr;gap:48px}.gp-ft-bottom{margin-top:56px;padding-top:32px}}
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
   .gp-about-grid{grid-template-columns:1fr;gap:24px}
@@ -247,6 +269,7 @@ body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg-main);colo
     <div class="gp-about-grid">
       <div class="gp-about-visual rv">
         
+        <p class="gp-box-hint"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>Покрути коробочку, не соромся!</p>
         <div class="gpbox" style="width:var(--gpbox-box);height:var(--gpbox-box);position:relative;transform-style:preserve-3d;transform:translateZ(0) rotateX(-7deg) rotateY(-13deg);transition:transform .08s ease-out;will-change:transform;touch-action:none">
           <div class="gpbox-face gpbox-face-front"><img src="/images/nuchka/front.webp" alt="Ничка — лицьова сторона коробки" draggable="false" loading="eager"></div>
           <div class="gpbox-face gpbox-face-back"><img src="/images/nuchka/back.webp" alt="Ничка — зворотна сторона коробки" draggable="false" loading="lazy"></div>
@@ -346,13 +369,33 @@ body{font-family:'Comfortaa',system-ui,sans-serif;background:var(--bg-main);colo
 </main>
 
 <footer class="gp-footer">
-  <div class="gp-footer-inner rv">
-    <div class="gp-footer-logo">
-      <img src="/logo-blue-ferret.png" alt="Blue Ferret">
-      <span class="gp-footer-brand">Blue Ferret</span>
+  <div class="gp-ft rv">
+    <div class="gp-ft-grid">
+      <div class="gp-ft-brand">
+        <a class="gp-ft-logo" href="/" aria-label="Blue Ferret – головна"><img src="/logo-blue-ferret.png" alt="Blue Ferret" width="32" height="32"></a>
+        <h3>Blue Ferret</h3>
+        <p>Blue Ferret – це незалежне видавництво настільних ігор із власною інтонацією. Теплий, авторський і грайливий стиль.</p>
+      </div>
+      <div>
+        <h4>Навігація</h4>
+        <ul class="gp-ft-nav">
+          <li><a href="/"><span class="gp-ft-dot"></span>Головна</a></li>
+          <li><a href="/igry/"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg>Наші ігри</a></li>
+          <li><a href="/kik/"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/></svg>Кік-вдома</a></li>
+          <li><a href="/kontakty/"><span class="gp-ft-dot"></span>Контакти</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Зв'язок</h4>
+        <a class="gp-ft-mail" href="mailto:rogachovanika@gmail.com"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>rogachovanika@gmail.com</a>
+        <div class="gp-ft-social">
+          <a class="ig" href="https://www.instagram.com/blueferret_game" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg></a>
+          <a class="fb" href="https://facebook.com/blueferret_game" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+          <a class="tg" href="https://t.me/blueferret_game" target="_blank" rel="noopener noreferrer" aria-label="Telegram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></a>
+        </div>
+      </div>
     </div>
-    <p class="gp-footer-desc">Незалежне видавництво настільних ігор із власною інтонацією.</p>
-    <p class="gp-footer-copy">© 2026 Blue Ferret. Всі права захищені.</p>
+    <div class="gp-ft-bottom"><p>© 2026 Blue Ferret. Всі права захищені.</p></div>
   </div>
 </footer>
 

@@ -782,7 +782,7 @@
     card.classList.add('bf-box-hint-host');
     var hint = document.createElement('div');
     hint.className = 'bf-box-hint-dark';
-    hint.innerHTML = '<p>Зазирніть з усіх боків</p><p>Крутіть коробочку мишкою або пальцем.</p>';
+    hint.innerHTML = '<p><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>Покрути коробочку, не соромся!</p>';
     card.insertBefore(hint, card.firstChild);
   }
 
