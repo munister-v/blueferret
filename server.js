@@ -59,7 +59,11 @@ function fullSettings() {
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
-app.use(express.json({ limit: '4mb' }));
+app.use(express.json({
+  limit: '4mb',
+  // monobank signs the exact bytes it sends, so keep them for the webhook only.
+  verify: (req, _res, buf) => { if (req.originalUrl === '/api/mono/webhook') req.rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -2278,6 +2282,7 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
 //  actually on the page.
 // ════════════════════════════════════════════════════════
 const KIK_HIDDEN_KEY = 'kikHidden';
+const KIK_OVERFLOW_KEY = 'kikOverflow';
 // Parked pages keep a .html name on purpose: every chunk-relink walker in this
 // file keys off .endsWith('.html'), so a page parked for weeks still gets its
 // chunk references rewritten as bundles are rehashed. Park it as .bak-style
@@ -2730,6 +2735,147 @@ app.put('/api/admin/kik-projects', requireAuth, (req,res)=>{
   }catch(err){
     res.status(500).json({error:err.message});
   }
+});
+
+// ---- support-page reward cards ----
+// A template page carries its own tiers' cards. The text sync only swaps strings
+// pairwise, so a project with fewer tiers / no bullet list / not featured would
+// keep the template's extra card, bullets and "Рекомендовано" badge, and the
+// prerendered DOM would disagree with the tiers the client renders from. So the
+// cards are rebuilt from the project's own tiers, using the template's markup.
+function divEnd(html, start){
+  const re = /<div\b|<\/div>/g; re.lastIndex = start;
+  let depth = 0, m;
+  while((m = re.exec(html))){
+    if(m[0] === '</div>'){ if(--depth === 0) return re.lastIndex; } else depth++;
+  }
+  return -1;
+}
+const kikMoneyHtml = n => new Intl.NumberFormat('uk-UA',{maximumFractionDigits:0}).format(n).replace(/[  ]/g,'&nbsp;')+' ₴';
+function rebuildTierCards(html, tiers){
+  const open = '<div class="grid gap-4">';
+  const gs = html.indexOf(open);
+  if(gs < 0) return null;
+  const cards = [];
+  let pos = gs + open.length;
+  while(html.startsWith('<div', pos)){
+    const end = divEnd(html, pos);
+    if(end < 0) return null;
+    cards.push(html.slice(pos, end)); pos = end;
+  }
+  if(!cards.length || !html.startsWith('</div>', pos)) return null;
+  const badgeRe = /<span class="inline-flex items-center gap-1\.5 px-2\.5 py-1 rounded-full[\s\S]*?<\/span>/;
+  const badge = (cards[0].match(badgeRe)||[''])[0].replace(/ data-bf-id="[^"]*"/g,'');
+  const plain = (cards[1] || cards[0]).replace(badgeRe,'').replace(/<ul[\s\S]*?<\/ul>/,'').replace(/ data-bf-id="[^"]*"/g,'');
+  const li = t => `<li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-[var(--kik-accent)]"></span>${escapeHtml(t)}</li>`;
+  const built = tiers.map(t=>{
+    let c = plain;
+    c = c.replace(/(<h3 [^>]*>)[\s\S]*?(<\/h3>)/, (_m,a,z)=>a+escapeHtml(t.title)+z);
+    c = c.replace(/(<p class="text-slate-600 mb-3"[^>]*>)[\s\S]*?(<\/p>)/, (_m,a,z)=>a+escapeHtml(t.description)+z);
+    c = c.replace(/(<div class="px-5 py-3 rounded-xl border border-slate-200[^>]*>)[\s\S]*?(<\/div>)/, (_m,a,z)=>a+kikMoneyHtml(t.amount)+z);
+    const inc = (t.includes||[]).length ? `<ul class="space-y-1.5 text-sm text-slate-600">${t.includes.map(li).join('')}</ul>` : '';
+    c = c.replace(/(<h3 [^>]*>)/, (_m,a)=>(t.featured?badge:'')+a);
+    c = c.replace(/(<p class="text-slate-600 mb-3"[^>]*>[\s\S]*?<\/p>)/, (_m,a)=>a+inc);
+    return c;
+  });
+  return html.slice(0, gs + open.length) + built.join('') + html.slice(pos);
+}
+
+// A project whose support page was prerendered before collection started shows
+// "Підтримка скоро відкриється" and has no reward cards; that state is frozen
+// into its HTML. Opening collection = rebuilding its two pages from a project
+// whose support page already has the cards, then syncing this project's own
+// names, tiers and amounts into them (the same steps as creating a project from
+// a template). The current pages are backed up first.
+app.post('/api/admin/kik-projects/:id/open-collection', requireAuth, (req,res)=>{
+  const id = String(req.params.id), templateId = String((req.body||{}).templateId||'');
+  const b = readKikProjects();
+  if(!b) return res.status(404).json({error:'kik projects bundle not found'});
+  const all = [...b.arr, ...getSetting(KIK_HIDDEN_KEY, [])];
+  const project = all.find(p=>p.id===id), template = all.find(p=>p.id===templateId);
+  if(!project) return res.status(404).json({error:`Проєкт «${id}» не знайдено`});
+  if(!template || template.id===project.id) return res.status(400).json({error:'Потрібен templateId — інший проєкт зі сторінкою підтримки з варіантами'});
+  if(!project.support || !(project.support.tiers||[]).length) return res.status(400).json({error:'У проєкті немає варіантів підтримки (support.tiers)'});
+  if(!template.support) return res.status(400).json({error:'У шаблонному проєкті немає варіантів підтримки'});
+  try{
+    const srcFiles = kikPageFiles(template).map(kikRealPage);
+    const destFiles = kikPageFiles(project);
+    if(srcFiles.length!==2 || srcFiles.some(x=>!x)) return res.status(400).json({error:'Не знайдено сторінки шаблонного проєкту'});
+    if(!fs.readFileSync(srcFiles[1],'utf8').includes('Підтримка без нагороди'))
+      return res.status(400).json({error:'Сторінка підтримки шаблону не містить варіантів підтримки — обери інший шаблон'});
+    // Only the support page is replaced: the project's own detail page (story,
+    // images, text) must never be overwritten with the template's.
+    const live = destFiles[1];
+    const target = fs.existsSync(kikParkedPath(live)) ? kikParkedPath(live) : live; // keep hidden/visible as it is
+    fs.mkdirSync(path.dirname(target),{recursive:true});
+    writeBackup(target);
+    writeAtomic(target, fs.readFileSync(srcFiles[1],'utf8'));
+    const written = [target.slice(PAGES_ROOT.length)];
+    const synced = syncKikProjectPages(template, project, project.link) || [];
+    const supportFile = target;
+    let html = fs.readFileSync(supportFile,'utf8');
+    const rebuilt = rebuildTierCards(html, project.support.tiers);
+    if(!rebuilt) throw new Error('Не вдалося перебудувати картки варіантів підтримки на сторінці шаблону');
+    html = rebuilt.split(`aria-label="Сума підтримки" value="${template.support.defaultDonation}"`)
+      .join(`aria-label="Сума підтримки" value="${project.support.defaultDonation}"`);
+    writeAtomic(supportFile, html);
+    try{ execFileSync('restorecon',['-R',path.join(PAGES_ROOT,'kik')],{stdio:'ignore',timeout:15000}); }catch{}
+    const publishedAt = bumpPublishedAt();
+    audit(req.ip,'kik_open_collection',{id,templateId,written,synced,publishedAt});
+    res.json({ ok:true, written, synced, publishedAt });
+  }catch(err){
+    res.status(500).json({error:err.message});
+  }
+});
+
+// Add confirmed pledge money to (or take refunded money off) the catalog's
+// `raised`, by delta so manual edits made in the admin are respected. Same
+// write path as the admin save above: rewrite the chunk, re-sync the project's
+// prerendered pages, bump publishedAt. Synchronous start to finish, so it can
+// never interleave with another handler; the caller checks publishWriteActive.
+function applyKikRaisedDeltas(deltas){
+  const ids = Object.keys(deltas).filter(id=>deltas[id]);
+  if(!ids.length) return;
+  const b = readKikProjects();
+  if(!b) throw new Error('kik projects bundle not found');
+  // The site's runtime schema rejects a project with goal < raised, which would
+  // blank /kik/proekty/ for everyone. So an overfunded campaign shows `raised`
+  // capped at the goal and the surplus is parked here until refunds or a higher
+  // goal bring it back.
+  const overflow = getSetting(KIK_OVERFLOW_KEY, {});
+  const before = new Map(), after = new Map();
+  const bump = p => {
+    const d = deltas[p.id];
+    if(!d) return p;
+    const total = Math.max(0, Number(p.raised||0) + Number(overflow[p.id]||0) + d);
+    const shown = Math.min(total, Math.max(0, Number(p.goal)||0));
+    if(total > shown) overflow[p.id] = total - shown; else delete overflow[p.id];
+    const n = { ...p, raised: shown };
+    before.set(p.id, p); after.set(p.id, n);
+    return n;
+  };
+  const visible = b.arr.map(bump);
+  const parkedOld = getSetting(KIK_HIDDEN_KEY, []);
+  const parked = parkedOld.map(bump);
+  if(visible.some((p,i)=>p!==b.arr[i])) writeKikProjects(b, visible);
+  if(parked.some((p,i)=>p!==parkedOld[i])) setSetting(KIK_HIDDEN_KEY, parked);
+  setSetting(KIK_OVERFLOW_KEY, overflow);
+  const pageSync = [];
+  for(const [id, p] of after){
+    try{ syncKikProjectPages(before.get(id), p); }
+    catch(err){ pageSync.push({ id, error: err.message }); }
+  }
+  const publishedAt = bumpPublishedAt();
+  audit('system','kik_raised_sync',{ deltas, overflow, projects:[...after.keys()], publishedAt, pageSync });
+}
+
+// ── monobank acquiring (pledges, webhook, refunds) ──
+const mono = require('./src/mono').createMono();
+require('./src/mono-routes').mount(app, {
+  mono,
+  pledges: require('./src/pledges').createPledges({ db, mono }),
+  requireAuth, readKikProjects, applyRaisedDeltas: applyKikRaisedDeltas,
+  isPublishBusy: () => publishWriteActive, audit,
 });
 
 // ── duplicate page ──

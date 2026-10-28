@@ -793,3 +793,43 @@
     setTimeout(poll, 300);
   })();
 })();
+
+// ── Payments: legal links in the footer + support-page payment UI ──
+// The offer / refund / privacy pages are required by the payment provider and
+// must be reachable from every page. The footer is part of the prerendered
+// layout, so the links are added here instead of editing every HTML file.
+(function () {
+  'use strict';
+  function legal() {
+    var f = document.querySelector('footer');
+    if (!f || document.getElementById('bf-legal')) return;
+    if (!document.getElementById('bf-legal-css')) {
+      var st = document.createElement('style');
+      st.id = 'bf-legal-css';
+      st.textContent = '#bf-legal{position:relative;display:flex;flex-wrap:wrap;gap:6px 22px;justify-content:center;padding:0 16px 28px;margin:0;font-size:13px}' +
+        '#bf-legal a{color:#94a3b8;text-decoration:none;border-bottom:1px solid transparent;transition:color .2s,border-color .2s}' +
+        '#bf-legal a:hover{color:#fff;border-bottom-color:currentColor}';
+      document.head.appendChild(st);
+    }
+    var n = document.createElement('nav');
+    n.id = 'bf-legal';
+    n.setAttribute('aria-label', 'Правові документи');
+    n.innerHTML = '<a href="/oferta/">Публічна оферта</a><a href="/povernennia/">Повернення коштів</a><a href="/konfidentsiinist/">Політика конфіденційності</a>';
+    (f.lastElementChild || f).appendChild(n);
+  }
+  // Wait for React to hydrate first: adding nodes to the footer before that
+  // would make the prerendered HTML disagree with the client tree. Then keep
+  // checking for a while, since a client-side navigation can re-render it.
+  function start() {
+    var tries = 0, iv = setInterval(function () { legal(); if (++tries > 20) clearInterval(iv); }, 500);
+  }
+  if (document.readyState === 'complete') setTimeout(start, 600);
+  else window.addEventListener('load', function () { setTimeout(start, 600); });
+
+  if (/^\/kik\/proekty(\/|$)/.test(location.pathname)) {
+    var s = document.createElement('script');
+    s.src = '/bf-pay.js?v=1';
+    s.defer = true;
+    document.head.appendChild(s);
+  }
+})();
