@@ -179,16 +179,17 @@ test('refundProject: dry run touches nothing; real run refunds paid pledges only
   const { p } = setup(monoStub);
   const mk = (inv, kop, project = 'n') => { const x = p.createPledge({ projectId: project, amountKop: kop }); p.attachInvoice(x.id, inv); return x; };
   const a = mk('a', 30000), b = mk('b', 20000), pending = mk('p', 10000), other = mk('o', 99900, 'other');
-  for (const [inv, kop] of [['a', 30000], ['b', 20000], ['o', 99900]])
-    p.applyMonoState({ invoiceId: inv, status: 'success', amount: kop, modifiedDate: iso(5_000_000) });
+  for (const [inv, kop, fee] of [['a', 30000, 400], ['b', 20000, 300], ['o', 99900, 1]])
+    p.applyMonoState({ invoiceId: inv, status: 'success', amount: kop, paymentInfo: { fee }, modifiedDate: iso(5_000_000) });
 
   const dry = await p.refundProject('n', { dryRun: true });
-  assert.deepEqual([dry.count, dry.totalKop], [2, 50000]);
+  assert.deepEqual([dry.count, dry.totalKop, dry.feeKop, dry.refundKop, dry.unknownFee], [2, 50000, 700, 49300, 0]);
   assert.equal(calls.length, 0);
 
   const r = await p.refundProject('n');
-  assert.equal(r.ok, 2); assert.equal(r.failed, 0);
+  assert.equal(r.ok, 2); assert.equal(r.failed, 0); assert.equal(r.refundedKop, 49300);
   assert.deepEqual(calls.map(c => c.extRef).sort(), [`refund-${a.id}`, `refund-${b.id}`]);
+  assert.deepEqual(calls.map(c => c.amount).sort((x, y) => x - y), [19700, 29600], 'the commission is not sent back');
   assert.equal(p.get(a.id).status, 'refunded');
   assert.equal(p.get(pending.id).status, 'created', 'unpaid pledge untouched');
   assert.equal(p.get(other.id).status, 'paid', 'other project untouched');
@@ -203,18 +204,19 @@ test('refund: processing is kept and finished by the later reversed webhook; fai
   const monoStub = { cancelInvoice: async () => (mode === 'throw' ? Promise.reject(Object.assign(new Error('monobank: boom'), { status: 500 })) : { status: mode }) };
   const { p } = setup(monoStub);
   const a = p.createPledge({ projectId: 'n', amountKop: 10000 }); p.attachInvoice(a.id, 'a');
-  p.applyMonoState({ invoiceId: 'a', status: 'success', amount: 10000, modifiedDate: iso(5_000_000) });
+  p.applyMonoState({ invoiceId: 'a', status: 'success', amount: 10000, paymentInfo: { fee: 130 }, modifiedDate: iso(5_000_000) });
 
   let r = await p.refundPledge(a.id);
   assert.equal(r.status, 'processing');
   assert.equal(p.get(a.id).status, 'paid');
   assert.equal(p.get(a.id).refund_status, 'processing');
 
-  p.applyMonoState({ invoiceId: 'a', status: 'reversed', finalAmount: 0, modifiedDate: iso(6_000_000) });
+  // monobank keeps the fee, so the invoice still holds it after our refund
+  p.applyMonoState({ invoiceId: 'a', status: 'reversed', finalAmount: 130, modifiedDate: iso(6_000_000) });
   assert.equal(p.get(a.id).status, 'refunded');
 
   const b = p.createPledge({ projectId: 'n', amountKop: 10000 }); p.attachInvoice(b.id, 'b');
-  p.applyMonoState({ invoiceId: 'b', status: 'success', amount: 10000, modifiedDate: iso(5_000_000) });
+  p.applyMonoState({ invoiceId: 'b', status: 'success', amount: 10000, paymentInfo: { fee: 130 }, modifiedDate: iso(5_000_000) });
   mode = 'throw';
   r = await p.refundPledge(b.id);
   assert.equal(r.ok, false);
@@ -231,10 +233,51 @@ test('refund retries on 429', async () => {
   const monoStub = { cancelInvoice: async () => { if (n++ < 2) throw Object.assign(new Error('rate'), { status: 429 }); return { status: 'success' }; } };
   const { p } = setup(monoStub);
   const a = p.createPledge({ projectId: 'n', amountKop: 10000 }); p.attachInvoice(a.id, 'a');
-  p.applyMonoState({ invoiceId: 'a', status: 'success', amount: 10000, modifiedDate: iso(5_000_000) });
+  p.applyMonoState({ invoiceId: 'a', status: 'success', amount: 10000, paymentInfo: { fee: 130 }, modifiedDate: iso(5_000_000) });
   const r = await p.refundPledge(a.id);
   assert.equal(r.ok, true);
   assert.equal(n, 3);
+});
+
+test('refund: a pledge whose commission is unknown is NOT refunded (no silent full refund)', async () => {
+  const calls = [];
+  const monoStub = { invoiceStatus: async () => ({ status: 'success' }), cancelInvoice: async a => { calls.push(a); return { status: 'success' }; } };
+  const { p } = setup(monoStub);
+  const a = p.createPledge({ projectId: 'n', amountKop: 10000 }); p.attachInvoice(a.id, 'a');
+  p.applyMonoState({ invoiceId: 'a', status: 'success', amount: 10000, modifiedDate: iso(5_000_000) });
+  const dry = await p.refundProject('n', { dryRun: true });
+  assert.equal(dry.unknownFee, 1);
+  const r = await p.refundPledge(a.id);
+  assert.deepEqual([r.ok, r.error], [false, 'fee_unknown']);
+  assert.equal(calls.length, 0);
+  assert.equal(p.get(a.id).refund_status, 'failure');
+  assert.equal(p.get(a.id).status, 'paid');
+});
+
+test('refund: the commission is asked from monobank when the webhook did not carry it, or taken from MONO_FEE_PCT', async () => {
+  const calls = [];
+  const monoStub = {
+    invoiceStatus: async id => (id === 'a' ? { status: 'success', paymentInfo: { fee: 150 } } : { status: 'success' }),
+    cancelInvoice: async a => { calls.push(a); return { status: 'success' }; },
+  };
+  const db = new Database(':memory:');
+  const p = createPledges({ db, mono: monoStub, now: (() => { let t = 1_000_000; return () => (t += 1000); })(), sleep: async () => {}, feePct: 2 });
+  const a = p.createPledge({ projectId: 'n', amountKop: 10000 }); p.attachInvoice(a.id, 'a');
+  const b = p.createPledge({ projectId: 'n', amountKop: 10000 }); p.attachInvoice(b.id, 'b');
+  for (const inv of ['a', 'b']) p.applyMonoState({ invoiceId: inv, status: 'success', amount: 10000, modifiedDate: iso(5_000_000) });
+  assert.equal((await p.refundPledge(a.id)).refundKop, 9850, 'fee from invoice/status');
+  assert.equal((await p.refundPledge(b.id)).refundKop, 9800, '2% fallback');
+  assert.deepEqual(calls.map(c => c.amount), [9850, 9800]);
+  assert.equal(p.get(a.id).status, 'refunded');
+  assert.equal(p.get(a.id).fee, 150);
+});
+
+test('a refund keeps its commission and a manual partial reversal is still flagged', () => {
+  const { p } = setup({});
+  const a = p.createPledge({ projectId: 'n', amountKop: 10000 }); p.attachInvoice(a.id, 'a');
+  p.applyMonoState({ invoiceId: 'a', status: 'success', amount: 10000, paymentInfo: { fee: 130 }, modifiedDate: iso(5_000_000) });
+  const r = p.applyMonoState({ invoiceId: 'a', status: 'reversed', finalAmount: 5000, modifiedDate: iso(6_000_000) });
+  assert.equal(r.note, 'partial_reversal', 'refunded by hand for less than we would: needs a human');
 });
 
 // ---- reconcile ----

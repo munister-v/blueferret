@@ -4,6 +4,7 @@ const crypto  = require('crypto');
 const path    = require('path');
 const fs      = require('fs');
 const multer  = require('multer');
+const { stripDonationHtml } = require('./src/donation');
 const ejs     = require('ejs');
 const Database = require('better-sqlite3');
 const vm      = require('vm');
@@ -2801,7 +2802,7 @@ app.post('/api/admin/kik-projects/:id/open-collection', requireAuth, (req,res)=>
     const srcFiles = kikPageFiles(template).map(kikRealPage);
     const destFiles = kikPageFiles(project);
     if(srcFiles.length!==2 || srcFiles.some(x=>!x)) return res.status(400).json({error:'Не знайдено сторінки шаблонного проєкту'});
-    if(!fs.readFileSync(srcFiles[1],'utf8').includes('Підтримка без нагороди'))
+    if(!fs.readFileSync(srcFiles[1],'utf8').includes('<div class="grid gap-4">'))
       return res.status(400).json({error:'Сторінка підтримки шаблону не містить варіантів підтримки — обери інший шаблон'});
     // Only the support page is replaced: the project's own detail page (story,
     // images, text) must never be overwritten with the template's.
@@ -2816,8 +2817,7 @@ app.post('/api/admin/kik-projects/:id/open-collection', requireAuth, (req,res)=>
     let html = fs.readFileSync(supportFile,'utf8');
     const rebuilt = rebuildTierCards(html, project.support.tiers);
     if(!rebuilt) throw new Error('Не вдалося перебудувати картки варіантів підтримки на сторінці шаблону');
-    html = rebuilt.split(`aria-label="Сума підтримки" value="${template.support.defaultDonation}"`)
-      .join(`aria-label="Сума підтримки" value="${project.support.defaultDonation}"`);
+    html = stripDonationHtml(rebuilt); // reward sets only, no "support with any amount"
     writeAtomic(supportFile, html);
     try{ execFileSync('restorecon',['-R',path.join(PAGES_ROOT,'kik')],{stdio:'ignore',timeout:15000}); }catch{}
     const publishedAt = bumpPublishedAt();

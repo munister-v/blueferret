@@ -72,6 +72,10 @@ function mount(app, { mono, pledges, requireAuth, readKikProjects, applyRaisedDe
       return res.status(400).json({ error: 'Вкажіть суму в цілих гривнях.' });
     if (amountKop < minUah * 100)
       return res.status(400).json({ error: `Мінімальна сума підтримки — ${minUah} ₴.` });
+    // Only the reward sets can be bought (there is no "any amount" support any more).
+    const tiers = (project.support && project.support.tiers) || [];
+    if (tiers.length && !tiers.some(t => Number(t.amount) * 100 === amountKop))
+      return res.status(400).json({ error: 'Сума має відповідати одному з наборів.' });
     if (amountKop > MAX_UAH * 100)
       return res.status(400).json({ error: `Максимальна сума одним платежем — ${MAX_UAH} ₴.` });
 
@@ -134,7 +138,7 @@ function mount(app, { mono, pledges, requireAuth, readKikProjects, applyRaisedDe
     try {
       const r = await pledges.refundProject(String(projectId), { dryRun: confirm !== true });
       if (!r.dryRun) {
-        audit(req.ip, 'mono_refund_project', { project: projectId, count: r.count, ok: r.ok, failed: r.failed, totalKop: r.totalKop });
+        audit(req.ip, 'mono_refund_project', { project: projectId, count: r.count, ok: r.ok, failed: r.failed, totalKop: r.totalKop, refundedKop: r.refundedKop });
         scheduleSync();
       }
       res.json(r);

@@ -4,6 +4,7 @@
 #
 #   scripts/deploy-mono.sh --server                 admin code (payments stay OFF until MONO_API_TOKEN is set)
 #   scripts/deploy-mono.sh --site                   legal pages + payment UI + footer links
+#   scripts/deploy-mono.sh --remove-donation        take "Підтримка без нагороди" off the support pages (after --server)
 #   scripts/deploy-mono.sh --enable-payments        flip the support-page bundle on (do this last)
 #   add --apply to really do it
 #   --site --allow-draft  publish legal pages that still hold [PLACEHOLDERS] (draft banner + noindex)
@@ -21,11 +22,11 @@ SSH="ssh -i $KEY -o BatchMode=yes -o ConnectTimeout=10"
 # -rlt, not -a: never copy owner/permissions of the local temp dir onto the web root (that once made it 700 -> 403)
 RS="rsync -rltz -e \"$SSH\""
 
-DO_SERVER=0; DO_SITE=0; DO_PAY=0; APPLY=0; STRICT="--strict"
+DO_SERVER=0; DO_SITE=0; DO_PAY=0; DO_DON=0; APPLY=0; STRICT="--strict"
 for a in "$@"; do case "$a" in
-  --server) DO_SERVER=1;; --site) DO_SITE=1;; --enable-payments) DO_PAY=1;; --apply) APPLY=1;; --allow-draft) STRICT="";;
+  --server) DO_SERVER=1;; --site) DO_SITE=1;; --enable-payments) DO_PAY=1;; --remove-donation) DO_DON=1;; --apply) APPLY=1;; --allow-draft) STRICT="";;
   *) echo "unknown option $a"; exit 2;; esac; done
-[ $((DO_SERVER+DO_SITE+DO_PAY)) -gt 0 ] || { sed -n 2,13p "$0"; exit 2; }
+[ $((DO_SERVER+DO_SITE+DO_PAY+DO_DON)) -gt 0 ] || { sed -n 2,14p "$0"; exit 2; }
 DRY=""; [ $APPLY = 1 ] || DRY="-n"
 TS="$(date +%Y%m%d%H%M%S)"
 BAK="/root/bf-backups/mono-$TS"  # outside the web root on purpose
@@ -60,6 +61,10 @@ if [ $DO_SITE = 1 ]; then
     || { echo "Fill the [PLACEHOLDERS] in docs/legal/*.md first (the footer links to these pages)."; exit 1; }
   rm -rf "$STAGE/kontakty"
   cp "$HERE/site/bf.js" "$HERE/site/bf-pay.js" "$STAGE/"
+  # nginx lets browsers keep JS for a day: version bf-pay.js by its content so a change really reaches them
+  PAYV="$(shasum "$HERE/site/bf-pay.js" | cut -c1-8)"
+  perl -pi -e "s#/bf-pay\.js\?v=[0-9a-f]+#/bf-pay.js?v=$PAYV#g" "$STAGE/bf.js"
+  grep -q "bf-pay.js?v=$PAYV" "$STAGE/bf.js" || { echo "could not version bf-pay.js in bf.js"; exit 1; }
   if [ $APPLY = 1 ]; then
     remote "mkdir -p $BAK/site && cd $SITE && cp -a bf.js $BAK/site/ && { [ ! -f bf-pay.js ] || cp -a bf-pay.js $BAK/site/; }"
     echo "backup: $BAK/site"
@@ -73,6 +78,19 @@ if [ $DO_SITE = 1 ]; then
     echo "rollback: copy $BAK/site/bf.js back, remove oferta/ povernennia/ konfidentsiinist/ bf-pay.js, then re-bump: node scripts/bump-asset.js --root $SITE --apply"
   fi
   rm -rf "$STAGE"
+fi
+
+if [ $DO_DON = 1 ]; then
+  say "remove the no-reward block from the support pages"
+  remote "test -f $ADMIN/src/donation.js" || { echo "Deploy the server first (--server --apply): src/donation.js is missing there."; exit 1; }
+  scp -q -i "$KEY" -o BatchMode=yes "$HERE/scripts/remove-donation.js" "$VPS:/tmp/remove-donation.js"
+  if [ $APPLY = 1 ]; then
+    remote "mkdir -p $BAK && cd $SITE && tar czf $BAK/support-pages.tgz kik '_next/static/chunks/app/kik/proekty/[id]/pidtrymaty' && echo backup: $BAK/support-pages.tgz"
+    remote "DONATION_LIB=$ADMIN/src/donation node /tmp/remove-donation.js --root $SITE --apply && restorecon -R $SITE 2>/dev/null; rm /tmp/remove-donation.js; true"
+    echo "undo: tar xzf $BAK/support-pages.tgz -C $SITE (and remove the new page-*.js chunk)"
+  else
+    remote "DONATION_LIB=$ADMIN/src/donation node /tmp/remove-donation.js --root $SITE; rm /tmp/remove-donation.js"
+  fi
 fi
 
 if [ $DO_PAY = 1 ]; then

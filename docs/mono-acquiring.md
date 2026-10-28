@@ -2,8 +2,12 @@
 
 Model: money is **charged immediately** (`paymentType: debit`). If a campaign misses its goal, every
 paid pledge is refunded with `invoice/cancel`. (A `hold` lasts only 9 days in monobank's API, so it
-cannot cover a month-long campaign. The commission is **not** returned by monobank on refund — it is
-the seller's cost; the offer text says so.)
+cannot cover a month-long campaign. monobank does **not** return its acquiring commission on a refund,
+and we do not pass it back either: a refund is the amount paid **minus the commission of that payment**
+(`paymentInfo.fee`, remembered per pledge). The offer, the refund terms and the panel on the support page say so.)
+
+There is no "support without a reward" any more: only the reward sets can be bought, and the server
+refuses an amount that is not one of the project's tier prices.
 
 ## What is in the repo
 
@@ -19,6 +23,7 @@ the seller's cost; the offer text says so.)
 | `scripts/build-legal.js` | turns those into `/oferta/`, `/povernennia/`, `/konfidentsiinist/` (refuses leftover placeholders with `--strict`) |
 | `scripts/enable-payments.js` | flips the build-time flag in the support-page bundle (and the prerendered buttons); `--revert` undoes it |
 | `scripts/bump-asset.js` | cache-busts `bf.js?v=N` in every page |
+| `scripts/remove-donation.js`, `src/donation.js` | takes the "Підтримка без нагороди" block off every support page (HTML, page text, client bundle); `open-collection` does the same for pages it builds |
 | `scripts/deploy-mono.sh` | the three-part rollout below, dry-run by default |
 | `tests/mono.test.js` | `npm test` |
 
@@ -32,6 +37,7 @@ the seller's cost; the offer text says so.)
 | `MONO_ALLOWED_PROJECTS` | e.g. `6`. Only these project ids can take money. **Set it at launch**: the live catalog also holds five demo projects (`1`–`5`, with invented raised amounts) that must never accept real payments |
 | `PUBLIC_BASE_URL` | default `https://blueferret.com.ua`; used for the webhook and redirect URLs |
 | `MONO_MAX_UAH` | cap for one payment, default 50000 |
+| `MONO_FEE_PCT` | optional fallback commission in percent, used at refund time only for a pledge whose fee monobank never reported. Without it such a pledge is **not** refunded (`fee_unknown`) rather than refunded in full |
 | `MONO_API_BASE` | default `https://api.monobank.ua` (tests point it at a fake) |
 
 Set them in the pm2 environment on the server (not in `ecosystem.config.js`, which is committed):
@@ -48,7 +54,7 @@ Set them in the pm2 environment on the server (not in `ecosystem.config.js`, whi
   runtime schema rejects `goal < raised` (it would blank `/kik/proekty/`), so the displayed `raised` is
   capped at the goal and the surplus is kept in the setting `kikOverflow`; refunds eat the surplus first.
 - Publishing to the static pages is debounced (a few seconds) and skipped while an admin save is running.
-- Refunds: `POST /api/admin/pledges/refund {projectId}` is a **dry run**; add `confirm: true` to execute.
+- Refunds: `POST /api/admin/pledges/refund {projectId}` is a **dry run** (it shows `totalKop`, `feeKop`, `refundKop`, `unknownFee`; fees not yet known are asked from `invoice/status`); add `confirm: true` to execute. The cancel is sent with `amount = paid − fee`; the invoice keeps the fee, which is why a `reversed` state with exactly the fee left counts as refunded, while any other partial reversal is flagged for a human.
   Each refund has a stable `extRef` (`refund-<id>`), 429 is retried, failures are recorded and can be repeated.
   A `processing` refund is finished by the later `reversed` webhook or the reconcile.
 - **Keep enough money on the FOP account until the campaign is closed.** Do not withdraw it. Every refund
@@ -80,7 +86,7 @@ Today every KIK project is hidden, and Нічка's support page was prerendered
 6. **Switch the button on.** `scripts/deploy-mono.sh --enable-payments` (dry run) then `--apply`. It edits the
    support-page bundle (new hashed file, pages relinked) and removes the prerendered `disabled` from the
    buttons. Undo: `node scripts/enable-payments.js --root /var/www/blueferret --revert`.
-7. **Real test.** Pay the minimum yourself, watch the `audit` entries (`mono_*`) and `raised`, then
+7. **Real test.** Pay the cheapest set yourself, check that the pledge row has a `fee` (if monobank sends none, set `MONO_FEE_PCT`), watch the `audit` entries (`mono_*`) and `raised`, then
    `POST /api/admin/pledges/refund {projectId:'6', confirm:true}` and check the money comes back.
 
 monobank questions still open: is a PRRO link needed (then `merchantPaymInfo.basketOrder` must be sent)?
