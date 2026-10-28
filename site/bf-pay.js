@@ -18,25 +18,28 @@
     '@media(min-width:640px){.bf-pay{padding:28px}}',
     '.bf-pay-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;margin-bottom:6px}',
     // same face as the page title (h1): Inter 800, tight tracking
-    '.bf-pay h2{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:22px;font-weight:800;letter-spacing:-.025em;color:#0f172a;display:flex;align-items:center;gap:8px}',
+    '.bf-pay h2{margin:0;font-family:inherit;font-size:22px;font-weight:800;letter-spacing:.01em;color:#0f172a;display:flex;align-items:center;gap:8px}',
+    // the page title is Inter on the whole site; on the support page it follows the main font like the headings under it
+    'html.bf-support main h1{font-family:inherit!important;letter-spacing:.01em!important}',
     '.bf-pay-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid}',
     '.bf-pay-chip.on{background:#4BB27218;color:#2f8a52;border-color:#4BB27240}',
     '.bf-pay-chip.off{background:#f59e0b18;color:#b45309;border-color:#f59e0b45}',
     '.bf-pay-bar{height:8px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin:10px 0 4px}',
     '.bf-pay-bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#4BB272,#34d399)}',
     '.bf-pay-sum{font-size:14px;color:#475569;margin:0 0 14px}',
-    '.bf-pay-steps{list-style:none;margin:0;padding:0;display:grid;gap:12px;grid-template-columns:1fr}',
-    '@media(min-width:760px){.bf-pay-steps{grid-template-columns:repeat(4,1fr)}}',
-    '.bf-pay-steps li{border:1px solid #e2e8f0;border-radius:16px;padding:14px;background:#f8fafc;font-size:14px;line-height:1.5;color:#475569}',
-    '.bf-pay-steps b{display:block;color:#0f172a;margin-bottom:2px;font-size:15px}',
+    '.bf-pay-steps{list-style:none;margin:0;padding:0;display:grid;gap:10px;grid-template-columns:1fr 1fr}',
+    '@media(min-width:980px){.bf-pay-steps{grid-template-columns:repeat(4,1fr);gap:12px}}',
+    '.bf-pay-steps li{border:1px solid #e2e8f0;border-radius:16px;padding:12px;background:#f8fafc;font-size:13px;line-height:1.45;color:#475569}',
+    '@media(min-width:640px){.bf-pay-steps li{padding:14px;font-size:14px;line-height:1.5}}',
+    '.bf-pay-steps b{display:block;color:#0f172a;margin-bottom:2px;font-size:14px}',
     '.bf-pay-steps .n{display:inline-flex;width:22px;height:22px;border-radius:99px;background:#0f172a;color:#fff;font-size:12px;font-weight:700;align-items:center;justify-content:center;margin-bottom:8px}',
     '.bf-pay-promise{margin:14px 0 0;padding:12px 14px;border-radius:14px;background:#4BB2720f;border:1px solid #4BB27230;font-size:14px;line-height:1.55;color:#14532d}',
     '.bf-pay-foot{margin:12px 0 0;font-size:13px;line-height:1.55;color:#64748b}',
-    '.bf-pay-foot a,.bf-pay-consent a{color:#2f8a52;font-weight:600;text-decoration:underline;text-underline-offset:2px}',
+    '.bf-pay-foot a,.bf-pay-consent a{color:#2f8a52;font-weight:600;text-decoration:underline;text-underline-offset:2px;display:inline-block;padding:6px 0}',
     '.bf-pay-consent{margin:14px 4px 0;font-size:13px;color:#64748b;line-height:1.55}',
     '.bf-pay-off button:disabled{background:#0f172a!important;color:#fff!important;opacity:.55!important;gap:8px}',
-    '#bf-pay-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;max-width:min(92vw,520px);background:#0f172a;color:#fff;border-radius:16px;padding:14px 18px;font-size:14px;line-height:1.5;box-shadow:0 18px 50px -12px rgba(15,23,42,.55)}',
-    '#bf-pay-toast button{margin-left:12px;background:none;border:0;color:#94a3b8;font-size:18px;cursor:pointer;vertical-align:middle}'
+    '#bf-pay-toast{position:fixed;left:12px;right:12px;bottom:20px;margin:0 auto;max-width:520px;display:flex;align-items:flex-start;gap:8px;z-index:80;background:#0f172a;color:#fff;border-radius:16px;padding:14px 18px;font-size:14px;line-height:1.5;box-shadow:0 18px 50px -12px rgba(15,23,42,.55)}',
+    '#bf-pay-toast button{flex:none;margin:-6px -8px 0 0;width:40px;height:40px;background:none;border:0;color:#94a3b8;font-size:20px;cursor:pointer}'
   ].join('');
 
   function css() {
@@ -50,19 +53,26 @@
   // ---- back from the payment page ----
   var q = new URLSearchParams(location.search).get('payment');
   if (q && /^\/kik\/proekty\/?$/.test(location.pathname)) {
-    css();
-    var t = document.createElement('div'); t.id = 'bf-pay-toast'; t.setAttribute('role', 'status');
-    t.innerHTML = '<span><b>Дякуємо!</b> Якщо платіж пройшов, сума з’явиться на сторінці за кілька хвилин, а підтвердження — у вашому банку. Якщо оплата не вдалася, просто спробуйте ще раз: гроші не списані.</span><button type="button" aria-label="Закрити">×</button>';
-    t.querySelector('button').onclick = function () { t.remove(); };
-    document.body.appendChild(t);
-    setTimeout(function () { t.remove(); }, 20000);
-    try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
+    // React re-renders the whole document when it hydrates (the site-wide #418), which would wipe a
+    // node added too early, so wait for the page to settle first.
+    var showToast = function () {
+      css();
+      var t = document.createElement('div'); t.id = 'bf-pay-toast'; t.setAttribute('role', 'status');
+      t.innerHTML = '<span><b>Дякуємо!</b> Якщо платіж пройшов, сума з’явиться на сторінці за кілька хвилин, а підтвердження — у вашому банку. Якщо оплата не вдалася, просто спробуйте ще раз: гроші не списані.</span><button type="button" aria-label="Закрити">×</button>';
+      t.querySelector('button').onclick = function () { t.remove(); };
+      document.body.appendChild(t);
+      setTimeout(function () { t.remove(); }, 20000);
+      try { history.replaceState(history.state, '', location.pathname); } catch (e) { /* ignore */ }
+    };
+    var go = function () { setTimeout(showToast, 1200); };
+    if (document.readyState === 'complete') go(); else window.addEventListener('load', go);
   }
 
   // ---- support page ----
   var m = location.pathname.match(/^\/kik\/proekty\/([^/]+)\/pidtrymaty\/?$/);
   if (!m) return;
   var id = decodeURIComponent(m[1]);
+  document.documentElement.classList.add('bf-support');
 
   function support(btns) {
     for (var i = 0; i < btns.length; i++) if (/^\s*Підтримати\s*$/.test(btns[i].textContent)) return btns[i];
@@ -114,6 +124,7 @@
       var b = btns[i];
       if (b.getAttribute('data-bf-lock') === '1' || !/^\s*Підтримати\s*$/.test(b.textContent)) continue;
       b.setAttribute('data-bf-lock', '1');
+      b.disabled = true; // really inactive, not only styled so (React owns the attribute, but only rewrites it on a state change)
       b.setAttribute('aria-disabled', 'true');
       b.title = 'Онлайн-оплата відкривається найближчим часом';
       b.innerHTML = LOCK + '<span>Скоро</span>';
