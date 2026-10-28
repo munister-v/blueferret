@@ -2,6 +2,9 @@
 // pledge list / refund endpoints, and the background catalog sync. The money
 // logic itself lives in ./pledges and ./mono so it can be tested without HTTP.
 const MAX_UAH = Number(process.env.MONO_MAX_UAH) || 50000;
+// Comma-separated project ids that may take payments. Empty = every visible active project.
+// Set it for the launch so a demo project can never accept real money by accident.
+const ALLOWED = (process.env.MONO_ALLOWED_PROJECTS || '').split(',').map(x => x.trim()).filter(Boolean);
 const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || 'https://blueferret.com.ua').replace(/\/+$/, '');
 
 function mount(app, { mono, pledges, requireAuth, readKikProjects, applyRaisedDeltas, isPublishBusy, audit }) {
@@ -60,6 +63,7 @@ function mount(app, { mono, pledges, requireAuth, readKikProjects, applyRaisedDe
     if (limited(req.ip)) return res.status(429).json({ error: 'Забагато спроб. Спробуйте за кілька хвилин.' });
     const body = req.body || {};
     const project = findProject(body);
+    if (project && ALLOWED.length && !ALLOWED.includes(project.id)) return res.status(404).json({ error: 'Проєкт недоступний для підтримки.' });
     if (!project || project.status !== 'active') return res.status(404).json({ error: 'Проєкт недоступний для підтримки.' });
 
     const amountKop = Number(body.amount);
@@ -78,7 +82,7 @@ function mount(app, { mono, pledges, requireAuth, readKikProjects, applyRaisedDe
         amount: amountKop,
         reference: pledge.reference,
         destination: `Підтримка проєкту «${project.name}»` + (tierLabel ? ` — ${tierLabel}` : ''),
-        redirectUrl: `${PUBLIC_BASE}/kik/proekty/?payment=success`,
+        redirectUrl: `${PUBLIC_BASE}/kik/proekty/?payment=return`,
         webHookUrl: `${PUBLIC_BASE}/api/mono/webhook`,
       });
       if (!inv.invoiceId || !inv.pageUrl) throw new Error('no invoice in response');
