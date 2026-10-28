@@ -4,7 +4,9 @@
 // hydrating: the prerendered HTML, the page's client bundle, and the page text.
 
 const OLD_SUBTITLE = 'Оберіть варіант: замовити фіксовану версію гри або підтримати сумою без нагороди.';
-const NEW_SUBTITLE = 'Оберіть набір, щоб підтримати випуск гри. Нагороду — примірник гри — ми відправимо після завершення збору.';
+const NEW_SUBTITLE = 'Оберіть набір і підтримайте випуск гри. Відправимо після завершення збору.';
+// earlier wordings still sitting in pages already patched
+const PREV_SUBTITLES = ['Оберіть набір, щоб підтримати випуск гри. Нагороду \u2014 примірник гри \u2014 ми відправимо після завершення збору.'];
 
 const BLOCK_OPEN = '<div class="rounded-3xl border border-slate-200/80 bg-white/95 p-5 sm:p-6 shadow-[0_20px_46px_-34px_rgba(15,23,42,0.35)]">';
 
@@ -27,7 +29,8 @@ function stripDonationHtml(html) {
     const block = end > 0 ? out.slice(start, end) : '';
     if (block.includes('aria-label="Сума підтримки"')) out = out.slice(0, start) + out.slice(end);
   }
-  return out.split(OLD_SUBTITLE).join(NEW_SUBTITLE);
+  for (const old of [OLD_SUBTITLE, ...PREV_SUBTITLES]) out = out.split(old).join(NEW_SUBTITLE);
+  return out;
 }
 
 // Same in the client bundle: drop the first child of the page's root <div>.
@@ -41,6 +44,6 @@ function stripDonationBundle(js) {
   return js.slice(0, m.index) + js.slice(grid + 1);
 }
 
-const hasDonationHtml = html => html.includes('aria-label="Сума підтримки"') || html.includes(OLD_SUBTITLE);
+const hasDonationHtml = html => html.includes('aria-label="Сума підтримки"') || [OLD_SUBTITLE, ...PREV_SUBTITLES].some(t => html.includes(t));
 
 module.exports = { stripDonationHtml, stripDonationBundle, hasDonationHtml, OLD_SUBTITLE, NEW_SUBTITLE };

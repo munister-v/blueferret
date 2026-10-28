@@ -295,3 +295,13 @@ test('reconcile finds paid / expired pledges whose webhook never came', async ()
   assert.equal(p.get(a.id).status, 'paid');
   assert.equal(p.get(b.id).status, 'expired');
 });
+
+// ---- house style: no long dashes in anything a visitor reads ----
+test('no long dashes (U+2014) in site texts and legal pages', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const root = path.join(__dirname, '..');
+  const files = ['site/bf-pay.js', 'src/donation.js', ...fs.readdirSync(path.join(root, 'docs/legal')).map(f => 'docs/legal/' + f)];
+  for (const f of files) assert.ok(!fs.readFileSync(path.join(root, f), 'utf8').includes('\u2014'), f + ' has a long dash');
+  const { NEW_SUBTITLE } = require('../src/donation');
+  assert.ok(!NEW_SUBTITLE.includes('\u2014'));
+});

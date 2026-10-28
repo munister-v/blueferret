@@ -77,7 +77,9 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-s
 main{flex:1;padding:36px 20px 64px}
 article{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:28px 22px;box-shadow:0 20px 46px -34px rgba(15,23,42,.3)}
 @media(min-width:700px){article{padding:44px 52px}}
-article h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin:0 0 18px;font-weight:800;letter-spacing:-.02em}
+article h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin:0 0 18px;font-weight:800;letter-spacing:.01em}
+article h1,article h1+p,article h1+p+p{text-align:center}
+article h2{text-align:left}
 article h2{font-size:20px;margin:30px 0 10px;font-weight:700}
 article p,article li{font-size:16px;line-height:1.7;color:#334155}
 article p{margin:0 0 12px}article ul,article ol{margin:0 0 14px;padding-left:22px}article li{margin:4px 0}
@@ -91,7 +93,7 @@ function page({ title, body, hasPlaceholders, head }) {
   return `<!DOCTYPE html>
 <html lang="uk"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(title)} — Blue Ferret</title>
+<title>${esc(title)} | Blue Ferret</title>
 <meta name="description" content="${esc(title)} видавництва настільних ігор Blue Ferret.">
 ${hasPlaceholders ? '<meta name="robots" content="noindex,nofollow">' : ''}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
