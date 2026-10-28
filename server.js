@@ -59,7 +59,11 @@ function fullSettings() {
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
-app.use(express.json({ limit: '4mb' }));
+app.use(express.json({
+  limit: '4mb',
+  // monobank signs the exact bytes it sends, so keep them for the webhook only.
+  verify: (req, _res, buf) => { if (req.originalUrl === '/api/mono/webhook') req.rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -2278,6 +2282,7 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
 //  actually on the page.
 // ════════════════════════════════════════════════════════
 const KIK_HIDDEN_KEY = 'kikHidden';
+const KIK_OVERFLOW_KEY = 'kikOverflow';
 // Parked pages keep a .html name on purpose: every chunk-relink walker in this
 // file keys off .endsWith('.html'), so a page parked for weeks still gets its
 // chunk references rewritten as bundles are rehashed. Park it as .bak-style
@@ -2730,6 +2735,56 @@ app.put('/api/admin/kik-projects', requireAuth, (req,res)=>{
   }catch(err){
     res.status(500).json({error:err.message});
   }
+});
+
+// Add confirmed pledge money to (or take refunded money off) the catalog's
+// `raised`, by delta so manual edits made in the admin are respected. Same
+// write path as the admin save above: rewrite the chunk, re-sync the project's
+// prerendered pages, bump publishedAt. Synchronous start to finish, so it can
+// never interleave with another handler; the caller checks publishWriteActive.
+function applyKikRaisedDeltas(deltas){
+  const ids = Object.keys(deltas).filter(id=>deltas[id]);
+  if(!ids.length) return;
+  const b = readKikProjects();
+  if(!b) throw new Error('kik projects bundle not found');
+  // The site's runtime schema rejects a project with goal < raised, which would
+  // blank /kik/proekty/ for everyone. So an overfunded campaign shows `raised`
+  // capped at the goal and the surplus is parked here until refunds or a higher
+  // goal bring it back.
+  const overflow = getSetting(KIK_OVERFLOW_KEY, {});
+  const before = new Map(), after = new Map();
+  const bump = p => {
+    const d = deltas[p.id];
+    if(!d) return p;
+    const total = Math.max(0, Number(p.raised||0) + Number(overflow[p.id]||0) + d);
+    const shown = Math.min(total, Math.max(0, Number(p.goal)||0));
+    if(total > shown) overflow[p.id] = total - shown; else delete overflow[p.id];
+    const n = { ...p, raised: shown };
+    before.set(p.id, p); after.set(p.id, n);
+    return n;
+  };
+  const visible = b.arr.map(bump);
+  const parkedOld = getSetting(KIK_HIDDEN_KEY, []);
+  const parked = parkedOld.map(bump);
+  if(visible.some((p,i)=>p!==b.arr[i])) writeKikProjects(b, visible);
+  if(parked.some((p,i)=>p!==parkedOld[i])) setSetting(KIK_HIDDEN_KEY, parked);
+  setSetting(KIK_OVERFLOW_KEY, overflow);
+  const pageSync = [];
+  for(const [id, p] of after){
+    try{ syncKikProjectPages(before.get(id), p); }
+    catch(err){ pageSync.push({ id, error: err.message }); }
+  }
+  const publishedAt = bumpPublishedAt();
+  audit('system','kik_raised_sync',{ deltas, overflow, projects:[...after.keys()], publishedAt, pageSync });
+}
+
+// ── monobank acquiring (pledges, webhook, refunds) ──
+const mono = require('./src/mono').createMono();
+require('./src/mono-routes').mount(app, {
+  mono,
+  pledges: require('./src/pledges').createPledges({ db, mono }),
+  requireAuth, readKikProjects, applyRaisedDeltas: applyKikRaisedDeltas,
+  isPublishBusy: () => publishWriteActive, audit,
 });
 
 // ── duplicate page ──

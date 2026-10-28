@@ -5,7 +5,8 @@
   "description": "Blue Ferret CMS — powerful settings admin for the static site",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test tests/"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
