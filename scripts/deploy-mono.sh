@@ -6,6 +6,7 @@
 #   scripts/deploy-mono.sh --site                   legal pages + payment UI + footer links
 #   scripts/deploy-mono.sh --enable-payments        flip the support-page bundle on (do this last)
 #   add --apply to really do it
+#   --site --allow-draft  publish legal pages that still hold [PLACEHOLDERS] (draft banner + noindex)
 #
 # Order that is safe: --server, fill the placeholders in docs/legal/*.md, --site,
 # set MONO_API_TOKEN (see docs/mono-acquiring.md), restart, --enable-payments.
@@ -17,11 +18,12 @@ SITE="/var/www/blueferret"
 KEY="${BF_KEY:-$HOME/.ssh/blueferret_deploy}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 SSH="ssh -i $KEY -o BatchMode=yes -o ConnectTimeout=10"
-RS="rsync -az -e \"$SSH\""
+# -rlt, not -a: never copy owner/permissions of the local temp dir onto the web root (that once made it 700 -> 403)
+RS="rsync -rltz -e \"$SSH\""
 
-DO_SERVER=0; DO_SITE=0; DO_PAY=0; APPLY=0
+DO_SERVER=0; DO_SITE=0; DO_PAY=0; APPLY=0; STRICT="--strict"
 for a in "$@"; do case "$a" in
-  --server) DO_SERVER=1;; --site) DO_SITE=1;; --enable-payments) DO_PAY=1;; --apply) APPLY=1;;
+  --server) DO_SERVER=1;; --site) DO_SITE=1;; --enable-payments) DO_PAY=1;; --apply) APPLY=1;; --allow-draft) STRICT="";;
   *) echo "unknown option $a"; exit 2;; esac; done
 [ $((DO_SERVER+DO_SITE+DO_PAY)) -gt 0 ] || { sed -n 2,13p "$0"; exit 2; }
 DRY=""; [ $APPLY = 1 ] || DRY="-n"
@@ -54,7 +56,7 @@ if [ $DO_SITE = 1 ]; then
   # the live site is the source of truth for stylesheet links
   scp -q -i "$KEY" -o BatchMode=yes "$VPS:$SITE/kontakty/index.html" "$STAGE/kontakty.html"
   mkdir -p "$STAGE/kontakty" && mv "$STAGE/kontakty.html" "$STAGE/kontakty/index.html"
-  node "$HERE/scripts/build-legal.js" --out "$STAGE" --strict \
+  node "$HERE/scripts/build-legal.js" --out "$STAGE" $STRICT \
     || { echo "Fill the [PLACEHOLDERS] in docs/legal/*.md first (the footer links to these pages)."; exit 1; }
   rm -rf "$STAGE/kontakty"
   cp "$HERE/site/bf.js" "$HERE/site/bf-pay.js" "$STAGE/"
