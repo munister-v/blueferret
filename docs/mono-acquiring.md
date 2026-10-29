@@ -59,7 +59,7 @@ Set them in the pm2 environment on the server (not in `ecosystem.config.js`, whi
   A `processing` refund is finished by the later `reversed` webhook or the reconcile.
 - **Keep enough money on the FOP account until the campaign is closed.** Do not withdraw it. Every refund
   costs the acquiring commission that monobank keeps.
-- The site pages show "10 робочих днів" for refunds (`site/bf-pay.js`, `docs/legal/*`): keep them in sync.
+- The site pages show "14 робочих днів" for refunds (`site/bf-pay.js`, `docs/legal/*`): keep them in sync.
 
 ## Launch of "Нічка" (project id `6`)
 
