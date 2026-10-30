@@ -2878,6 +2878,12 @@ require('./src/mono-routes').mount(app, {
   isPublishBusy: () => publishWriteActive, audit,
 });
 
+// ── preorders (request form instead of payment; invoices are sent by hand later) ──
+require('./src/preorder-routes').mount(app, {
+  preorders: require('./src/preorders').createPreorders({ db }),
+  requireAuth, readKikProjects, audit,
+});
+
 // ── duplicate page ──
 app.post('/api/admin/pages/duplicate', requireAuth, (req,res)=>{
   const {from, slug:rawSlug} = req.body||{};

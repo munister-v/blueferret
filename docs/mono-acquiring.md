@@ -61,6 +61,24 @@ Set them in the pm2 environment on the server (not in `ecosystem.config.js`, whi
   costs the acquiring commission that monobank keeps.
 - The site pages show "14 робочих днів" for refunds (`site/bf-pay.js`, `docs/legal/*`): keep them in sync.
 
+## Preorder mode (no payment yet)
+
+While the FOP is not ready, the support page takes **requests instead of money**: the buttons read
+"Передзамовити" and open a form (set, quantity, name, phone, city, delivery address, optional email).
+Nothing is charged. Around 5 December the invoices are sent by hand (monobank invoice link per person;
+a hold lasts 9 days at most, so it is not used).
+
+| File | What |
+|---|---|
+| `src/preorders.js` | table `kik_preorders`, validation (phone normalised to +380…, price taken from the server's tier, 24 h duplicate guard), CSV |
+| `src/preorder-routes.js` | `GET /api/preorder/info?project=`, `POST /api/preorder` (honeypot + 6 per 10 min per IP); admin: `GET /api/admin/preorders?project=`, `GET /api/admin/preorders.csv?project=`, `POST /api/admin/preorders/:id/status {status: new|invoiced|paid|cancelled}`, `POST /api/admin/preorders/:id/note` |
+| `site/bf-pay.js` | the form, the changed "how it works" panel; wins over the payment buttons for a project that has preorders on |
+
+Env (pm2, server only): `PREORDER_PROJECTS=6` turns it on for those project ids (empty = off),
+`PREORDER_INVOICE_DATE` is the text shown to people (default `5 грудня`). Then `scripts/bump-asset.js` for the cache bust.
+Switch to real payments later: unset `PREORDER_PROJECTS`, set the mono token as described below.
+The legal pages (offer, refund terms) still describe the pay-now model and need a preorder wording before they go live.
+
 ## Launch of "Нічка" (project id `6`)
 
 Today every KIK project is hidden, and Нічка's support page was prerendered in the "збір ще не
