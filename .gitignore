@@ -15,3 +15,4 @@ temp_*.js
 /scratch.js
 /test_cheerio.js
 /test_extract.js
+/.claude/

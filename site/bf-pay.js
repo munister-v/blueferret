@@ -96,8 +96,7 @@
       setTimeout(function () { t.remove(); }, 20000);
       try { history.replaceState(history.state, '', location.pathname); } catch (e) { /* ignore */ }
     };
-    var go = function () { setTimeout(showToast, 1200); };
-    if (document.readyState === 'complete') go(); else window.addEventListener('load', go);
+    (window.__bfAfterHydration || function (f) { f(); })(showToast);
   }
 
   // ---- support page ----
@@ -294,7 +293,7 @@
     state = { enabled: !!r[0].enabled, project: project, pre: pi };
     // Not before hydration has finished (see bf.js); then re-check for a few
     // seconds in case React replaced the section while recovering.
-    var go = function () { var n = 0, iv = setInterval(function () { ensure(); if (++n > 12) clearInterval(iv); }, 600); };
-    if (document.readyState === 'complete') setTimeout(go, 400); else window.addEventListener('load', function () { setTimeout(go, 400); });
+    var go = function () { ensure(); var n = 0, iv = setInterval(function () { ensure(); if (++n > 12) clearInterval(iv); }, 600); };
+    (window.__bfAfterHydration || function (f) { f(); })(go);
   });
 })();

@@ -4,6 +4,7 @@ const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 
 let S={}, games=[], kik=[], mediaList=[], pages=[];
 let activeTab='dashboard';
+let poNew=0; // new preorders, shown on the nav item
 let pickerCallback=null;
 // editor state
 let editingGame=null;
@@ -22,6 +23,7 @@ const NAV=[
   {g:'Контент',items:[
     {id:'games',ico:'🎲',l:'Ігри'},
     {id:'kikprojects',ico:'🚀',l:'КІК проєкти'},
+    {id:'preorders',ico:'🧾',l:'Передзамовлення'},
     {id:'sitetext',ico:'🌐',l:'Тексти сайту'},
     {id:'pages',ico:'📄',l:'Сторінки'},
     {id:'media',ico:'🖼',l:'Медіа'},
@@ -107,10 +109,17 @@ async function api(method,url,body){
 
 // ── SIDEBAR ──
 function buildNav(){
-  $('#sidebar').innerHTML=NAV.map(g=>`<div class="sb-g">
+  $('#sidebar').innerHTML=`<div class="sb-brand"><div class="sb-logo">🦦</div><div class="sb-name">Blue Ferret<small>Панель керування</small></div></div>`+
+  NAV.map(g=>`<div class="sb-g">
     <div class="sb-lbl">${g.g}</div>
-    ${g.items.map(it=>`<button class="sb-i${it.id===activeTab?' active':''}" data-tab="${it.id}"><span class="ico">${it.ico}</span>${it.l}</button>`).join('')}
-  </div>`).join('');
+    ${g.items.map(it=>`<button class="sb-i${it.id===activeTab?' active':''}" data-tab="${it.id}"${it.id===activeTab?' aria-current="page"':''}><span class="ico" aria-hidden="true">${it.ico}</span>${it.l}${it.id==='preorders'&&poNew?`<span class="sb-cnt">${poNew}</span>`:''}</button>`).join('')}
+  </div>`).join('')+`<div class="sb-foot"><i></i>blueferret.com.ua</div>`;
+  // on phones the nav is a horizontal strip: keep the current item in view
+  const act=$('#sidebar .sb-i.active');
+  if(act&&innerWidth<=900)act.scrollIntoView({block:'nearest',inline:'center'});
+  const cur=NAV.flatMap(g=>g.items.map(it=>({...it,g:g.g}))).find(it=>it.id===activeTab);
+  const hb=$('.h-brand');
+  if(hb)hb.innerHTML=cur?`<span>${esc(cur.g)}</span><span class="h-sep">/</span><b>${esc(cur.l)}</b>`:`<b>${activeTab==='game-editor'?'Редактор гри':'Blue Ferret'}</b>`;
 }
 $('#sidebar').addEventListener('click',e=>{
   const b=e.target.closest('[data-tab]');if(!b)return;
@@ -129,16 +138,17 @@ async function render(){
   const el=$('#mainContent');el.scrollTop=0;window.scrollTo(0,0);
   // full-page editors
   if(activeTab==='game-editor'){el.style.padding='0';el.innerHTML='';renderGameEditor();return;}
-  el.style.padding='22px';
+  el.style.padding='';
   // Skeleton only for tabs that actually hit the network — flashing it for
   // instant synchronous renders (games/kik lists, settings) made every
   // filter click strobe grey placeholders for a frame. Pure jank.
-  if(['dashboard','pages','media','audit'].includes(activeTab)) el.innerHTML=renderSkeleton();
+  if(['dashboard','pages','media','audit','preorders'].includes(activeTab)) el.innerHTML=renderSkeleton();
   try{
     switch(activeTab){
       case'dashboard':el.innerHTML=await renderDash();setTimeout(()=>{try{checkSiteHealth();}catch{}},50);break;
       case'games':el.innerHTML=renderGamesList();break;
       case'kikprojects':await renderKikProjects();break;
+      case'preorders':await renderPreorders();break;
       case'sitetext':await renderSiteText();break;
       case'pages':await renderPages();break;
       case'media':await renderMedia();break;
@@ -147,6 +157,79 @@ async function render(){
       default:el.innerHTML=renderSettings(activeTab);
     }
   }catch(e){if(e.message!=='unauth')el.innerHTML=`<div class="card" style="color:var(--red)">Помилка: ${esc(e.message)}</div>`;}
+}
+
+
+// ── PREORDERS (requests without payment; invoices go out by hand) ──
+let poProject=(()=>{try{return localStorage.getItem('bf_po_project')||'6';}catch{return'6';}})();
+let poFilter='all', poQuery='', poData=null, poProjects=[];
+const PO_ST={new:'Нова',invoiced:'Рахунок надіслано',paid:'Оплачено',cancelled:'Скасовано'};
+const fmtUah=n=>new Intl.NumberFormat('uk-UA').format(n||0)+' ₴';
+async function renderPreorders(){
+  const el=$('#mainContent');
+  const [d,projects]=await Promise.all([
+    api('GET','/api/admin/preorders?project='+encodeURIComponent(poProject)),
+    api('GET','/api/admin/kik-projects').then(r=>r.projects||[]).catch(()=>[])
+  ]);
+  poData=d; poProjects=projects; poNew=d.rows.filter(r=>r.status==='new').length; buildNav();
+  el.innerHTML=poMarkup(projects);
+}
+function poMarkup(projects){
+  const d=poData, rows=d.rows;
+  const by=s=>rows.filter(r=>r.status===s).reduce((a,r)=>a+r.qty,0);
+  const max=Math.max(1,...Object.values(d.byTier));
+  const q=poQuery.trim().toLowerCase();
+  const list=rows.filter(r=>(poFilter==='all'||r.status===poFilter)&&(!q||[r.name,r.phone,r.email,r.city,r.address,r.tier_label].join(' ').toLowerCase().includes(q))).reverse();
+  const cnt=s=>s==='all'?rows.length:rows.filter(r=>r.status===s).length;
+  return `<div class="pg-title"><div><h1>Передзамовлення</h1><p>Заявки без оплати. Рахунки в monopay надсилаються вручну.</p></div>
+    <div class="po-tools">
+      <select onchange="poSetProject(this.value)" aria-label="Проєкт" style="width:auto">${(projects.length?projects:[{id:poProject,name:'Проєкт '+poProject}]).map(p=>`<option value="${esc(p.id)}"${p.id===poProject?' selected':''}>${esc(p.name)}</option>`).join('')}</select>
+      <a class="btn btn-g" href="/api/admin/preorders.csv?project=${encodeURIComponent(poProject)}" download>⬇ CSV</a>
+      <button class="btn btn-g" onclick="render()" title="Оновити">↻</button>
+    </div></div>
+  <div class="stats">
+    <div class="sc bl"><div class="l">Заявок (штук)</div><div class="n">${d.count}</div><div class="trend">без скасованих</div></div>
+    <div class="sc gr"><div class="l">Очікувана сума</div><div class="n">${fmtUah(d.totalUah)}</div><div class="trend">за цінами наборів</div></div>
+    <div class="sc am"><div class="l">Чекають рахунку</div><div class="n">${by('new')}</div><div class="trend">статус «Нова»</div></div>
+    <div class="sc vi"><div class="l">Оплачено</div><div class="n">${by('paid')}</div><div class="trend">${by('invoiced')} з рахунком</div></div>
+  </div>
+  ${Object.keys(d.byTier).length?`<div class="card"><div class="ch"><div class="ct">Попит за наборами</div></div><div class="po-bars">${Object.entries(d.byTier).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="po-bar"><span>${esc(k)}</span><span class="t"><i style="width:${v/max*100}%"></i></span><b>${v}</b></div>`).join('')}</div></div>`:''}
+  <div class="card">
+    <div class="ch" style="flex-wrap:wrap">
+      <div class="ftabs" style="margin:0">${['all','new','invoiced','paid','cancelled'].map(s=>`<button class="ftab${poFilter===s?' on':''}" onclick="poFilter='${s}';$('#mainContent').innerHTML=poMarkup(poProjects)">${s==='all'?'Усі':PO_ST[s]}<span class="cnt">${cnt(s)}</span></button>`).join('')}</div>
+      <input type="search" placeholder="Пошук: ім’я, телефон, місто" value="${esc(poQuery)}" oninput="poQuery=this.value;poRedrawRows()" style="max-width:280px">
+    </div>
+    <div class="tbl-wrap"><table class="tbl" style="min-width:860px"><thead><tr><th>#</th><th>Покупець</th><th>Набір</th><th>Сума</th><th>Доставка</th><th>Дата</th><th>Статус</th></tr></thead>
+    <tbody id="poRows">${poRows(list)}</tbody></table></div>
+  </div>`;
+}
+function poRows(list){
+  if(!list.length)return`<tr><td colspan="7"><div class="empty"><div class="big">🧾</div>${poData.rows.length?'Нічого не знайдено':'Заявок ще немає'}</div></td></tr>`;
+  return list.map(r=>`<tr>
+    <td style="color:var(--txt-s)">${r.id}</td>
+    <td class="po-who"><b>${esc(r.name)}</b><span><a href="tel:${esc(r.phone)}" style="color:inherit">${esc(r.phone)}</a>${r.email?' · '+esc(r.email):''}</span></td>
+    <td>${esc(r.tier_label)}${r.qty>1?` <span class="badge b-s">×${r.qty}</span>`:''}</td>
+    <td style="font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap">${fmtUah(r.amount*r.qty)}</td>
+    <td class="po-addr">${r.city?esc(r.city)+', ':''}${esc(r.address)}${r.comment?`<br><i>${esc(r.comment)}</i>`:''}</td>
+    <td style="white-space:nowrap;color:var(--txt-m)" title="${new Date(r.created_at).toLocaleString('uk-UA')}">${relT(r.created_at)}</td>
+    <td><select class="po-st" data-v="${r.status}" onchange="poSetStatus(${r.id},this)" aria-label="Статус">${Object.entries(PO_ST).map(([k,v])=>`<option value="${k}"${k===r.status?' selected':''}>${v}</option>`).join('')}</select></td>
+  </tr>`).join('');
+}
+function poRedrawRows(){
+  const q=poQuery.trim().toLowerCase();
+  const list=poData.rows.filter(r=>(poFilter==='all'||r.status===poFilter)&&(!q||[r.name,r.phone,r.email,r.city,r.address,r.tier_label].join(' ').toLowerCase().includes(q))).reverse();
+  const tb=$('#poRows'); if(tb)tb.innerHTML=poRows(list);
+}
+function poSetProject(id){poProject=id;try{localStorage.setItem('bf_po_project',id);}catch{}render();}
+async function poSetStatus(id,sel){
+  const prev=sel.dataset.v, v=sel.value;
+  sel.dataset.v=v;
+  try{
+    await api('POST',`/api/admin/preorders/${id}/status`,{status:v});
+    const r=poData.rows.find(x=>x.id===id); if(r)r.status=v;
+    poNew=poData.rows.filter(x=>x.status==='new').length; buildNav();
+    toast('Статус: '+PO_ST[v],'ok');
+  }catch(e){sel.value=prev;sel.dataset.v=prev;toast(e.message,'er');}
 }
 
 // ── SKELETON ──
@@ -158,10 +241,12 @@ function renderSkeleton(){
 // ── DASHBOARD ──
 let gameFilter='all', mediaSort='date';
 async function renderDash(){
-  const [st, auditRows] = await Promise.all([
+  const [st, auditRows, po] = await Promise.all([
     api('GET','/api/admin/stats'),
-    api('GET','/api/admin/audit').catch(()=>[])
+    api('GET','/api/admin/audit').catch(()=>[]),
+    api('GET','/api/admin/preorders?project='+encodeURIComponent(poProject)).catch(()=>null)
   ]);
+  if(po){const n=po.rows.filter(r=>r.status==='new').length;if(n!==poNew){poNew=n;buildNav();}}
   const pct=st.kikGoal>0?Math.min(100,Math.round(st.kikRaised/st.kikGoal*100)):0;
 
   // activity feed (last 6 unique actions)
@@ -199,9 +284,12 @@ async function renderDash(){
     </div>`;
   }).join('');
 
-  return `<div class="stats">
+  return `<div class="pg-title"><div><h1>Огляд</h1><p>${new Date().toLocaleDateString('uk-UA',{weekday:'long',day:'numeric',month:'long'})}</p></div>
+    <button class="btn btn-p" onclick="activeTab='preorders';saveTab('preorders');render()">🧾 Заявки${poNew?` · нових: ${poNew}`:''}</button></div>
+  <div class="stats">
+    ${po?`<div class="sc vi" style="cursor:pointer" onclick="activeTab='preorders';saveTab('preorders');render()"><div class="l">Передзамовлення</div><div class="n">${po.count}<small>шт</small></div><div class="trend">${fmtUah(po.totalUah)} очікуємо</div></div>`:''}
     <div class="sc bl"><div class="n">${st.games}</div><div class="l">Ігор</div><div class="trend">опубліковано</div></div>
-    <div class="sc"><div class="n">${st.drafts}</div><div class="l">Чернеток</div></div>
+    <div class="sc gr"><div class="n">${st.drafts}</div><div class="l">Чернеток</div></div>
     <div class="sc am"><div class="n">${st.uploads}</div><div class="l">Медіафайлів</div></div>
     <div class="sc" id="bf-health-card" style="cursor:pointer" onclick="checkSiteHealth(true)" title="Клікніть, щоб перевірити ще раз">
       <div class="n" id="bf-health-ico" style="font-size:22px">⏳</div>
@@ -358,7 +446,7 @@ function renderGameEditor(){
         </div>
         <label class="field" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;background:rgba(0,159,227,.06);border:1px solid rgba(0,159,227,.18);border-radius:10px;padding:12px 14px">
           <input type="checkbox" id="g_always_visible" ${(g.always_visible==null?true:g.always_visible)?'checked':''} style="margin-top:2px;width:16px;height:16px;flex-shrink:0">
-          <span><b style="color:rgba(255,255,255,.9)">Картка клікабельна в каталозі</b><br><span style="font-size:12px;color:var(--txt-m)">Вимкнено — на «Наші ігри» гра показується заблокованою карткою «скоро» (з замком), без переходу на сторінку. Це окремо від статусу-бейджа вище.</span></span>
+          <span><b style="color:rgba(var(--ink),.9)">Картка клікабельна в каталозі</b><br><span style="font-size:12px;color:var(--txt-m)">Вимкнено — на «Наші ігри» гра показується заблокованою карткою «скоро» (з замком), без переходу на сторінку. Це окремо від статусу-бейджа вище.</span></span>
         </label>
         <div class="field"><label class="flbl">Підзаголовок</label>
           <input type="text" id="g_subtitle" value="${esc(g.subtitle)}" placeholder="Короткий опис" oninput="updatePreview()"></div>
@@ -475,7 +563,7 @@ function renderGameEditor(){
             <input type="text" id="g_hero_logo" value="${esc(g.hero_logo_url||'')}" placeholder="/images/...logo.png" oninput="onHeroInput('g_hero_logo')">
             <button type="button" class="btn btn-g btn-sm" onclick="openPickerFor('g_hero_logo',()=>onHeroInput('g_hero_logo'))">📁</button>
           </div>
-          ${g.hero_logo_url?`<img id="g_hero_logo_thumb" class="img-thumb" style="background:rgba(255,255,255,.06)" src="${esc(g.hero_logo_url)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="g_hero_logo_thumb">Немає логотипу</div>`}
+          ${g.hero_logo_url?`<img id="g_hero_logo_thumb" class="img-thumb" style="background:#0e1a2b" src="${esc(g.hero_logo_url)}" onerror="this.style.display='none'">`:`<div class="img-thumb-empty" id="g_hero_logo_thumb">Немає логотипу</div>`}
         </div>
       </div>
 
@@ -640,7 +728,7 @@ function onHeroInput(id){
   const url=document.getElementById(id)?.value||'';
   const th=document.getElementById(id+'_thumb');
   if(th){
-    if(url){th.outerHTML=`<img id="${id}_thumb" class="img-thumb"${id==='g_hero_logo'?' style="background:rgba(255,255,255,.06)"':''} src="${esc(url)}" onerror="this.style.display='none'">`;}
+    if(url){th.outerHTML=`<img id="${id}_thumb" class="img-thumb"${id==='g_hero_logo'?' style="background:#0e1a2b"':''} src="${esc(url)}" onerror="this.style.display='none'">`;}
     else{th.outerHTML=`<div class="img-thumb-empty" id="${id}_thumb">${id==='g_hero_logo'?'Немає логотипу':'Немає зображення — буде використано обкладинку'}</div>`;}
   }
   updatePreview();
@@ -740,9 +828,9 @@ window.uploadGameFileFromInput=uploadGameFileFromInput;
 function renderStages(){
   const c=$('#g_stages_container'); if(!c)return;
   c.innerHTML=gameStages.map((s,i)=>`
-    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;position:relative">
+    <div style="background:rgba(var(--ink),.03);border:1px solid rgba(var(--ink),.08);border-radius:12px;padding:12px;position:relative">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong style="font-size:13px;color:rgba(255,255,255,.8)">Етап ${i+1}</strong>
+        <strong style="font-size:13px;color:rgba(var(--ink),.8)">Етап ${i+1}</strong>
         <button class="btn btn-sm" style="background:rgba(239,68,68,.15);color:#ef4444;border:none;padding:4px 8px" onclick="removeGameStage(${i})">✕ Видалити</button>
       </div>
       <div class="row2" style="margin-bottom:8px">
@@ -887,7 +975,7 @@ function backToGames(){
   if(editorFormDirty&&!confirm('Вийти без збереження змін?'))return;
   editorFormDirty=false;
   editingGame=null;gameGallery=[];gameStages=[];
-  const el=$('#mainContent');if(el)el.style.padding='22px';
+  const el=$('#mainContent');if(el)el.style.padding='';
   activeTab='games';render();
 }
 async function openGamePageEditor(slug){
@@ -1093,7 +1181,7 @@ async function deleteKik(id){
   try{await api('DELETE',`/api/admin/kik/${id}`);kik=await api('GET','/api/admin/kik');toast('Видалено','ok');backToKik();}
   catch(e){if(e.message!=='unauth')toast(e.message,'er');}
 }
-function backToKik(){if(editorFormDirty&&!confirm('Вийти без збереження змін?'))return;editorFormDirty=false;editingKik=null;const el=$('#mainContent');if(el)el.style.padding='22px';activeTab='kik';render();}
+function backToKik(){if(editorFormDirty&&!confirm('Вийти без збереження змін?'))return;editorFormDirty=false;editingKik=null;const el=$('#mainContent');if(el)el.style.padding='';activeTab='kik';render();}
 window.openKikEditor=openKikEditor;window.saveKik=saveKik;window.deleteKik=deleteKik;window.backToKik=backToKik;
 
 // ── KIK PROJECT CARDS (/kik/proekty/) ──
@@ -1690,7 +1778,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
       `}
     `;
 
-    const addRow = b.type!=='seo'&&!isDeleted?`<div class="add-block-row" style="text-align:center;margin:4px 0 12px;opacity:0.6;transition:.2s;display:flex;justify-content:center"><div class="add-block-btns" style="display:flex;gap:6px;background:rgba(255,255,255,.03);padding:4px 8px;border-radius:12px;cursor:pointer;border:1px dashed rgba(255,255,255,0.1)"><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','p')">➕ ¶ Абзац</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','h2')">➕ H₂ Загол</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','img')">➕ 🖼 Фото</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','a')">➕ 🔗 Кнопка</span></div></div>`:'';
+    const addRow = b.type!=='seo'&&!isDeleted?`<div class="add-block-row" style="text-align:center;margin:4px 0 12px;opacity:0.6;transition:.2s;display:flex;justify-content:center"><div class="add-block-btns" style="display:flex;gap:6px;background:rgba(var(--ink),.03);padding:4px 8px;border-radius:12px;cursor:pointer;border:1px dashed rgba(var(--ink),0.1)"><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','p')">➕ ¶ Абзац</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','h2')">➕ H₂ Загол</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','img')">➕ 🖼 Фото</span><span style="font-size:10.5px;color:var(--bf)" onclick="addBlockAfter('${esc(b.id)}','a')">➕ 🔗 Кнопка</span></div></div>`:'';
 
     if (b.type === 'img') {
       return `<div class="blk img${edited?' edited':''}${b.isNew?' new-blk':''}" data-id="${esc(b.id)}" data-parent="${esc(b.parentKey||'root')}" data-tab="images" style="padding:14px 16px 12px;${delStyle}">
@@ -1700,7 +1788,7 @@ function buildBlocksHtml(blocks, tabFilter, search){
           <div class="blk-actions">${actionControls}</div>
         </div>
         <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
-          <div style="width:64px;height:48px;border-radius:6px;overflow:hidden;background:rgba(255,255,255,0.05);flex-shrink:0;border:1px solid rgba(255,255,255,0.1)">
+          <div style="width:64px;height:48px;border-radius:6px;overflow:hidden;background:rgba(var(--ink),0.05);flex-shrink:0;border:1px solid rgba(var(--ink),0.1)">
             <img src="${esc(curVal)}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.opacity=0;setTimeout(()=>this.style.opacity=1,100)">
           </div>
           <div style="flex:1;display:flex;flex-direction:column;gap:6px">
@@ -1920,7 +2008,7 @@ function renderPagesUI(){
     <!-- nav -->
     <div class="pages-nav">
       <div class="pg-list-header">
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em">Сторінки <span style="opacity:.7">${pages.length}</span></div>
+        <div style="font-size:11px;font-weight:700;color:rgba(var(--ink),.3);text-transform:uppercase;letter-spacing:.1em">Сторінки <span style="opacity:.7">${pages.length}</span></div>
         <button class="btn btn-sm" onclick="openPgDialog()"
           style="background:var(--bf);color:#fff;padding:4px 11px;font-size:11.5px;gap:4px">
           + Нова
@@ -1929,7 +2017,7 @@ function renderPagesUI(){
       <div style="padding:6px 10px 2px">
         <input type="text" id="pgGlobalSearch" placeholder="🔎 Знайти текст на сайті…" value="${esc(pgSearchQ)}"
           oninput="pgGlobalSearchInput(this.value)"
-          style="width:100%;padding:7px 10px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--txt);outline:none">
+          style="width:100%;padding:7px 10px;font-size:12px;background:rgba(var(--ink),.05);border:1px solid rgba(var(--ink),.1);border-radius:8px;color:var(--txt);outline:none">
         <div id="pgSearchResults"></div>
       </div>
       ${sideHtml}
@@ -1946,9 +2034,9 @@ function renderPagesUI(){
           <span class="ped-filename">/${activePage}</span>
           <span id="unsaved-badge" class="unsaved-badge" style="font-size:10px"></span>
           <div style="margin-left:auto;display:flex;gap:6px">
-            <a class="btn btn-sm" href="/${activePage.replace(/\/?index\.html$/,'')}" target="_blank" rel="noopener" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px;text-decoration:none" title="Відкрити цю сторінку на сайті">↗ На сайті</a>
-            <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px" onclick="showPageHistory()" title="Історія версій цієї сторінки">🕘 Історія</button>
-            <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1);padding:5px 10px" onclick="closePagesEditor()" title="Закрити (Esc)">✕</button>
+            <a class="btn btn-sm" href="/${activePage.replace(/\/?index\.html$/,'')}" target="_blank" rel="noopener" style="background:rgba(var(--ink),.08);color:rgba(var(--ink),.55);border:1px solid rgba(var(--ink),.1);padding:5px 10px;text-decoration:none" title="Відкрити цю сторінку на сайті">↗ На сайті</a>
+            <button class="btn btn-sm" style="background:rgba(var(--ink),.08);color:rgba(var(--ink),.55);border:1px solid rgba(var(--ink),.1);padding:5px 10px" onclick="showPageHistory()" title="Історія версій цієї сторінки">🕘 Історія</button>
+            <button class="btn btn-sm" style="background:rgba(var(--ink),.08);color:rgba(var(--ink),.55);border:1px solid rgba(var(--ink),.1);padding:5px 10px" onclick="closePagesEditor()" title="Закрити (Esc)">✕</button>
             <button class="btn btn-sm" id="pedSaveBtn" onclick="savePatchedPage()" style="background:var(--bf);color:#fff;padding:6px 14px;box-shadow:0 2px 10px rgba(0,159,227,.35)" title="Зберегти (Cmd+S)">💾 Зберегти</button>
           </div>
         </div>
@@ -2175,7 +2263,7 @@ function flattenContent(obj){
 }
 
 async function renderSiteText(){
-  const el=$('#mainContent'); el.style.padding='22px';
+  const el=$('#mainContent'); el.style.padding='';
   if(!siteContent){
     try{ const r=await api('GET','/api/admin/site-content'); siteContent=r.content; }
     catch(e){ el.innerHTML=`<div class="card" style="color:var(--red)">Не вдалося завантажити контент: ${esc(e.message)}</div>`; return; }
@@ -2315,13 +2403,13 @@ async function showPageHistory(){
   const wrap=document.createElement('div');
   wrap.id='bf-history-modal';
   wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center';
-  wrap.innerHTML=`<div style="background:var(--dark3,#161c26);border:1px solid var(--glass-border,rgba(255,255,255,.1));border-radius:14px;max-width:440px;width:92%;max-height:70vh;overflow-y:auto;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+  wrap.innerHTML=`<div style="background:#fff;border:1px solid var(--glass-border,rgba(var(--ink),.1));border-radius:14px;max-width:440px;width:92%;max-height:70vh;overflow-y:auto;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.6)">
     <div style="display:flex;align-items:center;margin-bottom:12px">
       <b style="font-size:14px">🕘 Історія: /${esc(activePage)}</b>
       <button onclick="document.getElementById('bf-history-modal').remove()" style="margin-left:auto;background:none;border:none;color:inherit;font-size:16px;cursor:pointer">✕</button>
     </div>
     ${list.length?list.map(b=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--glass-border,rgba(255,255,255,.08));border-radius:8px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--glass-border,rgba(var(--ink),.08));border-radius:8px;margin-bottom:6px">
         <span style="font-size:12.5px">${fmt(b.ts)}</span>
         <span style="font-size:10.5px;opacity:.55">${(b.size/1024).toFixed(0)} КБ</span>
         <button class="btn btn-sm" style="margin-left:auto;padding:4px 10px;font-size:11px;background:rgba(0,159,227,.15);border:1px solid rgba(0,159,227,.4);color:var(--bf,#009fe3);border-radius:6px;cursor:pointer" onclick="restorePageBackup('${esc(b.name)}')">↩ Відновити</button>

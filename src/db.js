@@ -91,6 +91,8 @@ try { db.exec("ALTER TABLE games ADD COLUMN hero_logo_url TEXT DEFAULT ''"); } c
 try { db.exec("ALTER TABLE games ADD COLUMN links TEXT DEFAULT '[]'"); } catch(e){}
 try { db.exec("ALTER TABLE games ADD COLUMN always_visible INTEGER DEFAULT 1"); } catch(e){}
 try { db.exec("ALTER TABLE games ADD COLUMN theme TEXT DEFAULT ''"); } catch(e){}
+try { db.exec("ALTER TABLE games ADD COLUMN box_faces TEXT DEFAULT '{}'"); } catch(e){}
+try { db.exec("ALTER TABLE games ADD COLUMN files TEXT DEFAULT '[]'"); } catch(e){}
 
 // The audit log has no cap and this CMS has been running since June with
 // nothing ever pruning it — fine at today's size (a few hundred rows), but
