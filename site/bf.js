@@ -15,38 +15,6 @@
   (self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([[8441, 7358], {}]);
 })();
 
-
-/* ── After hydration: one gate for every DOM change on a Next page ──────────
-   React owns <body>. Any node added, removed or rewritten before it has
-   finished hydrating makes the server HTML disagree with the client tree
-   (#418): React throws the prerendered page away and renders it again. The
-   React key on document/body appears when hydration STARTS, not when it ends,
-   so the gate waits for the last thing React claims (the footer), then lets
-   the commit land (a tick + idle). Pages without Next run at once; after
-   10 s of a visible tab it opens anyway so the page is never left bare. */
-(function () {
-  var queue = [], open = !self.__next_f;
-  function owned(n) { if (!n) return false; for (var k in n) if (k.indexOf('__reactFiber') === 0) return true; return false; }
-  function release() { if (open) return; open = true; var f; while ((f = queue.shift())) { try { f(); } catch (e) { /* keep going */ } } }
-  // not requestAnimationFrame: it never fires in a background tab
-  function settle() {
-    setTimeout(function () {
-      if (window.requestIdleCallback) requestIdleCallback(release, { timeout: 400 }); else release();
-    }, 60);
-  }
-  if (!open) {
-    var started = Date.now();
-    (function poll() {
-      if (open) return;
-      if (owned(document.querySelector('footer') || document.querySelector('main'))) return settle();
-      if (document.hidden) { started = Date.now(); return setTimeout(poll, 200); }
-      if (Date.now() - started > 10000) return release();
-      setTimeout(poll, 50);
-    })();
-  }
-  window.__bfAfterHydration = function (cb) { if (open) cb(); else queue.push(cb); };
-})();
-
 (function () {
   'use strict';
 
@@ -57,7 +25,7 @@
   const prog = document.createElement('div');
   prog.id = 'bf-scroll-progress';
   if (mobileLite) prog.hidden = true;
-  window.__bfAfterHydration(function () { document.body.prepend(prog); });
+  document.body.prepend(prog);
 
   // ── Back to top ──
   const top = document.createElement('button');
@@ -65,7 +33,7 @@
   top.innerHTML = '↑';
   top.setAttribute('aria-label', 'Вгору');
   top.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-  window.__bfAfterHydration(function () { document.body.appendChild(top); });
+  document.body.appendChild(top);
 
   // ── Scroll handler ──
   let ticking = false;
@@ -191,14 +159,15 @@
   }
 
   // Scroll-driven backstop: keeps reveals working even if IO never fires at all.
+  // It measures every hidden element on each frame, so it is dropped once the
+  // time-based backstop below has made everything visible anyway.
   let revealTick = false;
-  if (!mobileLite) {
-    window.addEventListener('scroll', function () {
-      if (revealTick) return;
-      revealTick = true;
-      requestAnimationFrame(function () { rescueStuckReveals(); revealTick = false; });
-    }, { passive: true });
-  }
+  const onRevealScroll = function () {
+    if (revealTick) return;
+    revealTick = true;
+    requestAnimationFrame(function () { rescueStuckReveals(); revealTick = false; });
+  };
+  if (!mobileLite) window.addEventListener('scroll', onRevealScroll, { passive: true });
 
   // Time-based backstop. rescueStuckReveals() above runs only on scroll, and
   // only rescues what is already on screen — anything off-screen is handed back
@@ -218,6 +187,7 @@
       stuck[i].style.transition = 'none';
       stuck[i].classList.add('visible');
     }
+    window.removeEventListener('scroll', onRevealScroll);
   }, 1800);
 
   // ── Mobile menu enhancements ──
@@ -539,7 +509,33 @@
   // cover and box went wonky report, and its intermittency was this race.
   // Poll for a React fiber instead of guessing a delay; fall back after the
   // timeout so pages without React still animate.
-  function whenHydrated(cb) { window.__bfAfterHydration(cb); }
+  function whenHydrated(cb, timeoutMs) {
+    var done = false, started = Date.now();
+    function finish() { if (done) return; done = true; cb(); }
+    (function poll() {
+      if (done) return;
+      // Never let the timeout expire while the tab is in the background. A
+      // hidden tab has its timers throttled to about one tick a second and its
+      // hydration deprioritised, so the deadline arrives long before React
+      // does — and firing the fallback there is the worst of both worlds: it
+      // rewrites the class names, which is exactly what stops the hydration
+      // that was merely slow, and it does so on a page nobody is looking at.
+      // Reset the clock instead and let visibilitychange restart the race.
+      if (document.hidden) { started = Date.now(); return setTimeout(poll, 200); }
+      var nodes = [document, document.documentElement, document.body,
+                   document.body && document.body.firstElementChild];
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        if (!n) continue;
+        var keys = Object.keys(n);
+        for (var j = 0; j < keys.length; j++) {
+          if (keys[j].indexOf('__react') === 0) return finish();
+        }
+      }
+      if (Date.now() - started > timeoutMs) return finish();
+      setTimeout(poll, 50);
+    })();
+  }
 
   // Guarded entry point. Gating only init() was not enough: the
   // visibilitychange handler at the bottom of this file also calls
@@ -629,11 +625,10 @@
     }
   }
 
-  // init() injects the skip link and rewrites text: only once React is done.
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { window.__bfAfterHydration(init); });
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    window.__bfAfterHydration(init);
+    init();
   }
 
   // Re-run on visibility change (tab switch back)
@@ -793,14 +788,12 @@
     card.insertBefore(hint, card.firstChild);
   }
 
-  window.__bfAfterHydration(function () {
-    var deadline = Date.now() + 15000;
-    (function poll() {
-      ensure();
-      if (Date.now() > deadline) return;
-      setTimeout(poll, 300);
-    })();
-  });
+  var deadline = Date.now() + 15000;
+  (function poll() {
+    ensure();
+    if (Date.now() > deadline) return;
+    setTimeout(poll, 300);
+  })();
 })();
 
 // ── Payments: legal links in the footer + support-page payment UI ──
@@ -832,11 +825,12 @@
   function start() {
     var tries = 0, iv = setInterval(function () { legal(); if (++tries > 20) clearInterval(iv); }, 500);
   }
-  window.__bfAfterHydration(start);
+  if (document.readyState === 'complete') setTimeout(start, 600);
+  else window.addEventListener('load', function () { setTimeout(start, 600); });
 
   if (/^\/kik\/proekty(\/|$)/.test(location.pathname)) {
     var s = document.createElement('script');
-    s.src = '/bf-pay.js?v=1';
+    s.src = '/bf-pay.js?v=53b532a8';
     s.defer = true;
     document.head.appendChild(s);
   }
