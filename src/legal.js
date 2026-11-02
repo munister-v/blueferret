@@ -20,29 +20,48 @@ const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&
 function inline(s) {
   s = esc(s);
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  const keep = [];
+  const stash = html => `\u0000${keep.push(html) - 1}\u0000`;
   s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, href) =>
-    /^(https?:|mailto:|tel:|\/|#)/i.test(href) ? `<a href="${href.replace(/"/g, '&quot;')}">${t}</a>` : t);
+    stash(/^(https?:|mailto:|tel:|\/|#)/i.test(href) ? `<a href="${href.replace(/"/g, '&quot;')}">${t}</a>` : t));
+  // bare addresses become links; the markup is stashed so [placeholders] never see it
+  s = s.replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, m => stash(`<a href="mailto:${m}">${m}</a>`));
+  s = s.replace(/https?:\/\/[^\s<>)]+[^\s<>).,;:]/g, m => stash(`<a href="${m}">${m}</a>`));
   // what is still in [brackets] is a placeholder to fill in
   s = s.replace(/\[([^\]]+)\]/g, '<mark class="ph">[$1]</mark>');
-  return s;
+  return s.replace(/\u0000(\d+)\u0000/g, (_, n) => keep[n]);
 }
 
 function render(md) {
   md = md.replace(/\r\n?/g, '\n').replace(/<!--[\s\S]*?-->/g, '').trim();
+  const lines = md.split('\n').map(l => l.trimEnd());
+  // contents: only for long documents, in front of the first section
+  const heads = lines.map(l => (l.match(/^##\s+(.*)$/) || [])[1]).filter(Boolean);
+  const toc = heads.length >= 8
+    ? `<nav class="toc" aria-label="Зміст"><b>Зміст</b>${heads.map((h, n) => `<a href="#s${n + 1}">${inline(h)}</a>`).join('')}</nav>`
+    : '';
   const out = [];
-  let list = null;
+  let list = null, sec = 0, tocDone = !toc;
   const close = () => { if (list) { out.push(`</${list}>`); list = null; } };
-  for (const raw of md.split('\n')) {
-    const line = raw.trimEnd();
+  for (const line of lines) {
     if (!line.trim()) { close(); continue; }
     let m;
-    if ((m = line.match(/^(#{1,3})\s+(.*)$/))) { close(); out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); }
+    if ((m = line.match(/^(#{1,3})\s+(.*)$/))) {
+      close();
+      if (m[1].length === 2) {
+        if (!tocDone) { out.push(toc); tocDone = true; }
+        out.push(`<h2 id="s${++sec}">${inline(m[2])}</h2>`);
+      } else out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`);
+    }
     else if ((m = line.match(/^-\s+(.*)$/))) { if (list !== 'ul') { close(); out.push('<ul>'); list = 'ul'; } out.push(`<li>${inline(m[1])}</li>`); }
     else if ((m = line.match(/^(\d+)\.\s+(.*)$/)) && list === 'ol') { out.push(`<li>${inline(m[2])}</li>`); }
     else if ((m = line.match(/^1\.\s+(.*)$/))) { close(); out.push('<ol>'); list = 'ol'; out.push(`<li>${inline(m[1])}</li>`); }
+    else if ((m = line.match(/^(\d+(?:\.\d+)+\.?)\s+(.*)$/))) { close(); out.push(`<p class="cl"><span class="no">${m[1]}</span> <span class="tx">${inline(m[2])}</span></p>`); }
+    else if (/^Редакція від\s/.test(line)) { close(); out.push(`<p class="ed">${inline(line)}</p>`); }
     else { close(); out.push(`<p>${inline(line)}</p>`); }
   }
   close();
+  if (!tocDone) out.push(toc);
   return out.join('\n');
 }
 
@@ -110,18 +129,37 @@ function siteChrome(siteRoot) {
 const STYLE = `
 :root{--ink:#0f172a;--mute:#475569}
 body{background:#f8fafc;color:var(--ink)}
+article h1,article h2,article h3{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+html{scroll-behavior:smooth}
 main.lg-main{padding:36px 20px 64px}
 main.lg-main .bf-reveal,main.lg-main .bf-reveal-left,main.lg-main .bf-reveal-scale{opacity:1!important;transform:none!important;transition:none!important}
-article{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:28px 22px;box-shadow:0 20px 46px -34px rgba(15,23,42,.3)}
-@media(min-width:700px){article{padding:44px 52px}}
-article h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin:0 0 18px;font-weight:800;letter-spacing:.01em}
-article h1,article h1+p,article h1+p+p{text-align:center}
-article h2{text-align:left}
-article h1,article h2{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
-article h2{font-size:20px;margin:30px 0 10px;font-weight:700}
-article p,article li{font-size:16px;line-height:1.7;color:#334155}
-article p{margin:0 0 12px}article ul,article ol{margin:0 0 14px;padding-left:22px}article li{margin:4px 0}
-article a{color:#2f8a52;text-decoration:underline;text-underline-offset:2px}
+article{max-width:780px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:28px;padding:30px 20px 34px;box-shadow:0 24px 60px -36px rgba(15,23,42,.32)}
+@media(min-width:700px){article{padding:52px 60px 56px}}
+article h1{font-size:clamp(28px,4.4vw,40px);line-height:1.12;margin:0 0 14px;font-weight:800;letter-spacing:-.01em;text-align:center;color:#0f172a}
+article h1+p{text-align:center;color:#64748b;font-size:16px;line-height:1.55;margin:0 auto 14px;max-width:560px}
+article p.ed{display:table;margin:0 auto 26px;padding:6px 16px;border-radius:999px;background:#4BB2721a;border:1px solid #4BB27238;color:#2f8a52;font-size:13px;font-weight:700;letter-spacing:.01em}
+article h1+p.ed{margin:0 auto 26px;font-size:13px;color:#2f8a52}
+article h2{position:relative;font-size:clamp(19px,2.6vw,23px);line-height:1.3;margin:42px 0 14px;padding-left:18px;font-weight:800;letter-spacing:-.005em;color:#0f172a;text-align:left;scroll-margin-top:92px}
+article h2::before{content:"";position:absolute;left:0;top:.14em;bottom:.14em;width:5px;border-radius:5px;background:linear-gradient(180deg,#009FE3,#4BB272)}
+article h3{font-size:17px;margin:24px 0 8px;font-weight:700;color:#0f172a}
+article p,article li{font-size:16px;line-height:1.75;color:#334155}
+article p{margin:0 0 14px}
+article strong{color:#0f172a}
+article p.cl{display:flex;gap:10px;margin:0 0 12px}
+article p.cl .no{flex:none;min-width:3.1em;color:#2f8a52;font-weight:800;font-variant-numeric:tabular-nums}
+article p.cl .tx{flex:1;min-width:0}
+article ul,article ol{list-style:none;margin:0 0 18px;padding:0}
+article li{position:relative;margin:8px 0;padding:13px 16px 13px 44px;border:1px solid #e6edf3;border-radius:16px;background:#f8fafc}
+article ul li::before{content:"";position:absolute;left:18px;top:1.2em;width:9px;height:9px;border-radius:50%;background:#4BB272;box-shadow:0 0 0 4px #4BB27222}
+article ol{counter-reset:st}
+article ol li{counter-increment:st;padding-left:56px}
+article ol li::before{content:counter(st);position:absolute;left:14px;top:12px;width:30px;height:30px;border-radius:50%;background:#0f172a;color:#fff;text-align:center;line-height:30px;font-size:14px;font-weight:700}
+article a{color:#2f8a52;font-weight:600;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#4BB27266;word-break:break-word}
+article a:hover{text-decoration-color:#2f8a52}
+article nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 6px;padding:16px 16px 14px;border-radius:20px;background:#f1f5f9;border:1px solid #e2e8f0}
+article nav.toc b{flex-basis:100%;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#64748b;margin-bottom:2px}
+article nav.toc a{padding:7px 12px;border-radius:999px;background:#fff;border:1px solid #e2e8f0;color:#334155;font-size:13px;font-weight:600;line-height:1.3;text-decoration:none}
+article nav.toc a:hover{border-color:#4BB272;color:#2f8a52}
 mark.ph{background:#fde68a;color:#78350f;border-radius:4px;padding:0 3px}
 .draft{max-width:760px;margin:0 auto 16px;padding:12px 16px;border-radius:14px;background:#fef3c7;border:1px solid #f59e0b;color:#78350f;font-size:14px}
 `;
