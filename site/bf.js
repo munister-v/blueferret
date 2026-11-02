@@ -15,6 +15,42 @@
   (self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([[8441, 7358], {}]);
 })();
 
+// ── After hydration ──
+// Changing the server HTML before React has taken it over (inserting a node,
+// rewriting a text, moving a card) makes React's hydration fail with #418;
+// React then throws the page away and renders it again from scratch, which is
+// the flicker, the lost first tap on the menu and the extra work on load.
+// Every DOM change in these scripts goes through bfAfterHydration(cb): cb runs
+// once React owns the footer (the last thing it hydrates) or, on a page
+// without React, right away. A safety timeout covers a React that never comes.
+(function () {
+  var queue = [], ready = false;
+  function owned(n) {
+    if (!n) return false;
+    for (var k in n) if (k.indexOf('__reactFiber') === 0) return true;
+    return false;
+  }
+  function flush() {
+    if (ready) return;
+    ready = true;
+    var q = queue; queue = [];
+    for (var i = 0; i < q.length; i++) { try { q[i](); } catch (e) { setTimeout(function () { throw e; }); } }
+  }
+  window.bfAfterHydration = function (cb) { if (ready) { try { cb(); } catch (e) { setTimeout(function () { throw e; }); } } else queue.push(cb); };
+  var started = Date.now();
+  (function poll() {
+    if (ready) return;
+    if (!self.__next_f) {   // not a React page (legal pages, 404)
+      if (document.readyState === 'loading') return setTimeout(poll, 20);
+      return flush();
+    }
+    if (owned(document.querySelector('footer')) || owned(document.querySelector('main'))) return flush();
+    if (document.hidden) started = Date.now(); // background tab: React is just slow
+    if (Date.now() - started > 10000) return flush();
+    setTimeout(poll, 40);
+  })();
+})();
+
 (function () {
   'use strict';
 
@@ -25,7 +61,6 @@
   const prog = document.createElement('div');
   prog.id = 'bf-scroll-progress';
   if (mobileLite) prog.hidden = true;
-  document.body.prepend(prog);
 
   // ── Back to top ──
   const top = document.createElement('button');
@@ -33,7 +68,12 @@
   top.innerHTML = '↑';
   top.setAttribute('aria-label', 'Вгору');
   top.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-  document.body.appendChild(top);
+  // Put into <body> only once React owns it (see bfAfterHydration). If React
+  // later re-creates the page, they are put back.
+  const placeChrome = () => {
+    if (!prog.isConnected) document.body.prepend(prog);
+    if (!top.isConnected) document.body.appendChild(top);
+  };
 
   // ── Scroll handler ──
   let ticking = false;
@@ -54,7 +94,7 @@
     });
   }
   window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
+  window.bfAfterHydration(() => { placeChrome(); onScroll(); setTimeout(placeChrome, 1500); });
 
   // ── IntersectionObserver for scroll animations ──
   const io = new IntersectionObserver((entries) => {
@@ -380,12 +420,25 @@
 
   let menuDelegated = false;
   function initMobileMenuFallback() {
+    installMenuDelegation();
+    document.querySelectorAll('button[aria-controls="mobile-site-nav"], button[aria-label="Відкрити меню"]').forEach((btn) => {
+      if (btn.dataset.bfMobileFallback) return;
+      btn.dataset.bfMobileFallback = '1';
+      btn.setAttribute('aria-controls', 'bf-mobile-menu-fallback');
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openFallbackMobileMenu();
+      }, true);
+    });
+  }
+
+  function installMenuDelegation() {
     // React may replace the hydrated header button after this script has run
     // (especially on slower mobile Safari). A document-level capture handler
     // survives that replacement, so every current or future hamburger works.
     if (!menuDelegated) {
       menuDelegated = true;
-      document.documentElement.dataset.bfMobileMenuDelegated = '1';
       document.addEventListener('click', (e) => {
         const btn = e.target.closest && e.target.closest('button');
         if (!btn) return;
@@ -401,17 +454,6 @@
         openFallbackMobileMenu();
       }, true);
     }
-
-    document.querySelectorAll('button[aria-controls="mobile-site-nav"], button[aria-label="Відкрити меню"]').forEach((btn) => {
-      if (btn.dataset.bfMobileFallback) return;
-      btn.dataset.bfMobileFallback = '1';
-      btn.setAttribute('aria-controls', 'bf-mobile-menu-fallback');
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openFallbackMobileMenu();
-      }, true);
-    });
   }
 
   document.addEventListener('keydown', (e) => {
@@ -581,8 +623,7 @@
     // A Next.js page announces itself with self.__next_f. On such a page a
     // mutation before hydration is what breaks it, so wait; elsewhere there is
     // nothing to wait for and the animation should start at once.
-    if (!self.__next_f) return initAnimationsRaw();
-    whenHydrated(initAnimationsRaw, 8000);
+    window.bfAfterHydration(initAnimationsRaw);
   }
 
   // ── Run after DOM ready ──
@@ -660,11 +701,10 @@
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  // The mobile menu listens on document from the start (no DOM change), so a
+  // tap works even before React; everything that edits the page waits.
+  installMenuDelegation();
+  window.bfAfterHydration(init);
 
   // Re-run on visibility change (tab switch back)
   document.addEventListener('visibilitychange', () => {
@@ -823,12 +863,14 @@
     card.insertBefore(hint, card.firstChild);
   }
 
-  var deadline = Date.now() + 15000;
-  (function poll() {
-    ensure();
-    if (Date.now() > deadline) return;
-    setTimeout(poll, 300);
-  })();
+  window.bfAfterHydration(function () {
+    var deadline = Date.now() + 15000;
+    (function poll() {
+      ensure();
+      if (Date.now() > deadline) return;
+      setTimeout(poll, 300);
+    })();
+  });
 })();
 
 // ── Payments: legal links in the footer + support-page payment UI ──
@@ -869,11 +911,10 @@
   // Wait for React to hydrate first: adding nodes to the footer before that
   // would make the prerendered HTML disagree with the client tree. Then keep
   // checking for a while, since a client-side navigation can re-render it.
-  function start() {
+  window.bfAfterHydration(function () {
+    legal();
     var tries = 0, iv = setInterval(function () { legal(); if (++tries > 20) clearInterval(iv); }, 500);
-  }
-  if (document.readyState === 'complete') setTimeout(start, 600);
-  else window.addEventListener('load', function () { setTimeout(start, 600); });
+  });
 
   if (/^\/kik\/proekty(\/|$)/.test(location.pathname)) {
     var s = document.createElement('script');
