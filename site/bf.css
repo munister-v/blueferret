@@ -1060,7 +1060,10 @@ html.bf-games-catalog main [data-bf-games-grid="true"] [data-bf-id^="bf_cat_"][d
 /* ── Smooth scrolling & layout fixes (2026-11) ─────────────────────────────
    The sticky header blurred everything that scrolled under it on every frame;
    at 95% white the blur was invisible anyway. */
-header { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background-color: rgba(255,255,255,.97) !important; }
+header { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+/* Each page keeps its own header colour (the game pages have a dark one); a
+   blur-free light header just gets a little more opaque. */
+header[class*="bg-white/"] { background-color: rgba(255,255,255,.97) !important; }
 
 /* A grid item never grows past its column: one wide child (the 3D box on a
    game page) used to push the whole card past the phone screen. */
