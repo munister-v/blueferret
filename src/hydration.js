@@ -52,4 +52,28 @@ function repairHtml(html, rel) {
   return { html: out, changes };
 }
 
-module.exports = { compactWhitespace, repairHtml, testimonialQuoteHtml, testimonialAuthorHtml };
+// The stages block of a Next game page is the markup React renders for the
+// page's own data, whose open/locked state the CMS never changes (only the
+// texts are synced into the page data). Keep the block's texts equal to the
+// DB: stage titles, and the paragraph of the open stage. Articles map to the
+// stages by position; any other shape is left alone. Returns the new html.
+function syncStagesBlock(html, stages) {
+  const m = /(<!-- BF_STAGES_START -->)([\s\S]*?)(<!-- BF_STAGES_END -->)/.exec(html);
+  if (!m || !Array.isArray(stages)) return html;
+  const shown = stages.filter(s => s && s.title);
+  const parts = m[2].split(/(?=<article )/);
+  const head = parts[0], articles = parts.slice(1);
+  if (!articles.length || articles.length !== shown.length) return html;
+  const out = articles.map((a, i) => {
+    const st = shown[i];
+    let next = a.replace(/(<h3 class="[^"]*">)[^<]*(<\/h3>)/, (x, o, c) => o + esc(st.title) + c);
+    if (/aria-disabled="false"/.test(next) && st.description) {
+      next = next.replace(/(<p class="mt-4 [^"]*">)[^<]*(<\/p>)/, (x, o, c) => o + esc(st.description) + c);
+    }
+    return next;
+  });
+  const block = m[1] + head + out.join('') + m[3];
+  return html.slice(0, m.index) + block + html.slice(m.index + m[0].length);
+}
+
+module.exports = { syncStagesBlock, compactWhitespace, repairHtml, testimonialQuoteHtml, testimonialAuthorHtml };
