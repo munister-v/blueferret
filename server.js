@@ -2039,8 +2039,19 @@ app.delete('/api/admin/pages/delete', requireAuth, (req,res)=>{
 // ════════════════════════════════════════════════════════
 const { execFileSync } = require('child_process');
 
+// Decode the body of a JS single-quoted literal the way the browser does, so a
+// blob that is valid here is valid in JSON.parse('...') on the page too. Blobs
+// written before backslashes were escaped (a \" inside a reward title) only
+// parse with the old loose decoding; fall back to it so they can be re-saved.
 function jsToJson(s){
+  try { const v = Function("'use strict';return '" + s + "'")(); JSON.parse(v); return v; } catch {}
   return s.replace(/\\'/g,"'").replace(/\\x([0-9a-fA-F]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+}
+// The inverse: JSON for the inside of JSON.parse('...'). Backslashes first, or
+// an escaped quote in the JSON (\") reaches JSON.parse as a bare " and the page
+// throws, leaving the Suspense fallback up forever.
+function jsonToJs(obj){
+  return JSON.stringify(obj).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
 }
 function findContentBundle(){
   const dir = path.join(SITE_ROOT,'_next','static','chunks');
@@ -2090,7 +2101,7 @@ function setByPath(obj,pathStr,val){
 // string early and corrupt the chunk — escape it the same way jsToJson()
 // un-escapes it on read. Throws if the result would not be valid JS.
 function writeSiteContent(sc){
-  const newBlob=JSON.stringify(sc.obj).replace(/'/g,"\\'");
+  const newBlob=jsonToJs(sc.obj);
   const oldContent=sc.bundle.content;
   const newContent=oldContent.slice(0,sc.loc.start)+newBlob+oldContent.slice(sc.loc.end);
   const oldName=sc.bundle.name;                    // e.g. 6398-abc.js
@@ -2147,7 +2158,7 @@ function readHomeContentBundle(){
   return null;
 }
 function writeHomeContentBundle(home){
-  const blob = JSON.stringify(home.obj).replace(/'/g,"\\'");
+  const blob = jsonToJs(home.obj);
   const content = home.content.slice(0,home.start) + blob + home.content.slice(home.end);
   assertValidJs(content, home.name);
   const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0,16);
@@ -2347,7 +2358,7 @@ function readKikProjects(){
   return null;
 }
 function writeKikProjects(bundle, arr){
-  const blob = JSON.stringify(arr).replace(/'/g,"\\'");
+  const blob = jsonToJs(arr);
   const newContent = bundle.content.slice(0,bundle.loc.start) + blob + bundle.content.slice(bundle.loc.end);
   const oldName = bundle.name;
   const prefix = oldName.replace(/-[0-9a-f]{8,}\.js$/i,'');
