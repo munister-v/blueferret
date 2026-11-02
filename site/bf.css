@@ -1,5 +1,15 @@
 /* ===== Blue Ferret Site Enhancements ===== */
 
+/* Comfortaa as woff2 (41 KB instead of the 204 KB ttf); declared after the
+   bundle's rule, so the browser takes this one and never fetches the ttf. */
+@font-face {
+  font-family: Comfortaa;
+  src: url(/fonts/Comfortaa-VF.woff2) format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+
 /* ── Games catalog readability overrides ── */
 [data-bf-static-igry],
 [data-bf-static-igry] h1,
