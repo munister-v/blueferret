@@ -1032,8 +1032,9 @@ function fixHeroPosterFallback() {
 // React replays on hydration. Anchored on the stage's title/content pair inside
 // the flight JSON, one match only, structure re-checked before the write.
 function syncGameStagesFlight(wanted) {
-  const escRe = (v) => String(v).replace(/[.*+?^$\{\}()|[\]\\]/g, '\\function syncGameStagesChunk() {');
-  const escFlight = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const escRe = (v) => String(v).replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&');
+  // the flight is JSON inside a JS string literal: escape for JSON, then for JS
+  const escFlight = (v) => JSON.stringify(String(v)).slice(1, -1).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   (function walk(d) {
     let items; try { items = fs.readdirSync(d); } catch { return; }
     for (const it of items) {
@@ -1046,16 +1047,22 @@ function syncGameStagesFlight(wanted) {
       const before = html;
       let changed = 0;
       for (const w of wanted) {
-        const re = new RegExp('(\\\\"title\\\\":\\\\"' + escRe(w.title) + '\\\\",\\\\"content\\\\":\\\\")([\\s\\S]*?)(\\\\")', 'g');
-        const hits = html.match(re);
-        if (!hits || hits.length !== 1) {
-          if (hits && hits.length > 1) audit('system', 'flight_stage_sync_refused', { file: it, title: w.title, occurrences: hits.length });
-          continue;
-        }
+        // only inside this game's own object(s): titles repeat across games
+        const key = '\\"slug\\":\\"' + w.slug + '\\"';
+        // the value is JSON inside a JS literal: a JSON escape is two backslashes + one char (a quote is \\\"), the closing quote is a lone \"
+        const re = new RegExp('(\\\\"title\\\\":\\\\"' + escRe(w.title) + '\\\\",\\\\"content\\\\":\\\\")((?:[^"\\\\]|\\\\\\\\(?:\\\\\\\\|\\\\"|[^\\\\"]))*?)(\\\\")');
         const encoded = escFlight(w.content);
-        const next = html.replace(re, (m, a, oldVal, z) => (oldVal === encoded ? m : a + encoded + z));
-        if (next === html) continue;
-        html = next; changed++;
+        let from = 0;
+        for (;;) {
+          const at = html.indexOf(key, from);
+          if (at < 0) break;
+          let end = html.indexOf('\\"slug\\":\\"', at + key.length);
+          if (end < 0) end = html.length;
+          const win = html.slice(at, end);
+          const next = win.replace(re, (m, a, oldVal, z) => (oldVal === encoded ? m : a + encoded + z));
+          if (next !== win) { html = html.slice(0, at) + next + html.slice(end); changed++; }
+          from = at + key.length;
+        }
       }
       if (!changed) continue;
       // same guard the page-patch route uses for its raw-page replacements
@@ -1105,7 +1112,7 @@ function syncGameStagesChunk() {
         const win = content.slice(slugAt, end);
         // NB: the braces in the class below are backslash-escaped so this text
         // can live inside a template literal without starting an interpolation.
-        const re = new RegExp('("title":"' + w.title.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\function relinkChunkEverywhere(oldName, newName) {') + '","content":")((?:[^"\\\\]|\\\\.)*)(")');
+        const re = new RegExp('("title":"' + w.title.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&') + '","content":")((?:[^"\\\\]|\\\\.)*)(")');
         const hits = win.match(new RegExp(re.source, 'g'));
         if (!hits || hits.length !== 1) {
           if (hits && hits.length > 1) audit('system', 'chunk_sync_refused', { file: it, slug: w.slug, title: w.title, reason: 'ambiguous_occurrences', occurrences: hits.length });
@@ -3671,7 +3678,7 @@ const RUNTIME_JS = `(function(){
   }
   function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function getJson(url,ms){var c=window.AbortController?new AbortController():null;var t=c?setTimeout(function(){try{c.abort();}catch(e){}},ms||8000):0;return fetch(url,{cache:'no-store',signal:c&&c.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(function(){if(t)clearTimeout(t);});}
-  function load(){getJson('/api/public/site.json',8000).then(function(s){(window.__bfAfterHydration||function(f){f();})(function(){apply(s);});startLiveRefresh(s);}).catch(function(){});}
+  function load(){getJson('/api/public/site.json',8000).then(function(s){(window.bfAfterHydration||function(f){f();})(function(){apply(s);});startLiveRefresh(s);}).catch(function(){});}
   // Live auto-refresh stays responsive without waking mobile tabs every 1.5s.
   // Hidden tabs remain paused and are checked immediately on return.
   var lastPub=0, pollTimer=null;
