@@ -112,7 +112,7 @@ const STYLE = `
 body{background:#f8fafc;color:var(--ink)}
 main.lg-main{padding:36px 20px 64px}
 main.lg-main .bf-reveal,main.lg-main .bf-reveal-left,main.lg-main .bf-reveal-scale{opacity:1!important;transform:none!important;transition:none!important}
-article{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:28px 22px;box-shadow:0 20px 46px -34px rgba(15,23,42,.3);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+article{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:28px 22px;box-shadow:0 20px 46px -34px rgba(15,23,42,.3)}
 @media(min-width:700px){article{padding:44px 52px}}
 article h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin:0 0 18px;font-weight:800;letter-spacing:.01em}
 article h1,article h1+p,article h1+p+p{text-align:center}
