@@ -129,7 +129,7 @@ function siteChrome(siteRoot) {
 const STYLE = `
 :root{--ink:#0f172a;--mute:#475569}
 body{background:#f8fafc;color:var(--ink)}
-article h1,article h2,article h3{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+article h1,article h2,article h3{font-family:Comfortaa,system-ui,sans-serif;font-weight:700!important;letter-spacing:-.01em}
 html{scroll-behavior:smooth}
 main.lg-main{padding:36px 20px 64px}
 main.lg-main .bf-reveal,main.lg-main .bf-reveal-left,main.lg-main .bf-reveal-scale{opacity:1!important;transform:none!important;transition:none!important}

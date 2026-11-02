@@ -128,7 +128,8 @@
         }
       };
       var go = function () { var n = 0, iv = setInterval(function () { place(); if (++n > 16) clearInterval(iv); }, 500); };
-      if (document.readyState === 'complete') setTimeout(go, 300); else window.addEventListener('load', function () { setTimeout(go, 300); });
+      // Only once React owns the page (bf.js): editing it earlier breaks hydration.
+      (window.bfAfterHydration || function (f) { f(); })(go);
     }).catch(function () { /* stays "Підтримка скоро" */ });
     return;
   }
@@ -328,6 +329,7 @@
     // Not before hydration has finished (see bf.js); then re-check for a few
     // seconds in case React replaced the section while recovering.
     var go = function () { var n = 0, iv = setInterval(function () { ensure(); if (++n > 12) clearInterval(iv); }, 600); };
-    if (document.readyState === 'complete') setTimeout(go, 400); else window.addEventListener('load', function () { setTimeout(go, 400); });
+    // Only once React owns the page (bf.js): editing it earlier breaks hydration.
+    (window.bfAfterHydration || function (f) { f(); })(go);
   });
 })();
