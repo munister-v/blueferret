@@ -117,6 +117,7 @@ article{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;b
 article h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin:0 0 18px;font-weight:800;letter-spacing:.01em}
 article h1,article h1+p,article h1+p+p{text-align:center}
 article h2{text-align:left}
+article h1,article h2{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
 article h2{font-size:20px;margin:30px 0 10px;font-weight:700}
 article p,article li{font-size:16px;line-height:1.7;color:#334155}
 article p{margin:0 0 12px}article ul,article ol{margin:0 0 14px;padding-left:22px}article li{margin:4px 0}
