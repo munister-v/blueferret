@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Blue Ferret · CMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</head>
+<body>
+<div class="bg-blob b1"></div>
+<div class="bg-blob b2"></div>
+
+<!-- LOGIN -->
+<div id="loginPage">
+  <div class="lb">
+    <div class="lb-logo">
+      <div class="lb-ico">🦦</div>
+      <h1>Blue Ferret</h1>
+      <p>Панель керування сайтом</p>
+    </div>
+    <form id="loginForm" autocomplete="on">
+      <div class="lf">
+        <label for="pw">Пароль</label>
+        <div class="pw-wrap">
+          <input type="password" id="pw"
+            name="password"
+            autocomplete="current-password"
+            required
+            autofocus
+            placeholder="Введіть пароль"
+            spellcheck="false"
+            autocorrect="off"
+            autocapitalize="off">
+          <button type="button" class="pw-eye" id="pwToggle"
+            onclick="togglePw()" aria-label="Показати/сховати пароль"
+            tabindex="-1">👁</button>
+        </div>
+      </div>
+      <label class="lf-check">
+        <input type="checkbox" id="rememberMe">
+        <span>Запам'ятати мене на 30 днів</span>
+      </label>
+      <button type="submit" class="l-btn" id="loginBtn">Увійти →</button>
+      <p id="loginErr" class="hidden"></p>
+    </form>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appPage" class="hidden">
+  <header>
+    <div class="h-brand"><div class="h-dot">🦦</div> Blue Ferret · CMS</div>
+    <div class="h-r">
+      <a href="/" target="_blank" class="h-link">Відкрити сайт ↗</a>
+      <button class="h-out" id="logoutBtn">Вийти</button>
+    </div>
+  </header>
+  <div class="shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main" id="mainContent"></main>
+  </div>
+</div>
+
+<!-- PAGE CREATE/MANAGE DIALOG -->
+<div id="pgDialog" class="pg-dialog hidden">
+  <div class="pg-dialog-box">
+    <div class="pg-dh">
+      <h3 id="pgDialogTitle">Нова сторінка</h3>
+      <div class="pg-dtabs">
+        <button class="pg-dtab on" data-pgmode="new" onclick="switchPgMode('new')">✨ Створити</button>
+        <button class="pg-dtab" data-pgmode="copy" onclick="switchPgMode('copy')">📋 Скопіювати</button>
+      </div>
+    </div>
+    <div class="pg-db" id="pgDialogBody"></div>
+    <div class="pg-df">
+      <button class="btn btn-g btn-sm" onclick="closePgDialog()">Скасувати</button>
+      <button class="btn btn-p btn-sm" id="pgDialogSave" onclick="execPgAction()">Створити сторінку</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEDIA PICKER MODAL -->
+<div id="pickerModal" class="modal-bg hidden">
+  <div class="modal">
+    <div class="mh"><h3>🖼 Виберіть зображення</h3><button class="close-x" onclick="closePicker()">✕</button></div>
+    <div class="mb" id="pickerBody"></div>
+    <div class="mf"><button class="btn btn-g btn-sm" onclick="closePicker()">Закрити</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<button id="scrollTop" onclick="$('#mainContent').scrollTop=0" title="Вгору">↑</button>
+
+<script src="/admin.js"></script>
+</body>
+</html>

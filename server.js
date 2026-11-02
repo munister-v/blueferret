@@ -35,6 +35,23 @@ if (!SECRET) { SECRET = crypto.randomBytes(32).toString('hex'); setSetting('__se
 
 // current password hash (can be changed via UI)
 function getPassHash() { return getSetting('__pass_hash', null) || PASS_HASH; }
+function hashPass(p) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  return 'scrypt$' + salt + '$' + crypto.scryptSync(String(p), salt, 64).toString('hex');
+}
+function checkPass(p) {
+  const h = getPassHash();
+  if (!h) return false;
+  let a, b;
+  if (h.startsWith('scrypt$')) { const [, salt, hex] = h.split('$'); a = crypto.scryptSync(String(p), salt, 64); b = Buffer.from(hex, 'hex'); }
+  else { a = Buffer.from(crypto.createHash('sha256').update(String(p)).digest('hex')); b = Buffer.from(String(h)); }
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+// Sessions issued before this moment are void: a password change signs every
+// other browser out (the cookie itself is stateless, so this is the only lever).
+let SESS_EPOCH = Number(getSetting('__sess_epoch', 0)) || 0;
+const sessionCookie = (req, value, maxAge) =>
+  `bf_session=${value}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax${req.secure ? '; Secure' : ''}`;
 
 // ---------- defaults ----------
 const DEFAULTS = {
@@ -84,6 +101,16 @@ app.use((req, _res, next) => {
     const i = part.indexOf('=');
     if (i > -1) req.cookies[part.slice(0,i).trim()] = decodeURIComponent(part.slice(i+1).trim());
   }
+  next();
+});
+
+// Admin writes only from the admin's own pages. SameSite=Lax already keeps the
+// cookie off cross-site POSTs; this also covers same-site subdomains and old browsers.
+app.use('/api/admin', (req, res, next) => {
+  if (['GET','HEAD','OPTIONS'].includes(req.method)) return next();
+  if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'cross_origin' });
+  const origin = req.get('origin');
+  if (origin) { try { if (new URL(origin).host !== req.get('host')) return res.status(403).json({ error: 'cross_origin' }); } catch { return res.status(403).json({ error: 'cross_origin' }); } }
   next();
 });
 
@@ -176,7 +203,7 @@ function validToken(tok) {
   const parts = payload.split('.');
   const ts = parseInt(parts[0], 10);
   const maxAge = parts[2] === 'long' ? 30 * 24 * 3600 * 1000 : 7 * 24 * 3600 * 1000;
-  return ts && (Date.now() - ts) < maxAge;
+  return !!ts && ts >= SESS_EPOCH && (Date.now() - ts) < maxAge;
 }
 function makeToken(long = false) {
   const payload = `${Date.now()}.${crypto.randomBytes(8).toString('hex')}${long ? '.long' : ''}`;
@@ -207,17 +234,18 @@ function bump(ip, ok) {
 app.post('/api/admin/login', (req, res) => {
   const ip = req.ip;
   if (throttled(ip)) return res.status(429).json({ error: 'too_many_attempts' });
-  const ok = sha256(req.body?.password || '') === getPassHash();
+  const ok = checkPass(req.body?.password || '');
+  if (ok && !String(getPassHash()).startsWith('scrypt$')) setSetting('__pass_hash', hashPass(req.body.password));
   bump(ip, ok);
   audit(ip, ok ? 'login_ok' : 'login_fail', null);
   if (!ok) return res.status(401).json({ error: 'invalid_password' });
   const long = !!req.body?.remember;
   const maxAge = long ? 30*24*3600 : 7*24*3600;
-  res.setHeader('Set-Cookie', `bf_session=${makeToken(long)}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax`);
+  res.setHeader('Set-Cookie', sessionCookie(req, makeToken(long), maxAge));
   res.json({ ok: true });
 });
-app.post('/api/admin/logout', (_req, res) => {
-  res.setHeader('Set-Cookie', 'bf_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
+app.post('/api/admin/logout', (req, res) => {
+  res.setHeader('Set-Cookie', sessionCookie(req, '', 0));
   res.json({ ok: true });
 });
 app.get('/api/admin/me', (req, res) => res.json({ authenticated: validToken(req.cookies.bf_session) }));
@@ -225,9 +253,11 @@ app.get('/api/admin/me', (req, res) => res.json({ authenticated: validToken(req.
 app.post('/api/admin/password', requireAuth, (req, res) => {
   const { current, next: nextPass } = req.body || {};
   if (!current || !nextPass) return res.status(400).json({ error: 'missing fields' });
-  if (sha256(current) !== getPassHash()) return res.status(401).json({ error: 'wrong_current' });
-  if (nextPass.length < 8) return res.status(400).json({ error: 'too_short' });
-  setSetting('__pass_hash', sha256(nextPass));
+  if (!checkPass(current)) return res.status(401).json({ error: 'wrong_current' });
+  if (String(nextPass).length < 10) return res.status(400).json({ error: 'too_short' });
+  setSetting('__pass_hash', hashPass(nextPass));
+  SESS_EPOCH = Date.now(); setSetting('__sess_epoch', SESS_EPOCH);
+  res.setHeader('Set-Cookie', sessionCookie(req, makeToken(true), 30*24*3600));
   audit(req.ip, 'password_change', null);
   res.json({ ok: true });
 });
@@ -1725,6 +1755,9 @@ app.post('/api/admin/upload', requireAuth, (req, res, next) => {
     const base = path.basename(req.file.originalname, ext).replace(/[^a-z0-9а-яіїєґ]/gi,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'media';
     
     // Skip optimizing SVGs and GIFs to preserve animation/vectors
+    if (ext === '.svg' && /<script|<foreignObject|<iframe|<embed|<object|\son[a-z]+\s*=|javascript:|<!ENTITY/i.test(req.file.buffer.toString('utf8'))) {
+      return res.status(415).json({ error: 'unsafe_svg' });
+    }
     if (ext === '.svg' || ext === '.gif') {
       const filename = `${base}-${Date.now()}${ext}`;
       const full = path.join(UPLOADS, filename);
@@ -1818,7 +1851,7 @@ app.delete('/api/admin/media/:filename', requireAuth, (req, res) => {
   const filename = path.basename(req.params.filename);
   const full = path.join(UPLOADS, filename);
   if (!fs.existsSync(full)) return res.status(404).json({error:'not_found'});
-  fs.unlinkSync(full);
+  try { fs.unlinkSync(full); } catch (e) { return res.status(500).json({error:'delete_failed'}); }
   audit(req.ip,'media_delete',{filename});
   res.json({ok:true});
 });
@@ -2036,8 +2069,19 @@ app.delete('/api/admin/pages/delete', requireAuth, (req,res)=>{
 // ════════════════════════════════════════════════════════
 const { execFileSync } = require('child_process');
 
+// Decode the body of a JS single-quoted literal the way the browser does, so a
+// blob that is valid here is valid in JSON.parse('...') on the page too. Blobs
+// written before backslashes were escaped (a \" inside a reward title) only
+// parse with the old loose decoding; fall back to it so they can be re-saved.
 function jsToJson(s){
+  try { const v = Function("'use strict';return '" + s + "'")(); JSON.parse(v); return v; } catch {}
   return s.replace(/\\'/g,"'").replace(/\\x([0-9a-fA-F]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+}
+// The inverse: JSON for the inside of JSON.parse('...'). Backslashes first, or
+// an escaped quote in the JSON (\") reaches JSON.parse as a bare " and the page
+// throws, leaving the Suspense fallback up forever.
+function jsonToJs(obj){
+  return JSON.stringify(obj).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
 }
 function findContentBundle(){
   const dir = path.join(SITE_ROOT,'_next','static','chunks');
@@ -2087,7 +2131,7 @@ function setByPath(obj,pathStr,val){
 // string early and corrupt the chunk — escape it the same way jsToJson()
 // un-escapes it on read. Throws if the result would not be valid JS.
 function writeSiteContent(sc){
-  const newBlob=JSON.stringify(sc.obj).replace(/'/g,"\\'");
+  const newBlob=jsonToJs(sc.obj);
   const oldContent=sc.bundle.content;
   const newContent=oldContent.slice(0,sc.loc.start)+newBlob+oldContent.slice(sc.loc.end);
   const oldName=sc.bundle.name;                    // e.g. 6398-abc.js
@@ -2144,7 +2188,7 @@ function readHomeContentBundle(){
   return null;
 }
 function writeHomeContentBundle(home){
-  const blob = JSON.stringify(home.obj).replace(/'/g,"\\'");
+  const blob = jsonToJs(home.obj);
   const content = home.content.slice(0,home.start) + blob + home.content.slice(home.end);
   assertValidJs(content, home.name);
   const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0,16);
@@ -2344,7 +2388,7 @@ function readKikProjects(){
   return null;
 }
 function writeKikProjects(bundle, arr){
-  const blob = JSON.stringify(arr).replace(/'/g,"\\'");
+  const blob = jsonToJs(arr);
   const newContent = bundle.content.slice(0,bundle.loc.start) + blob + bundle.content.slice(bundle.loc.end);
   const oldName = bundle.name;
   const prefix = oldName.replace(/-[0-9a-f]{8,}\.js$/i,'');
@@ -2882,6 +2926,11 @@ require('./src/mono-routes').mount(app, {
 require('./src/preorder-routes').mount(app, {
   preorders: require('./src/preorders').createPreorders({ db }),
   requireAuth, readKikProjects, audit,
+});
+
+// ── legal documents (оферта, повернення, конфіденційність) ──
+require('./src/legal-routes').mount(app, {
+  requireAuth, audit, siteRoot: SITE_ROOT, dataDir: path.join(__dirname, 'data'),
 });
 
 // ── duplicate page ──

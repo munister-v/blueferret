@@ -23,6 +23,7 @@ const NAV=[
     {id:'games',ico:'🎲',l:'Ігри'},
     {id:'kikprojects',ico:'🚀',l:'КІК проєкти'},
     {id:'sitetext',ico:'🌐',l:'Тексти сайту'},
+    {id:'legal',ico:'📜',l:'Документи'},
     {id:'pages',ico:'📄',l:'Сторінки'},
     {id:'media',ico:'🖼',l:'Медіа'},
   ]},
@@ -97,7 +98,7 @@ async function api(method,url,body){
   if(r.status===401){showLogin();throw new Error('unauth');}
   if(!r.ok){
     const j=await r.json().catch(()=>({}));
-    const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.',text_too_long:'Текст завеликий для цього блоку',url_too_long:'URL завеликий',invalid_block:'Некоректний текстовий блок',too_many_blocks:'Занадто багато блоків в одному збереженні',publish_in_progress:'Інше збереження вже виконується. Зачекайте кілька секунд',publish_snapshot_failed:'Не вдалося створити безпечну копію. Збереження скасовано',publish_rolled_back:'Перевірка знайшла проблему. Зміни автоматично відкочено'};
+    const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.',unsafe_svg:'SVG містить скрипти або посилання, такий файл не можна завантажити',cross_origin:'Запит не з адмінки. Оновіть сторінку',text_too_long:'Текст завеликий для цього блоку',url_too_long:'URL завеликий',invalid_block:'Некоректний текстовий блок',too_many_blocks:'Занадто багато блоків в одному збереженні',publish_in_progress:'Інше збереження вже виконується. Зачекайте кілька секунд',publish_snapshot_failed:'Не вдалося створити безпечну копію. Збереження скасовано',publish_rolled_back:'Перевірка знайшла проблему. Зміни автоматично відкочено'};
     const detail=Array.isArray(j.details)&&j.details.length?' · '+j.details.slice(0,4).join(' · '):'';
     throw new Error((map[j.error]||j.error||('HTTP '+r.status))+detail);
   }
@@ -140,6 +141,7 @@ async function render(){
       case'games':el.innerHTML=renderGamesList();break;
       case'kikprojects':await renderKikProjects();break;
       case'sitetext':await renderSiteText();break;
+      case'legal':await renderLegal();break;
       case'pages':await renderPages();break;
       case'media':await renderMedia();break;
       case'security':el.innerHTML=renderSecurity();break;
@@ -2964,7 +2966,7 @@ window.openPickerFor=openPickerFor;window.pickMedia=pickMedia;window.closePicker
 // ── SECURITY ──
 function renderSecurity(){
   return `<div class="card">
-    <div class="ch"><div><div class="ct">🔑 Зміна пароля</div><div class="cs">Мінімум 8 символів</div></div></div>
+    <div class="ch"><div><div class="ct">🔑 Зміна пароля</div><div class="cs">Мінімум 10 символів. Після зміни всі інші пристрої вийдуть з адмінки</div></div></div>
     <div class="field"><label class="flbl">Поточний пароль</label><input type="password" id="sc" autocomplete="current-password"></div>
     <div class="field"><label class="flbl">Новий пароль</label><input type="password" id="sn" autocomplete="new-password"></div>
     <div class="field"><label class="flbl">Підтвердити</label><input type="password" id="sf"></div>
@@ -2978,7 +2980,7 @@ async function chgPass(){
   if(!c||!n||!f){if(msg){msg.style.color='var(--red)';msg.textContent='Заповніть усі поля';}return;}
   if(n!==f){if(msg){msg.style.color='var(--red)';msg.textContent='Паролі не збігаються';}return;}
   try{await api('POST','/api/admin/password',{current:c,next:n});if(msg){msg.style.color='var(--kik)';msg.textContent='Пароль змінено ✓';}toast('Пароль змінено ✓','ok');}
-  catch(e){if(e.message!=='unauth'&&msg){msg.style.color='var(--red)';msg.textContent=e.message==='wrong_current'?'Невірний поточний пароль':'Помилка';}}
+  catch(e){if(e.message!=='unauth'&&msg){msg.style.color='var(--red)';msg.textContent=e.message==='wrong_current'?'Невірний поточний пароль':e.message==='too_short'?'Пароль має бути щонайменше 10 символів':'Помилка: '+e.message;}}
 }
 window.chgPass=chgPass;
 
@@ -3020,6 +3022,84 @@ async function renderAudit(){
       <button class="btn btn-g btn-sm" onclick="render()" title="Оновити">↻ Оновити</button>
     </div>
     <table class="at"><thead><tr><th>Час</th><th>Дія</th><th>IP</th><th>Деталі</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+// ── DOCUMENTS (оферта, повернення, конфіденційність) ──
+// Markdown on the left, the page as it will look on the right; saving rebuilds
+// the public page at once. Text left in [square brackets] is a placeholder:
+// it shows yellow and the page stays a noindex draft until it is filled in.
+let lg={slug:null,list:null,md:'',saved:'',timer:null};
+async function renderLegal(){
+  const el=$('#mainContent');
+  lg.list=await api('GET','/api/admin/legal');
+  if(!lg.slug||!lg.list.some(d=>d.slug===lg.slug))lg.slug=lg.list[0].slug;
+  const doc=await api('GET','/api/admin/legal/'+lg.slug);
+  lg.md=lg.saved=doc.md;editorFormDirty=false;
+  el.innerHTML=`<style>
+    .lg-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+    .lg-tab{border:1px solid var(--glass-border);background:var(--surface);border-radius:12px;padding:9px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;color:var(--txt)}
+    .lg-tab.on{border-color:var(--bf);box-shadow:0 0 0 2px rgba(0,159,227,.18)}
+    .lg-tab small{display:block;font-weight:500;color:var(--txt-m);font-size:11px;margin-top:2px}
+    .lg-tab small.ph{color:#b45309}
+    .lg-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:1100px){.lg-grid{grid-template-columns:1fr}}
+    #lgMd{width:100%;min-height:62vh;box-sizing:border-box;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;padding:14px;border:1px solid var(--glass-border);border-radius:12px;resize:vertical;color:var(--txt);background:#fff}
+    #lgPrev{min-height:62vh;max-height:80vh;overflow:auto;border:1px solid var(--glass-border);border-radius:12px;padding:20px 24px;background:#fff;font-size:14px;line-height:1.65;color:#334155}
+    #lgPrev h1{font-size:24px;text-align:center;margin:0 0 12px;color:#0f172a}
+    #lgPrev h1+p,#lgPrev h1+p+p{text-align:center}
+    #lgPrev h2{font-size:17px;margin:22px 0 8px;color:#0f172a}
+    #lgPrev ul,#lgPrev ol{padding-left:20px}
+    #lgPrev mark.ph{background:#fde68a;color:#78350f;border-radius:4px;padding:0 3px}
+    .lg-help{font-size:12px;color:var(--txt-m);line-height:1.7;margin-top:10px}
+    .lg-help code{background:#f1f5f9;border-radius:4px;padding:1px 5px}
+  </style>
+  <div class="card">
+    <div class="ch"><div><div class="ct">📜 Документи</div><div class="cs">Оферта, повернення коштів, конфіденційність. Після збереження сторінка на сайті оновлюється одразу.</div></div></div>
+    <div class="lg-tabs">${lg.list.map(d=>`<button class="lg-tab${d.slug===lg.slug?' on':''}" onclick="openLegal('${d.slug}')">${esc(d.title)}<small class="${d.placeholders?'ph':''}">${d.placeholders?`Чернетка · ${d.placeholders} незаповн.`:'Опубліковано'}${d.updatedAt?' · '+relT(d.updatedAt):''}</small></button>`).join('')}</div>
+    <div class="lg-grid">
+      <div>
+        <textarea id="lgMd" spellcheck="true" oninput="legalInput()">${esc(lg.md)}</textarea>
+        <div class="lg-help"><code># Заголовок</code> <code>## Розділ</code> · <code>**жирний**</code> · <code>- пункт списку</code> · <code>1. нумерований</code> · <code>[текст](https://посилання)</code> · порожній рядок = новий абзац · <code>[ТАК]</code> у квадратних дужках = незаповнене місце (жовте, сторінка не індексується)</div>
+      </div>
+      <div id="lgPrev"></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-p" id="lgSave" onclick="saveLegal()">Зберегти й опублікувати</button>
+      <button class="btn btn-g" onclick="resetLegal()">Скасувати зміни</button>
+      <a class="btn btn-g" href="${doc.url}" target="_blank">Відкрити на сайті ↗</a>
+      <span id="lgState" style="font-size:13px;color:var(--txt-m)"></span>
+    </div>
+  </div>`;
+  legalPreview();
+}
+async function openLegal(slug){
+  if(slug===lg.slug)return;
+  if(lg.md!==lg.saved&&!confirm('Є незбережені зміни. Перейти без збереження?'))return;
+  lg.slug=slug;await renderLegal();
+}
+function legalInput(){
+  lg.md=$('#lgMd').value;editorFormDirty=lg.md!==lg.saved;
+  $('#lgState').textContent=editorFormDirty?'Є незбережені зміни':'';
+  clearTimeout(lg.timer);lg.timer=setTimeout(legalPreview,300);
+}
+async function legalPreview(){
+  try{const r=await api('POST',`/api/admin/legal/${lg.slug}/preview`,{md:lg.md});$('#lgPrev').innerHTML=r.body;}
+  catch(e){if(e.message!=='unauth')$('#lgPrev').textContent='Не вдалося показати перегляд: '+e.message;}
+}
+function resetLegal(){
+  if(lg.md===lg.saved)return;
+  if(!confirm('Повернути останню збережену версію?'))return;
+  lg.md=lg.saved;$('#lgMd').value=lg.md;editorFormDirty=false;$('#lgState').textContent='';legalPreview();
+}
+async function saveLegal(){
+  const b=$('#lgSave');b.disabled=true;
+  try{
+    const r=await api('PUT','/api/admin/legal/'+lg.slug,{md:lg.md});
+    lg.saved=lg.md;editorFormDirty=false;
+    toast(r.placeholders?`Збережено. Лишилось незаповнених місць: ${r.placeholders}, сторінка поки чернетка`:'Збережено й опубліковано ✓',r.placeholders?'':'ok');
+    await renderLegal();
+  }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
+  finally{const x=$('#lgSave');if(x)x.disabled=false;}
 }
 
 // ── AUTH ──
