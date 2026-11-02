@@ -2898,6 +2898,11 @@ require('./src/preorder-routes').mount(app, {
   requireAuth, readKikProjects, audit,
 });
 
+// ── legal documents (оферта, повернення, конфіденційність) ──
+require('./src/legal-routes').mount(app, {
+  requireAuth, audit, siteRoot: SITE_ROOT, dataDir: path.join(__dirname, 'data'),
+});
+
 // ── duplicate page ──
 app.post('/api/admin/pages/duplicate', requireAuth, (req,res)=>{
   const {from, slug:rawSlug} = req.body||{};
