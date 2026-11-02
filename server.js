@@ -2414,8 +2414,17 @@ function writeKikProjects(bundle, arr){
   })(SITE_ROOT);
   try{ execFileSync('restorecon',['-R',path.join(SITE_ROOT,'_next')],{stdio:'ignore',timeout:15000}); }catch{}
   _chunksBlobCache.at = 0;
+  syncKikFallback(arr);
   return { bundle:newName, htmlChanged };
 }
+
+// The catalog's HTML shows these cards until (or unless) the browser renders
+// the page itself; see src/kik-fallback.js.
+function syncKikFallback(arr){
+  try { require('./src/kik-fallback').apply(SITE_ROOT, arr); }
+  catch(e){ audit('system','kik_fallback_failed',{ error:String(e.message).slice(0,200) }); }
+}
+setTimeout(() => { try { const b = readKikProjects(); if (b) syncKikFallback(b.arr); } catch {} }, 2000);
 
 // Port of the runtime Zod schema. Deliberately strict in the same places: it
 // is the only thing standing between a typo in the admin form and a blank
