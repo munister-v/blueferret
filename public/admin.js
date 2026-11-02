@@ -100,7 +100,7 @@ async function api(method,url,body){
   if(r.status===401){showLogin();throw new Error('unauth');}
   if(!r.ok){
     const j=await r.json().catch(()=>({}));
-    const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.',text_too_long:'Текст завеликий для цього блоку',url_too_long:'URL завеликий',invalid_block:'Некоректний текстовий блок',too_many_blocks:'Занадто багато блоків в одному збереженні',publish_in_progress:'Інше збереження вже виконується. Зачекайте кілька секунд',publish_snapshot_failed:'Не вдалося створити безпечну копію. Збереження скасовано',publish_rolled_back:'Перевірка знайшла проблему. Зміни автоматично відкочено'};
+    const map={slug_exists:'Такий slug вже існує',page_exists:'Сторінка з таким URL вже існує',not_found:'Не знайдено',title_required:'Назва обовʼязкова',invalid_password:'Невірний пароль',too_many_attempts:'Забагато спроб. Спробуйте пізніше.',file_too_large:'Файл завеликий. Максимум 10 MB.',unsupported_file_type:'Підтримуються тільки JPG, PNG, WebP, GIF, SVG або AVIF.',unsafe_svg:'SVG містить скрипти або посилання, такий файл не можна завантажити',cross_origin:'Запит не з адмінки. Оновіть сторінку',text_too_long:'Текст завеликий для цього блоку',url_too_long:'URL завеликий',invalid_block:'Некоректний текстовий блок',too_many_blocks:'Занадто багато блоків в одному збереженні',publish_in_progress:'Інше збереження вже виконується. Зачекайте кілька секунд',publish_snapshot_failed:'Не вдалося створити безпечну копію. Збереження скасовано',publish_rolled_back:'Перевірка знайшла проблему. Зміни автоматично відкочено'};
     const detail=Array.isArray(j.details)&&j.details.length?' · '+j.details.slice(0,4).join(' · '):'';
     throw new Error((map[j.error]||j.error||('HTTP '+r.status))+detail);
   }
@@ -3054,7 +3054,7 @@ window.openPickerFor=openPickerFor;window.pickMedia=pickMedia;window.closePicker
 // ── SECURITY ──
 function renderSecurity(){
   return `<div class="card">
-    <div class="ch"><div><div class="ct">🔑 Зміна пароля</div><div class="cs">Мінімум 8 символів</div></div></div>
+    <div class="ch"><div><div class="ct">🔑 Зміна пароля</div><div class="cs">Мінімум 10 символів. Після зміни всі інші пристрої вийдуть з адмінки</div></div></div>
     <div class="field"><label class="flbl">Поточний пароль</label><input type="password" id="sc" autocomplete="current-password"></div>
     <div class="field"><label class="flbl">Новий пароль</label><input type="password" id="sn" autocomplete="new-password"></div>
     <div class="field"><label class="flbl">Підтвердити</label><input type="password" id="sf"></div>
@@ -3068,7 +3068,7 @@ async function chgPass(){
   if(!c||!n||!f){if(msg){msg.style.color='var(--red)';msg.textContent='Заповніть усі поля';}return;}
   if(n!==f){if(msg){msg.style.color='var(--red)';msg.textContent='Паролі не збігаються';}return;}
   try{await api('POST','/api/admin/password',{current:c,next:n});if(msg){msg.style.color='var(--kik)';msg.textContent='Пароль змінено ✓';}toast('Пароль змінено ✓','ok');}
-  catch(e){if(e.message!=='unauth'&&msg){msg.style.color='var(--red)';msg.textContent=e.message==='wrong_current'?'Невірний поточний пароль':'Помилка';}}
+  catch(e){if(e.message!=='unauth'&&msg){msg.style.color='var(--red)';msg.textContent=e.message==='wrong_current'?'Невірний поточний пароль':e.message==='too_short'?'Пароль має бути щонайменше 10 символів':'Помилка: '+e.message;}}
 }
 window.chgPass=chgPass;
 
