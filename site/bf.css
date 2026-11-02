@@ -888,12 +888,6 @@ html.bf-games-catalog main [data-bf-games-grid="true"] > a > div:nth-child(2) > 
     transition-duration: 120ms !important;
   }
 
-  main section:not(:first-child),
-  footer {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 720px;
-  }
-
   .bf-reveal,
   .bf-reveal-left,
   .bf-reveal-scale {
@@ -1061,3 +1055,29 @@ html.bf-games-catalog main [data-bf-games-grid="true"] [data-bf-id^="bf_cat_"][d
 /* scaled box wrapper (sm:scale-[1.02] md:scale-[1.1]) grows over the hint */
 @media (min-width: 640px) { .bf-box-hint-dark { margin-bottom: 26px; } }
 @media (min-width: 768px) { .bf-box-hint-dark { margin-bottom: 40px; } }
+
+
+/* ── Smooth scrolling & layout fixes (2026-11) ─────────────────────────────
+   The sticky header blurred everything that scrolled under it on every frame;
+   at 95% white the blur was invisible anyway. */
+header { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+/* Each page keeps its own header colour (the game pages have a dark one); a
+   blur-free light header just gets a little more opaque. */
+header[class*="bg-white/"] { background-color: rgba(255,255,255,.97) !important; }
+
+/* A grid item never grows past its column: one wide child (the 3D box on a
+   game page) used to push the whole card past the phone screen. */
+main .grid > * { min-width: 0; }
+
+/* Long e-mail in the footer wraps instead of running under the edge. */
+footer [class*="col-span"] { min-width: 0; }
+footer a[href^="mailto:"] { max-width: 100%; overflow-wrap: anywhere; }
+
+/* Tablets (768–1023px): the desktop nav did not fit — the logo and «Наші ігри»
+   broke onto two lines and the burger showed up next to them. Below 1024px the
+   header is the phone one: logo + burger. */
+@media (max-width: 1023px) {
+  header nav div.md\:flex { display: none !important; }
+  header nav button.md\:hidden { display: inline-flex !important; }
+}
+header nav a .sm\:block > span { white-space: nowrap; }
