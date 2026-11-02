@@ -16,3 +16,6 @@ temp_*.js
 /test_cheerio.js
 /test_extract.js
 /.claude/
+
+# macOS
+.DS_Store
