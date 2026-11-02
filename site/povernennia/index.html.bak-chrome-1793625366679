@@ -1,0 +1,70 @@
+<!DOCTYPE html><html lang="uk"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Повернення коштів | Blue Ferret</title>
+<meta name="description" content="Повернення коштів видавництва настільних ігор Blue Ferret.">
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/_next/static/css/a80874b32dc71380.css">
+<link rel="stylesheet" href="/bf.css?v=38">
+<style>
+:root{--ink:#0f172a;--mute:#475569}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:#f8fafc;min-height:100vh;display:flex;flex-direction:column}
+.lg-top{background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:20}
+.lg-top .in{max-width:880px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.lg-top a.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.01em;color:var(--ink);text-decoration:none}
+.lg-top a.brand img{width:36px;height:36px;object-fit:contain}
+.lg-top nav{display:flex;gap:16px;flex-wrap:wrap;margin-left:auto;font-size:14px}
+.lg-top nav a{color:var(--mute);text-decoration:none;font-weight:500}.lg-top nav a:hover{color:#2f8a52}
+main{flex:1;padding:36px 20px 64px}
+article{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:28px 22px;box-shadow:0 20px 46px -34px rgba(15,23,42,.3)}
+@media(min-width:700px){article{padding:44px 52px}}
+article h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin:0 0 18px;font-weight:800;letter-spacing:.01em}
+article h1,article h1+p,article h1+p+p{text-align:center}
+article h2{text-align:left}
+article h2{font-size:20px;margin:30px 0 10px;font-weight:700}
+article p,article li{font-size:16px;line-height:1.7;color:#334155}
+article p{margin:0 0 12px}article ul,article ol{margin:0 0 14px;padding-left:22px}article li{margin:4px 0}
+article a{color:#2f8a52;text-decoration:underline;text-underline-offset:2px}
+mark.ph{background:#fde68a;color:#78350f;border-radius:4px;padding:0 3px}
+.draft{max-width:760px;margin:0 auto 16px;padding:12px 16px;border-radius:14px;background:#fef3c7;border:1px solid #f59e0b;color:#78350f;font-size:14px}
+footer.lg-foot{background:#0f172a;color:#94a3b8;padding:28px 20px 8px;font-size:14px;text-align:center}
+</style></head>
+<body>
+<header class="lg-top"><div class="in"><a class="brand" href="/"><img src="/logo-blue-ferret.png" alt="" width="36" height="36">BLUE FERRET</a>
+<nav aria-label="Основна навігація"><a href="/">Головна</a><a href="/igry/">Наші ігри</a><a href="/kik/">KIK вдома</a><a href="/kontakty/">Контакти</a></nav></div></header>
+<main>
+
+<article>
+<h1 data-bf-id="bf_29db1fe2">Повернення коштів</h1>
+<p data-bf-id="bf_9958f84c">Редакція від 02.11.2026</p>
+<h2 data-bf-id="bf_d0f7f036">Якщо збір не досяг цілі</h2>
+<p data-bf-id="bf_4e93ed38">Заявка без оплати нічого не списує. Якщо цільова сума не набралася, проєкт не запускається, а заявки закриваються. Нічого подавати й повертати не потрібно. Про результат збору буде повідомлено у соцмережах видавництва та на e-mail, вказаний у заявці.</p><h2 data-bf-id="new_1793622541172284">Якщо ви вже оплатили, а проєкт скасовано</h2>
+<ul>
+<li data-bf-id="bf_8ef839d8">Якщо проєкт скасовано після оплати (до виробництва або в процесі), ми повертаємо повну суму платежу автоматично на ту саму картку, якою ви платили.</li>
+<li data-bf-id="bf_f74596b7">Строк: протягом <strong>14 робочих днів</strong> після дати завершення збору. Далі банк зараховує кошти за 1-3 робочих днів.</li>
+<li data-bf-id="bf_afcb13e5">Сума: <strong>сума платежу мінус комісія банку.</strong> Комісію еквайрингу (1,3% від платежу) банк утримує при оплаті й не повертає навіть при поверненні коштів, тому ми не можемо повернути її вам. Приклад: сплачено 1 699 ₴, комісія ≈ 22,09 ₴, повернемо ≈ 1 676,91 ₴.</li>
+
+<li data-bf-id="bf_85ab1d51">Про початок повернення ми пишемо на сторінці проєкту та на e-mail, вказаний під час оплати.</li>
+</ul>
+<h2 data-bf-id="bf_6fdf273f">Якщо ви передумали (право відмовитися від замовлення)</h2>
+<p data-bf-id="bf_1e619b85">Напишіть на rogachovanika@gmail.com. Вкажіть проєкт, номер замовлення, ПІБ, суму, дату оплати і останні 4 цифри картки. Можна скористатися типовою формою заяви про відмову, затвердженою Мінекономіки. Заяву треба надіслати протягом 14 днів з дня отримання товару.</p>
+<h2 data-bf-id="bf_7dc883c6">Після отримання нагороди (14 днів)</h2>
+<p data-bf-id="bf_f5a9f048">Покупець-споживач може повернути товар належної якості протягом <strong>14 днів</strong> після отримання, якщо його не використовували, збережено товарний вигляд і упаковку (Закон «Про захист прав споживачів»). Як це зробити:</p>
+<ol>
+<li data-bf-id="bf_18bd77b6"><strong>Заява:</strong> напишіть на <strong>rogachovanika@gmail.com</strong> протягом 14 днів з моменту отримання товару, зазначивши номер замовлення, ПІБ та причину повернення.</li>
+<li data-bf-id="bf_3d3178df"><strong>Відправка:</strong> у відповідь ми надамо детальні реквізити для відправки товару Новою Поштою. Вартість зворотної доставки оплачує покупець.</li>
+<li data-bf-id="bf_1c9752b1"><strong>Повернення коштів:</strong> після отримання та огляду товару ми повернемо кошти протягом 14 робочих днів на ту саму картку, якою здійснювалася оплата.</li>
+</ol>
+<p data-bf-id="bf_d69f89d6">Товар неналежної якості (брак, пошкодження в дорозі) - повертаємо за наш рахунок, або надсилаємо новий. Напишіть нам і додайте фото.</p>
+<h2 data-bf-id="bf_8da5ad9c">Якщо ми не змогли виготовити гру</h2>
+<p data-bf-id="bf_1561cb8b">Якщо виробництво зірвалося з нашої прямої вини, ми повертаємо кошти в повному обсязі (включно з комісією банку, яку беремо на себе).</p>
+<p data-bf-id="bf_215b65f9">Якщо виробництво зупинилося або затрималося через обставини непереборної сили (форс-мажор), зокрема бойові дії, ракетні обстріли, руйнування інфраструктури, перебої з електропостачанням чи зв'язком, що унеможливлюють роботу виробництва, ми повертаємо отримані кошти у повному обсязі. Повернення здійснюється протягом 30 робочих днів після офіційного оголошення про неможливість виконання проєкту.</p>
+<h2 data-bf-id="bf_c5c36e99">Контакти</h2>
+<p data-bf-id="bf_64bd0fac">rogachovanika@gmail.com, пн–пт 11:00–19:00. Відповідаємо протягом 5 робочих днів.</p>
+<p data-bf-id="bf_90a4fb46">ФОП Рогачова Вероніка Олександрівна, РНОКПП 3721907381.</p>
+</article>
+</main>
+<footer class="lg-foot"><div>© Blue Ferret</div></footer>
+<script src="/bf.js?v=38" defer=""></script>
+
+</body></html>
