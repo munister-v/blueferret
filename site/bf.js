@@ -278,9 +278,39 @@
   // the SSR hamburger button remains visible but has no React click handler.
   // This fallback owns the mobile menu interaction in plain DOM, so the menu
   // works even when the original client bundle does not finish mounting.
+  // React's recovery from the hydration error (#418) re-creates the page a few
+  // seconds after load and throws away everything added to <body>, the open
+  // menu included, so a tap in those first seconds used to "do nothing". The
+  // menu node is kept here and put back, open, if React removes it.
+  let fallbackMenu = null;
+  let menuWanted = false;
+  // It writes to the page only when something is actually missing; writing
+  // unconditionally fed its own observer and looped.
+  const restoreMenu = () => {
+    if (!menuWanted || !fallbackMenu || !document.body) return;
+    if (!fallbackMenu.isConnected) {
+      document.body.appendChild(fallbackMenu);
+      fallbackMenu.hidden = false;
+      fallbackMenu.classList.add('is-open');
+      setHamburgerExpanded(true);
+    }
+    if (!document.documentElement.classList.contains('bf-mobile-menu-open'))
+      document.documentElement.classList.add('bf-mobile-menu-open');
+  };
+  // Two observers: observing the same node twice replaces the first options.
+  const menuGuard = new MutationObserver(restoreMenu);
+  const menuClassGuard = new MutationObserver(restoreMenu);
+  menuGuard.observe(document.documentElement, { childList: true, subtree: true });
+  menuClassGuard.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  setTimeout(() => { menuGuard.disconnect(); menuClassGuard.disconnect(); }, 30000);
+
   function ensureFallbackMobileMenu() {
+    if (fallbackMenu) {
+      if (!fallbackMenu.isConnected) document.body.appendChild(fallbackMenu);
+      return fallbackMenu;
+    }
     let menu = document.getElementById('bf-mobile-menu-fallback');
-    if (menu) return menu;
+    if (menu) return (fallbackMenu = menu);
 
     menu = document.createElement('div');
     menu.id = 'bf-mobile-menu-fallback';
@@ -306,6 +336,7 @@
       </aside>
     `;
     document.body.appendChild(menu);
+    fallbackMenu = menu;
 
     menu.querySelectorAll('[data-bf-close-menu]').forEach((el) => {
       el.addEventListener('click', closeFallbackMobileMenu);
@@ -324,6 +355,7 @@
   }
 
   function openFallbackMobileMenu() {
+    menuWanted = true;
     const menu = ensureFallbackMobileMenu();
     menu.hidden = false;
     requestAnimationFrame(() => {
@@ -335,7 +367,8 @@
   }
 
   function closeFallbackMobileMenu() {
-    const menu = document.getElementById('bf-mobile-menu-fallback');
+    menuWanted = false;
+    const menu = fallbackMenu || document.getElementById('bf-mobile-menu-fallback');
     if (!menu) return;
     menu.classList.remove('is-open');
     document.documentElement.classList.remove('bf-mobile-menu-open');
@@ -345,11 +378,13 @@
     }, 220);
   }
 
+  let menuDelegated = false;
   function initMobileMenuFallback() {
     // React may replace the hydrated header button after this script has run
     // (especially on slower mobile Safari). A document-level capture handler
     // survives that replacement, so every current or future hamburger works.
-    if (!document.documentElement.dataset.bfMobileMenuDelegated) {
+    if (!menuDelegated) {
+      menuDelegated = true;
       document.documentElement.dataset.bfMobileMenuDelegated = '1';
       document.addEventListener('click', (e) => {
         const btn = e.target.closest && e.target.closest('button');
