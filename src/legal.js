@@ -61,14 +61,14 @@ function htmlToMd(html) {
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
     .trim();
   const out = [];
-  const re = /<(h[1-3]|p|ul|ol)>([\s\S]*?)<\/\1>/g;
+  const re = /<(h[1-3]|p|ul|ol)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/g;
   let m;
   while ((m = re.exec(art))) {
     const [, tag, inner] = m;
     if (tag[0] === 'h') out.push('#'.repeat(+tag[1]) + ' ' + txt(inner));
     else if (tag === 'p') out.push(txt(inner));
     else {
-      const items = [...inner.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(x => txt(x[1]));
+      const items = [...inner.matchAll(/<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/g)].map(x => txt(x[1]));
       out.push(items.map((it, i) => (tag === 'ul' ? '- ' : `${i + 1}. `) + it).join('\n'));
     }
   }
