@@ -60,3 +60,29 @@ test('summary skips cancelled; csv neutralises formulas and quotes commas', () =
   assert.equal(p.setStatus(999, 'paid').error, 'not_found');
   assert.equal(p.setStatus(1, 'weird').error, 'bad_status');
 });
+
+test('requests add to the collected sum once; a cancellation takes it off', () => {
+  const p = mk();
+  p.create(project, good);                                   // 2 × 900
+  p.create(project, { ...good, tierId: 'full', qty: 1 });    // 1 × 1500
+  let d = p.pendingDeltas();
+  assert.deepEqual(d.byProject, { 6: 3300 });
+  p.markCounted(d.rows);
+  assert.equal(p.pendingDeltas().rows.length, 0);            // nothing twice
+  p.setStatus(p.list('6')[0].id, 'cancelled');
+  d = p.pendingDeltas();
+  assert.deepEqual(d.byProject, { 6: -1800 });
+  p.markCounted(d.rows);
+  p.setStatus(p.list('6')[0].id, 'new');                     // un-cancelled counts again
+  assert.deepEqual(p.pendingDeltas().byProject, { 6: 1800 });
+});
+
+test('an older table without the counted column is upgraded in place', () => {
+  const db = new Database(':memory:');
+  db.exec(`CREATE TABLE kik_preorders (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT NOT NULL, tier_id TEXT DEFAULT '', tier_label TEXT DEFAULT '',
+    amount INTEGER NOT NULL, qty INTEGER NOT NULL DEFAULT 1, name TEXT NOT NULL, phone TEXT NOT NULL, email TEXT DEFAULT '', city TEXT DEFAULT '',
+    address TEXT NOT NULL, comment TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'new', note TEXT DEFAULT '', created_at INTEGER, updated_at INTEGER)`);
+  db.exec(`INSERT INTO kik_preorders(project_id,amount,qty,name,phone,address) VALUES('6',1699,1,'А','+380671234567','адреса')`);
+  const p = createPreorders({ db });
+  assert.deepEqual(p.pendingDeltas().byProject, { 6: 1699 });
+});

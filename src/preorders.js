@@ -1,6 +1,9 @@
 // KIK preorders: a request to buy a reward set without any payment. We keep the
 // contact and delivery data and send the monobank invoice later by hand.
 // Money is whole hryvnias here (unlike kik_pledges, which counts kopecks).
+// Every request that is not cancelled counts towards the project's `raised`:
+// `counted` is how much of it is already in the catalog, so the sync only ever
+// pushes the difference and a restart or a second run adds nothing twice.
 const STATUSES = ['new', 'invoiced', 'paid', 'cancelled'];
 
 function clean(v, max) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max); }
@@ -38,6 +41,8 @@ function createPreorders({ db, now = () => Date.now() }) {
     CREATE INDEX IF NOT EXISTS kik_preorders_project ON kik_preorders(project_id, status);
     CREATE INDEX IF NOT EXISTS kik_preorders_phone ON kik_preorders(project_id, phone, tier_id);
   `);
+  if (!db.prepare('PRAGMA table_info(kik_preorders)').all().some(c => c.name === 'counted'))
+    db.exec('ALTER TABLE kik_preorders ADD COLUMN counted INTEGER NOT NULL DEFAULT 0');
   const q = {
     insert: db.prepare(`INSERT INTO kik_preorders(project_id,tier_id,tier_label,amount,qty,name,phone,email,city,address,comment,status,created_at,updated_at)
       VALUES(@project_id,@tier_id,@tier_label,@amount,@qty,@name,@phone,@email,@city,@address,@comment,'new',@t,@t)`),
@@ -46,6 +51,9 @@ function createPreorders({ db, now = () => Date.now() }) {
     forProject: db.prepare('SELECT * FROM kik_preorders WHERE project_id=? ORDER BY id'),
     setStatus: db.prepare('UPDATE kik_preorders SET status=?, updated_at=? WHERE id=?'),
     setNote: db.prepare('UPDATE kik_preorders SET note=?, updated_at=? WHERE id=?'),
+    toCount: db.prepare(`SELECT id, project_id, counted, CASE WHEN status='cancelled' THEN 0 ELSE amount*qty END AS due
+      FROM kik_preorders WHERE counted != CASE WHEN status='cancelled' THEN 0 ELSE amount*qty END`),
+    setCounted: db.prepare('UPDATE kik_preorders SET counted=? WHERE id=?'),
   };
 
   // Returns { ok:true, id } or { ok:false, error, field? }
@@ -102,6 +110,17 @@ function createPreorders({ db, now = () => Date.now() }) {
     return { ok: true };
   }
 
+  // What the catalog's `raised` still lacks (or has too much of, after a
+  // cancellation), per project in hryvnias, plus the rows for markCounted.
+  function pendingDeltas() {
+    const byProject = {}, rows = q.toCount.all();
+    for (const r of rows) byProject[r.project_id] = (byProject[r.project_id] || 0) + r.due - r.counted;
+    return { byProject, rows };
+  }
+  function markCounted(rows) {
+    db.transaction(() => { for (const r of rows) q.setCounted.run(r.due, r.id); })();
+  }
+
   // Spreadsheet-ready; cells starting with = + - @ are neutralised (CSV injection).
   function csv(projectId) {
     const cell = (v, trusted) => {
@@ -116,7 +135,7 @@ function createPreorders({ db, now = () => Date.now() }) {
     return '﻿' + lines.join('\r\n') + '\r\n';
   }
 
-  return { create, list, summary, setStatus, setNote, csv, STATUSES };
+  return { create, list, summary, setStatus, setNote, csv, pendingDeltas, markCounted, STATUSES };
 }
 
 module.exports = { createPreorders, normalizePhone };
