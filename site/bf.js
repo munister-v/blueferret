@@ -837,22 +837,34 @@
 // layout, so the links are added here instead of editing every HTML file.
 (function () {
   'use strict';
+  // The footer is React's: nothing of it is moved, only added to, and the
+  // column order is CSS (bf.css, "Footer layout"). A column "Покупцям" with the
+  // documents goes next to «Навігація», the seller's name next to ©.
+  var DOC_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 opacity-50 group-hover:opacity-100 transition-all" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8M16 17H8M16 9H8"/></svg>';
   function legal() {
     var f = document.querySelector('footer');
-    if (!f || document.getElementById('bf-legal')) return;
-    if (!document.getElementById('bf-legal-css')) {
-      var st = document.createElement('style');
-      st.id = 'bf-legal-css';
-      st.textContent = '#bf-legal{position:relative;display:flex;flex-wrap:wrap;gap:6px 22px;justify-content:center;padding:0 16px 28px;margin:0;font-size:13px}' +
-        '#bf-legal a{color:#94a3b8;text-decoration:none;border-bottom:1px solid transparent;transition:color .2s,border-color .2s}' +
-        '#bf-legal a:hover{color:#fff;border-bottom-color:currentColor}';
-      document.head.appendChild(st);
+    if (!f) return;
+    var grid = f.querySelector('.grid');
+    if (grid && !grid.querySelector('.bf-foot-docs')) {
+      var col = document.createElement('div');
+      col.className = 'bf-foot-docs';
+      col.innerHTML = '<h4 class="font-bold text-white text-xs mb-6 uppercase tracking-[0.2em] text-slate-400">Покупцям</h4>' +
+        '<ul class="space-y-4">' + [['/oferta/', 'Публічна оферта'], ['/povernennia/', 'Повернення коштів'], ['/konfidentsiinist/', 'Конфіденційність']].map(function (l) {
+          return '<li><a class="group inline-flex items-center gap-2.5 text-slate-400 hover:text-bf transition-all duration-300 text-[15px]" href="' + l[0] + '">' + DOC_ICON + l[1] + '</a></li>';
+        }).join('') + '</ul>';
+      grid.appendChild(col);
+      grid.classList.add('bf-foot-grid');
     }
-    var n = document.createElement('nav');
-    n.id = 'bf-legal';
-    n.setAttribute('aria-label', 'Правові документи');
-    n.innerHTML = '<a href="/oferta/">Публічна оферта</a><a href="/povernennia/">Повернення коштів</a><a href="/konfidentsiinist/">Політика конфіденційності</a>';
-    (f.lastElementChild || f).appendChild(n);
+    var bar = f.querySelector('.border-t');
+    if (bar && !bar.querySelector('.bf-foot-seller')) {
+      var p = document.createElement('p');
+      p.className = 'bf-foot-seller';
+      p.textContent = 'ФОП Рогачова Вероніка Олександрівна';
+      bar.appendChild(p);
+      bar.classList.add('bf-foot-bar');
+    }
+    var old = document.getElementById('bf-legal');
+    if (old) old.remove();
   }
   // Wait for React to hydrate first: adding nodes to the footer before that
   // would make the prerendered HTML disagree with the client tree. Then keep

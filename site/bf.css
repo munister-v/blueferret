@@ -1071,7 +1071,35 @@ main .grid > * { min-width: 0; }
 
 /* Long e-mail in the footer wraps instead of running under the edge. */
 footer [class*="col-span"] { min-width: 0; }
-footer a[href^="mailto:"] { max-width: 100%; overflow-wrap: anywhere; }
+footer a[href^="mailto:"] { max-width: 100%; overflow-wrap: break-word; }
+
+/* ── Footer layout ── brand · Навігація · Покупцям · Зв'язок, then © and the
+   seller on one line. The docs column is added by bf.js at the end of the grid;
+   order puts it before «Зв'язок». */
+footer .bf-foot-grid { row-gap: 40px; }
+footer .bf-foot-grid > :nth-child(1) { order: 1; }
+footer .bf-foot-grid > :nth-child(2) { order: 2; }
+footer .bf-foot-grid > .bf-foot-docs { order: 3; }
+footer .bf-foot-grid > :nth-child(3) { order: 4; }
+@media (min-width: 768px) {
+  footer .bf-foot-grid { column-gap: 32px !important; }
+  footer .bf-foot-grid > :nth-child(1) { grid-column: span 12 / span 12 !important; }
+  footer .bf-foot-grid > :nth-child(2),
+  footer .bf-foot-grid > .bf-foot-docs,
+  footer .bf-foot-grid > :nth-child(3) { grid-column: span 4 / span 4 !important; }
+}
+@media (min-width: 1024px) {
+  footer .bf-foot-grid { column-gap: 40px !important; }
+  footer .bf-foot-grid > :nth-child(1) { grid-column: span 4 / span 4 !important; }
+  footer .bf-foot-grid > :nth-child(2) { grid-column: span 2 / span 2 !important; }
+  footer .bf-foot-grid > .bf-foot-docs { grid-column: span 3 / span 3 !important; }
+  footer .bf-foot-grid > :nth-child(3) { grid-column: span 3 / span 3 !important; }
+}
+@media (min-width: 768px) { footer a[href^="mailto:"] { white-space: nowrap; } }
+footer .bf-foot-bar { margin-top: 56px !important; padding-top: 28px !important; gap: 8px 24px !important; }
+footer .bf-foot-bar p { margin: 0; font-size: 13px !important; color: #64748b; text-align: center; }
+footer .bf-foot-seller { line-height: 1.5; }
+
 
 /* Tablets (768–1023px): the desktop nav did not fit — the logo and «Наші ігри»
    broke onto two lines and the burger showed up next to them. Below 1024px the
