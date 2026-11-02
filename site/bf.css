@@ -167,7 +167,8 @@ footer a[href*="t.me"]:hover {
 /* Footer nav link underline animation */
 footer nav a, footer ul a {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
 }
 footer nav a::after, footer ul a::after {
   content: '';
