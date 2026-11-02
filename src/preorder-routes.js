@@ -3,8 +3,31 @@
 const INVOICE_DATE = process.env.PREORDER_INVOICE_DATE || '5 грудня';
 const ENABLED = (process.env.PREORDER_PROJECTS || '').split(',').map(x => x.trim()).filter(Boolean);
 
-function mount(app, { preorders, requireAuth, readKikProjects, audit }) {
+function mount(app, { preorders, requireAuth, readKikProjects, applyRaisedDeltas, isPublishBusy, audit }) {
   const noStore = res => res.setHeader('Cache-Control', 'no-store');
+
+  // ---- background: every request adds its sum to the project's "Зібрано" ----
+  // A few seconds after a new request or a status change, and once a minute as
+  // a safety net. Cancelling a request takes its sum off again.
+  let syncTimer = null;
+  function scheduleSync(ms = 3000) {
+    if (syncTimer) return;
+    syncTimer = setTimeout(() => { syncTimer = null; flush(); }, ms);
+    syncTimer.unref && syncTimer.unref();
+  }
+  function flush() {
+    const { byProject, rows } = preorders.pendingDeltas();
+    if (!rows.length) return;
+    if (isPublishBusy()) return scheduleSync(5000);
+    try {
+      applyRaisedDeltas(byProject);
+      preorders.markCounted(rows);
+    } catch (e) {
+      audit('system', 'preorder_catalog_sync_failed', { error: String(e.message).slice(0, 200) });
+      scheduleSync(30000);
+    }
+  }
+  const every = setInterval(flush, 60 * 1000); every.unref && every.unref();
   const open = id => ENABLED.includes(String(id));
   const find = id => { const b = readKikProjects(); return (b && b.arr.find(x => x.id === String(id) && x.status === 'active')) || null; };
 
@@ -38,6 +61,7 @@ function mount(app, { preorders, requireAuth, readKikProjects, audit }) {
     const r = preorders.create(p, body);
     if (!r.ok) return res.status(r.duplicate ? 409 : 400).json({ error: r.error, field: r.field });
     audit(req.ip, 'preorder_created', { id: r.id, project: p.id });
+    scheduleSync();
     res.json({ ok: true, id: r.id, tier: r.tier, total: r.total });
   });
 
@@ -55,7 +79,7 @@ function mount(app, { preorders, requireAuth, readKikProjects, audit }) {
   });
   app.post('/api/admin/preorders/:id/status', requireAuth, (req, res) => {
     const r = preorders.setStatus(Number(req.params.id), String((req.body || {}).status || ''));
-    if (r.ok) audit(req.ip, 'preorder_status', { id: req.params.id, status: req.body.status });
+    if (r.ok) { audit(req.ip, 'preorder_status', { id: req.params.id, status: req.body.status }); scheduleSync(); }
     res.status(r.ok ? 200 : r.error === 'not_found' ? 404 : 400).json(r);
   });
   app.post('/api/admin/preorders/:id/note', requireAuth, (req, res) => {

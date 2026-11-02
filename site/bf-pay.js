@@ -70,6 +70,9 @@
     '#bf-pre .bf-pre-done{text-align:center}',
     '#bf-pre .bf-pre-done p{margin:8px 0 18px;font-size:15px;line-height:1.55;color:#334155}',
     '.bf-pay-pre button[data-bf-pre]{cursor:pointer}',
+    '.bf-pre-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border-radius:12px;background:#0f172a;color:#fff!important;font-weight:700;text-decoration:none;box-shadow:0 10px 24px -14px rgba(15,23,42,.7)}',
+    '.bf-pre-cta:hover{background:#1e293b}',
+    '.bf-pre-cta-note{flex-basis:100%;margin:2px 0 0;font-size:13px;color:#64748b;text-align:center}',
     '#bf-pay-toast{position:fixed;left:12px;right:12px;bottom:20px;margin:0 auto;max-width:520px;display:flex;align-items:flex-start;gap:8px;z-index:80;background:#0f172a;color:#fff;border-radius:16px;padding:14px 18px;font-size:14px;line-height:1.5;box-shadow:0 18px 50px -12px rgba(15,23,42,.55)}',
     '#bf-pay-toast button{flex:none;margin:-6px -8px 0 0;width:40px;height:40px;background:none;border:0;color:#94a3b8;font-size:20px;cursor:pointer}'
   ].join('');
@@ -98,6 +101,36 @@
     };
     var go = function () { setTimeout(showToast, 1200); };
     if (document.readyState === 'complete') go(); else window.addEventListener('load', go);
+  }
+
+  // ---- project page: while preorders are open, "Підтримка скоро" becomes the way in ----
+  var pm = location.pathname.match(/^\/kik\/proekty\/([^/]+)\/?$/);
+  if (pm) {
+    var pid = decodeURIComponent(pm[1]);
+    getJSON('/api/preorder/info?project=' + encodeURIComponent(pid)).then(function (pi) {
+      if (!pi || !pi.enabled) return;
+      var href = '/kik/proekty/' + encodeURIComponent(pid) + '/pidtrymaty/';
+      // The span is React's: hide it and put our link next to it rather than
+      // replacing it, so a later re-render has nothing to trip over.
+      var place = function () {
+        if (document.querySelector('main .bf-pre-cta')) return;
+        var spans = document.querySelectorAll('main span');
+        for (var i = 0; i < spans.length; i++) {
+          var sp = spans[i];
+          if (!/^\s*Підтримка скоро\s*$/.test(sp.textContent)) continue;
+          css();
+          sp.style.display = 'none';
+          var a = document.createElement('a');
+          a.className = 'bf-pre-cta'; a.href = href; a.textContent = 'Передзамовити';
+          a.title = 'Заявка без оплати, рахунок надішлемо ближче до ' + (pi.invoiceDate || 'початку грудня');
+          sp.parentNode.insertBefore(a, sp);
+          return;
+        }
+      };
+      var go = function () { var n = 0, iv = setInterval(function () { place(); if (++n > 16) clearInterval(iv); }, 500); };
+      if (document.readyState === 'complete') setTimeout(go, 300); else window.addEventListener('load', function () { setTimeout(go, 300); });
+    }).catch(function () { /* stays "Підтримка скоро" */ });
+    return;
   }
 
   // ---- support page ----

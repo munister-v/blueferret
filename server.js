@@ -2926,6 +2926,7 @@ require('./src/mono-routes').mount(app, {
 require('./src/preorder-routes').mount(app, {
   preorders: require('./src/preorders').createPreorders({ db }),
   requireAuth, readKikProjects, audit,
+  applyRaisedDeltas: applyKikRaisedDeltas, isPublishBusy: () => publishWriteActive,
 });
 
 // ── legal documents (оферта, повернення, конфіденційність) ──

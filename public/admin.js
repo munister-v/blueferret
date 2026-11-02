@@ -22,6 +22,7 @@ const NAV=[
   {g:'Контент',items:[
     {id:'games',ico:'🎲',l:'Ігри'},
     {id:'kikprojects',ico:'🚀',l:'КІК проєкти'},
+    {id:'preorders',ico:'🧾',l:'Заявки'},
     {id:'sitetext',ico:'🌐',l:'Тексти сайту'},
     {id:'legal',ico:'📜',l:'Документи'},
     {id:'pages',ico:'📄',l:'Сторінки'},
@@ -140,6 +141,7 @@ async function render(){
       case'dashboard':el.innerHTML=await renderDash();setTimeout(()=>{try{checkSiteHealth();}catch{}},50);break;
       case'games':el.innerHTML=renderGamesList();break;
       case'kikprojects':await renderKikProjects();break;
+      case'preorders':await renderPreorders();break;
       case'sitetext':await renderSiteText();break;
       case'legal':await renderLegal();break;
       case'pages':await renderPages();break;
@@ -3100,6 +3102,66 @@ async function saveLegal(){
     await renderLegal();
   }catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
   finally{const x=$('#lgSave');if(x)x.disabled=false;}
+}
+
+// ── PREORDERS (заявки без оплати) ──
+// Every request that is not cancelled is already in the project's "Зібрано";
+// cancelling one takes its sum off within a few seconds.
+let po={project:null};
+const PO_ST={new:'Нова',invoiced:'Рахунок надіслано',paid:'Оплачено',cancelled:'Скасовано'};
+async function renderPreorders(){
+  const el=$('#mainContent');
+  const projects=(await api('GET','/api/public/kik').catch(()=>[]))||[];
+  if(!po.project||!projects.some(p=>p.id===po.project))po.project=(projects.find(p=>p.status==='active')||projects[0]||{}).id||null;
+  if(!po.project){el.innerHTML='<div class="card">Немає КІК-проєктів.</div>';return;}
+  const s=await api('GET','/api/admin/preorders?project='+encodeURIComponent(po.project));
+  const money=n=>new Intl.NumberFormat('uk-UA').format(n)+' ₴';
+  const rows=s.rows.slice().reverse();
+  el.innerHTML=`<style>
+    .po-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0 4px}
+    .po-kpi div{border:1px solid var(--glass-border);border-radius:14px;padding:12px 14px;background:#fff}
+    .po-kpi b{display:block;font-size:22px;letter-spacing:-.01em}.po-kpi span{font-size:12px;color:var(--txt-m)}
+    .po-t{width:100%;border-collapse:collapse;font-size:13px}
+    .po-t th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt-s);padding:8px;border-bottom:1px solid var(--glass-border)}
+    .po-t td{padding:9px 8px;border-bottom:1px solid #eef2f6;vertical-align:top}
+    .po-t tr.cx td{opacity:.5}
+    .po-t select,.po-t input{font:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--glass-border);border-radius:8px;background:#fff;max-width:100%}
+    .po-wrap{overflow-x:auto}
+  </style>
+  <div class="card">
+    <div class="ch"><div><div class="ct">🧾 Заявки</div><div class="cs">Передзамовлення без оплати. Кожна заявка, крім скасованих, одразу йде в «Зібрано» на сайті.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${projects.length>1?`<select class="inp" onchange="po.project=this.value;render()">${projects.map(p=>`<option value="${esc(p.id)}"${p.id===po.project?' selected':''}>${esc(p.name)}</option>`).join('')}</select>`:''}
+        <a class="btn btn-g btn-sm" href="/api/admin/preorders.csv?project=${encodeURIComponent(po.project)}">⬇ CSV для Excel</a>
+        <button class="btn btn-g btn-sm" onclick="render()">↻ Оновити</button>
+      </div>
+    </div>
+    <div class="po-kpi">
+      <div><b>${s.count}</b><span>примірників у заявках</span></div>
+      <div><b>${money(s.totalUah)}</b><span>сума заявок (без скасованих)</span></div>
+      <div><b>${rows.filter(r=>r.status==='new').length}</b><span>чекають рахунку</span></div>
+      <div><b>${rows.filter(r=>r.status==='paid').length}</b><span>оплачено</span></div>
+    </div>
+  </div>
+  <div class="card"><div class="po-wrap">${rows.length?`<table class="po-t"><thead><tr><th>№ / дата</th><th>Покупець</th><th>Доставка</th><th>Набір</th><th>Статус</th><th>Нотатка</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr class="${r.status==='cancelled'?'cx':''}">
+      <td>#${r.id}<br><span style="color:var(--txt-s)">${fmtD(r.created_at)}</span></td>
+      <td><b>${esc(r.name)}</b><br><a href="tel:${esc(r.phone)}">${esc(r.phone)}</a>${r.email?`<br><a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`:''}</td>
+      <td>${esc(r.city)}${r.city?'<br>':''}${esc(r.address)}${r.comment?`<br><i style="color:var(--txt-m)">${esc(r.comment)}</i>`:''}</td>
+      <td>${esc(r.tier_label)} × ${r.qty}<br><b>${money(r.amount*r.qty)}</b></td>
+      <td><select onchange="poStatus(${r.id},this)">${Object.entries(PO_ST).map(([k,v])=>`<option value="${k}"${k===r.status?' selected':''}>${v}</option>`).join('')}</select></td>
+      <td><input value="${esc(r.note||'')}" maxlength="300" placeholder="—" onchange="poNote(${r.id},this.value)"></td>
+    </tr>`).join('')}</tbody></table>`:'<div style="text-align:center;padding:28px;color:var(--txt-m)">Заявок ще немає</div>'}</div></div>`;
+}
+async function poStatus(id,sel){
+  const prev=[...sel.options].find(o=>o.defaultSelected)?.value;
+  if(sel.value==='cancelled'&&!confirm('Скасувати заявку? Її сума зніметься із «Зібрано» на сайті.')){sel.value=prev;return;}
+  try{await api('POST',`/api/admin/preorders/${id}/status`,{status:sel.value});toast('Статус змінено ✓','ok');render();}
+  catch(e){if(e.message!=='unauth'){toast('Помилка: '+e.message,'er');sel.value=prev;}}
+}
+async function poNote(id,v){
+  try{await api('POST',`/api/admin/preorders/${id}/note`,{note:v});toast('Нотатку збережено ✓','ok');}
+  catch(e){if(e.message!=='unauth')toast('Помилка: '+e.message,'er');}
 }
 
 // ── AUTH ──
