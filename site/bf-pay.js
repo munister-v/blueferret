@@ -73,7 +73,7 @@
     '.bf-has-box{display:flex;flex-direction:column;align-items:center;gap:20px}',
     '.bf-has-box>.flex{width:100%}',
     '@media(min-width:1024px){.bf-has-box{flex-direction:row;padding-left:40px}.bf-has-box>.flex{flex:1}}',
-    '.bf-box{width:140px;height:auto;max-width:60%;object-fit:contain;flex:none;filter:drop-shadow(0 14px 18px rgba(15,23,42,.22))}',
+    '.bf-box{width:150px;height:auto;max-width:60%;object-fit:contain;flex:none;filter:drop-shadow(0 14px 18px rgba(15,23,42,.22))}',
     '.bf-pre-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border-radius:12px;background:#0f172a;color:#fff!important;font-weight:700;text-decoration:none;box-shadow:0 10px 24px -14px rgba(15,23,42,.7)}',
     '.bf-pre-cta:hover{background:#1e293b}',
     '.bf-pre-cta-note{flex-basis:100%;margin:2px 0 0;font-size:13px;color:#64748b;text-align:center}',
@@ -240,8 +240,8 @@
     var card = wrap.querySelector('.rounded-3xl');
     if (!card) return;
     var im = document.createElement('img');
-    im.className = 'bf-box'; im.src = '/images/nuchka/front.webp'; im.alt = 'Коробка гри «Ничка»';
-    im.width = 140; im.height = 140; im.decoding = 'async';
+    im.className = 'bf-box'; im.src = '/images/nuchka/box.webp'; im.alt = 'Коробка гри «Ничка»';
+    im.width = 150; im.height = 166; im.decoding = 'async';
     card.insertBefore(im, card.firstChild);
     card.classList.add('bf-has-box');
   }
