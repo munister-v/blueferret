@@ -918,7 +918,7 @@
 
   if (/^\/kik\/proekty(\/|$)/.test(location.pathname)) {
     var s = document.createElement('script');
-    s.src = '/bf-pay.js?v=3081504b';
+    s.src = '/bf-pay.js?v=b1eefbeb';
     s.defer = true;
     document.head.appendChild(s);
   }
