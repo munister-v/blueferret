@@ -2523,6 +2523,7 @@ function kikSupportFlight(p){
     defaultDonation:p.support.defaultDonation,tiers:p.support.tiers||[]}).replace(/"/g,'\\"');
 }
 
+const { syncTimeline: syncKikTimeline } = require('./src/kik-timeline');
 function syncKikProjectPages(oldP, newP, targetLink){
   if(!oldP || !newP) return null;
   const rel = String(targetLink||oldP.link||'').replace(/^\/+/,'');
@@ -2589,14 +2590,14 @@ function syncKikProjectPages(oldP, newP, targetLink){
   const detail = path.join(dir,'index.html');
   const support = path.join(dir,'pidtrymaty','index.html');
   const targets = [
-    { file: detail,                   use: pairs.concat(namePairs) },
-    { file: kikParkedPath(detail),    use: pairs.concat(namePairs) },
+    { file: detail,                   use: pairs.concat(namePairs), timeline:true },
+    { file: kikParkedPath(detail),    use: pairs.concat(namePairs), timeline:true },
     { file: support,                  use: namePairs.concat(supportPairs), supportFlight:true },
     { file: kikParkedPath(support),   use: namePairs.concat(supportPairs), supportFlight:true },
   ];
   const touched = [];
   for(const t of targets){
-    if((!t.use.length&&!t.supportFlight) || !fs.existsSync(t.file)) continue;
+    if((!t.use.length&&!t.supportFlight&&!t.timeline) || !fs.existsSync(t.file)) continue;
     let h; try { h = fs.readFileSync(t.file,'utf8'); } catch { continue; }
     const before = h;
     let hits = 0;
@@ -2608,6 +2609,11 @@ function syncKikProjectPages(oldP, newP, targetLink){
       const n = h.split(a).length - 1;
       if(n){ h = h.split(a).join(b); hits += n; }
     }
+    // The stage list ("Підготовка / Збір коштів / Виробництво") follows the
+    // status. Enforced on every save, not only when the status changed, so a
+    // page that fell behind (the status was changed before this existed) is
+    // repaired by the next save.
+    if(t.timeline){ const tl = syncKikTimeline(h, newP.status); if(tl !== h){ h = tl; hits++; } }
     if(h !== before){
       writeBackup(t.file);
       writeAtomic(t.file, h);
