@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { syncTimeline } = require('../src/kik-timeline');
+const { syncTimeline, syncStatusBadge } = require('../src/kik-timeline');
 
 const SITE = path.join(__dirname, '..', 'site', 'kik', 'proekty');
 const page = n => fs.readFileSync(path.join(SITE, String(n), fs.existsSync(path.join(SITE, String(n), 'index.bf-hidden.html')) ? 'index.bf-hidden.html' : 'index.html'), 'utf8');
@@ -35,4 +35,17 @@ test('complete moves to Виробництво; going back works; idempotent', (
 test('unknown status or foreign markup is left alone', () => {
   assert.equal(syncTimeline(page(6), 'draft'), page(6));
   assert.equal(syncTimeline('<main>нічого</main>', 'active'), '<main>нічого</main>');
+});
+
+test('status badge: same label is a no-op, a new label lands in DOM and flight, odd labels are refused', () => {
+  assert.equal(syncStatusBadge(page(2), 'Збір коштів'), page(2));
+  const h = syncStatusBadge(page(6), 'Збір коштів');
+  assert.equal(h.split('Анонс').length, 1);
+  assert.ok(h.includes('</svg>Збір коштів</span><span class="absolute bottom-4 right-4'));
+  assert.ok(h.includes('\\"$undefined\\"]}],\\"Збір коштів\\"]}],[\\"$\\",\\"span\\",null,{\\"className\\":\\"absolute bo'));
+  assert.equal(syncStatusBadge(h, 'Анонс'), page(6));
+  assert.equal(syncStatusBadge(page(6), 'a"b'), page(6));
+  assert.equal(syncStatusBadge(page(6), 'a<b>'), page(6));
+  assert.equal(syncStatusBadge(page(6), ''), page(6));
+  assert.equal(syncStatusBadge('<main>x</main>', 'Збір коштів'), '<main>x</main>');
 });

@@ -99,4 +99,21 @@ function syncTimeline(html, status) {
   return out;
 }
 
-module.exports = { syncTimeline, STAGES, CURRENT_STAGE };
+// The badge over the cover ("Анонс", "Збір коштів"...) is the project's
+// statusLabel, frozen into the page the same way. Same rule: DOM and flight
+// are rewritten together. A label with characters that would need escaping in
+// the flight string is left alone rather than risk breaking hydration.
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function syncStatusBadge(html, label) {
+  if (typeof html !== 'string' || typeof label !== 'string') return html;
+  const text = label.trim();
+  if (text.length < 2 || /["\\<>&]/.test(text)) return html;
+  const dom = /(<svg[^>]*lucide-folder-kanban w-4 h-4 text-\[var\(--kik-accent\)\]"[^>]*>(?:(?!<\/svg>)[\s\S])*<\/svg>)([^<]{0,60})(<\/span><span class="absolute bottom-4 right-4)/g;
+  const flight = /(\\"\$undefined\\"\]\}\],\\")([^"\\]{0,60})(\\"\]\}\],\[\\"\$\\",\\"span\\",null,\{\\"className\\":\\"absolute bo)/g;
+  let nd = 0, nf = 0;
+  const out = html.replace(dom, (_m, a, _t, z) => { nd++; return a + esc(text) + z; })
+    .replace(flight, (_m, a, _t, z) => { nf++; return a + text + z; });
+  return nd === 1 && nf === 1 ? out : html;
+}
+
+module.exports = { syncTimeline, syncStatusBadge, STAGES, CURRENT_STAGE };
