@@ -2524,6 +2524,7 @@ function kikSupportFlight(p){
 }
 
 const { syncTimeline: syncKikTimeline, syncStatusBadge: syncKikBadge } = require('./src/kik-timeline');
+const { syncProgress: syncKikProgress } = require('./src/kik-progress');
 function syncKikProjectPages(oldP, newP, targetLink){
   if(!oldP || !newP) return null;
   const rel = String(targetLink||oldP.link||'').replace(/^\/+/,'');
@@ -2617,6 +2618,8 @@ function syncKikProjectPages(oldP, newP, targetLink){
       const tl = syncKikTimeline(h, newP.status); if(tl !== h){ h = tl; hits++; }
       // the badge over the cover is the project's own statusLabel
       const bd = syncKikBadge(h, newP.statusLabel); if(bd !== h){ h = bd; hits++; }
+      // raised / goal / percent / date: the catalog's values, not "old -> new"
+      const pg = syncKikProgress(h, newP); if(pg !== h){ h = pg; hits++; }
     }
     if(h !== before){
       writeBackup(t.file);
