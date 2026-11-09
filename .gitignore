@@ -19,3 +19,4 @@ temp_*.js
 
 # macOS
 .DS_Store
+.deployed-server.sha
