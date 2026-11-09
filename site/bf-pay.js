@@ -345,6 +345,7 @@
     var pi = r[2] && r[2].enabled && r[2].tiers && r[2].tiers.length ? r[2] : null;
     if (pi) { pi.invoiceDate = pi.invoiceDate || 'початку грудня'; preInfo = pi; }
     state = { enabled: !!r[0].enabled, project: project, pre: pi };
+    if (project) track('ViewContent', { content_ids: [String(id)], content_name: project.title || project.name || String(id), content_type: 'product' });
     // Not before hydration has finished (see bf.js); then re-check for a few
     // seconds in case React replaced the section while recovering.
     var go = function () { var n = 0, iv = setInterval(function () { ensure(); if (++n > 12) clearInterval(iv); }, 600); };
