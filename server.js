@@ -2425,12 +2425,35 @@ function writeKikProjects(bundle, arr){
   try{ execFileSync('restorecon',['-R',path.join(SITE_ROOT,'_next')],{stdio:'ignore',timeout:15000}); }catch{}
   _chunksBlobCache.at = 0;
   try{ setSetting(KIK_ACTIVE_CHUNK_KEY, newName); }catch{}
+  syncKikSitemap(arr);
   syncKikFallback(arr);
   return { bundle:newName, htmlChanged };
 }
 
 // The catalog's HTML shows these cards until (or unless) the browser renders
 // the page itself; see src/kik-fallback.js.
+// sitemap.xml lists the visible projects' pages: a project added in the admin
+// shows up, a hidden or removed one drops out.
+function syncKikSitemap(arr){
+  try{
+    const f = path.join(SITE_ROOT,'sitemap.xml');
+    if(!fs.existsSync(f)) return;
+    const xml = fs.readFileSync(f,'utf8');
+    const origin = (xml.match(/<loc>(https?:\/\/[^/<]+)\//)||[])[1];
+    if(!origin) return;
+    const lines = xml.split('\n').filter(l=>!/<loc>[^<]*\/kik\/proekty\/[^/<]+\/(pidtrymaty\/)?<\/loc>/.test(l));
+    const idx = lines.findIndex(l=>/<loc>[^<]*\/kik\/proekty\/<\/loc>/.test(l));
+    if(idx<0) return;
+    const add = [];
+    for(const p of arr){
+      if(!KIK_SLUG_RE.test(String(p.id))) continue;
+      add.push(`  <url><loc>${origin}/kik/proekty/${p.id}/</loc></url>`, `  <url><loc>${origin}/kik/proekty/${p.id}/pidtrymaty/</loc></url>`);
+    }
+    lines.splice(idx+1, 0, ...add);
+    const out = lines.join('\n');
+    if(out !== xml) writeAtomic(f, out);
+  }catch(e){ try{ audit('system','kik_sitemap_failed',{ error:String(e.message).slice(0,200) }); }catch{} }
+}
 function syncKikFallback(arr){
   try { require('./src/kik-fallback').apply(SITE_ROOT, arr); }
   catch(e){ audit('system','kik_fallback_failed',{ error:String(e.message).slice(0,200) }); }
@@ -2638,8 +2661,13 @@ function syncKikProjectPages(oldP, newP, targetLink){
   addText(oldP.updatePreview, newP.updatePreview);
   if(oldP.coverImage && newP.coverImage && oldP.coverImage!==newP.coverImage)
     pairs.push([oldP.coverImage,newP.coverImage]);
+  // Links carry a delimiter: "/kik/proekty/6" is a prefix of "/kik/proekty/60".
+  // They apply to the support page too (its "back to the project" links),
+  // which matters when a new project is cloned from an existing one.
+  const linkPairs = [];
   if(oldP.link && newP.link && oldP.link!==newP.link)
-    pairs.push([oldP.link,newP.link]);
+    for(const d of ['/','"','\\"']) linkPairs.push([oldP.link+d, newP.link+d]);
+  pairs.push(...linkPairs);
   const supportPairs=[];
   if(oldP.support&&newP.support){
     const oldT=oldP.support.tiers||[],newT=newP.support.tiers||[];
@@ -2688,8 +2716,8 @@ function syncKikProjectPages(oldP, newP, targetLink){
   const targets = [
     { file: detail,                   use: pairs.concat(namePairs), timeline:true },
     { file: kikParkedPath(detail),    use: pairs.concat(namePairs), timeline:true },
-    { file: support,                  use: namePairs.concat(supportPairs), supportFlight:true },
-    { file: kikParkedPath(support),   use: namePairs.concat(supportPairs), supportFlight:true },
+    { file: support,                  use: namePairs.concat(linkPairs, supportPairs), supportFlight:true },
+    { file: kikParkedPath(support),   use: namePairs.concat(linkPairs, supportPairs), supportFlight:true },
   ];
   const touched = [];
   for(const t of targets){

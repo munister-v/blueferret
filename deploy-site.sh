@@ -4,7 +4,7 @@
 #
 # Paths are relative to site/. Files are copied one by one (never a blanket sync) and the
 # remote copy is backed up first. Files the admin server owns are refused: the KIK catalog
-# chunk and everything under kik/proekty/. Change those in the admin, not here.
+# chunk, kik/proekty/, igry/ (games pages), uploads/ and sitemap.xml. Change those in the admin, not here.
 set -euo pipefail
 cd "$(dirname "$0")"
 [ $# -gt 0 ] || { echo "usage: $0 <path under site/> ..."; exit 2; }
@@ -17,7 +17,7 @@ for p in "$@"; do
   p="${p#site/}"; p="${p#/}"
   case "$p" in
     *..*) echo "✗ bad path: $p"; exit 1;;
-    kik/proekty/*|_next/static/chunks/app/kik/proekty/*)
+    kik/proekty/*|_next/static/chunks/app/kik/proekty/*|igry/*|_next/static/chunks/app/igry/*|uploads/*|sitemap.xml)
       echo "✗ $p is managed by the admin server (catalog numbers live there); edit it in the admin"; exit 1;;
   esac
   [ -f "site/$p" ] || { echo "✗ no such file: site/$p"; exit 1; }
