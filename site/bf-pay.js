@@ -253,7 +253,9 @@
     if (preOpener && preOpener.focus) try { preOpener.focus(); } catch (e) { /* ignore */ }
   }
   function onKey(e) { if (e.key === 'Escape') closePre(); }
+  function track(ev, p) { try { if (window.fbq) window.fbq('track', ev, p || {}); } catch (e) {} }
   function openPre(btn) {
+    track('InitiateCheckout');
     if (!preInfo || document.getElementById('bf-pre')) return;
     css();
     preOpener = btn; preAmount = amountOf(btn);
@@ -295,6 +297,7 @@
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (r) {
           if (r.ok) {
+            track('Lead');
             d.innerHTML = '<div class="bf-pre-done"><h3 style="margin:0 0 6px">Заявку прийнято</h3>' +
               '<p>Дякуємо! Рахунок на оплату надішлемо ближче до ' + esc(preInfo.invoiceDate) + '. Гроші зараз не списані.</p>' +
               '<button type="button" class="go">Закрити</button></div>';
@@ -342,6 +345,7 @@
     var pi = r[2] && r[2].enabled && r[2].tiers && r[2].tiers.length ? r[2] : null;
     if (pi) { pi.invoiceDate = pi.invoiceDate || 'початку грудня'; preInfo = pi; }
     state = { enabled: !!r[0].enabled, project: project, pre: pi };
+    if (project) track('ViewContent', { content_ids: [String(id)], content_name: project.title || project.name || String(id), content_type: 'product' });
     // Not before hydration has finished (see bf.js); then re-check for a few
     // seconds in case React replaced the section while recovering.
     var go = function () { var n = 0, iv = setInterval(function () { ensure(); if (++n > 12) clearInterval(iv); }, 600); };

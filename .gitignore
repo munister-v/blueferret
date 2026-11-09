@@ -5,3 +5,17 @@ data/
 *.db-wal
 .env
 .env.local
+
+# local backups and scratch files
+*.bak
+*.bak-*
+*.bf-hidden.html.bak*
+server.js.bak-*
+temp_*.js
+/scratch.js
+/test_cheerio.js
+/test_extract.js
+/.claude/
+
+# macOS
+.DS_Store
