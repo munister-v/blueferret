@@ -2337,6 +2337,7 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
 // ════════════════════════════════════════════════════════
 const KIK_HIDDEN_KEY = 'kikHidden';
 const KIK_OVERFLOW_KEY = 'kikOverflow';
+const KIK_ACTIVE_CHUNK_KEY = 'kikActiveChunk';
 // Parked pages keep a .html name on purpose: every chunk-relink walker in this
 // file keys off .endsWith('.html'), so a page parked for weeks still gets its
 // chunk references rewritten as bundles are rehashed. Park it as .bak-style
@@ -2381,7 +2382,10 @@ function readKikProjects(){
   // rewrites can leave old files around after interrupted publishes, and a
   // filesystem-order scan could silently edit the wrong one.
   let active = null;
-  try {
+  // The chunk this server last wrote is the truth; the page's link can be stale
+  // after a foreign file push (see healKikDrift).
+  try { const k = getSetting(KIK_ACTIVE_CHUNK_KEY, null); if(k && files.includes(k)) active = k; } catch {}
+  if(!active) try {
     const html = fs.readFileSync(path.join(SITE_ROOT,'kik','proekty','index.html'),'utf8');
     const m = html.match(/_next\/static\/chunks\/app\/kik\/proekty\/(page-[\w-]+\.js)/);
     if(m) active = m[1];
@@ -2420,6 +2424,7 @@ function writeKikProjects(bundle, arr){
   })(SITE_ROOT);
   try{ execFileSync('restorecon',['-R',path.join(SITE_ROOT,'_next')],{stdio:'ignore',timeout:15000}); }catch{}
   _chunksBlobCache.at = 0;
+  try{ setSetting(KIK_ACTIVE_CHUNK_KEY, newName); }catch{}
   syncKikFallback(arr);
   return { bundle:newName, htmlChanged };
 }
@@ -2431,6 +2436,57 @@ function syncKikFallback(arr){
   catch(e){ audit('system','kik_fallback_failed',{ error:String(e.message).slice(0,200) }); }
 }
 setTimeout(() => { try { const b = readKikProjects(); if (b) syncKikFallback(b.arr); } catch {} }, 2000);
+
+// Self-heal for catalog drift. The catalog chunk and the project pages are
+// owned by this server (writeKikProjects remembers the chunk it wrote). If
+// anything else puts stale copies on disk - a file push from a laptop, a restore
+// of an old backup - the pages end up pointing at an old chunk and the site
+// shows old "Зібрано"/goal/status. Detect that and put everything back: relink
+// every page to the remembered chunk, then re-enforce each project's pages
+// from the catalog (idempotent, same code path as an admin save).
+function healKikDrift(){
+  const active = getSetting(KIK_ACTIVE_CHUNK_KEY, null);
+  const dir = path.join(SITE_ROOT,'_next','static','chunks','app','kik','proekty');
+  if(!active || !fs.existsSync(path.join(dir, active))) return null;
+  const re = /page-[0-9a-f]{8,}\.js/;
+  const known = fs.readdirSync(dir).filter(f=>re.test(f) && f.endsWith('.js') && f!==active);
+  const relinked = [];
+  (function walk(d){
+    for(const f of fs.readdirSync(d)){
+      if(f.startsWith('.')||f==='_next'||f==='uploads'||f==='cdn-cgi') continue;
+      const full=path.join(d,f), st=fs.statSync(full);
+      if(st.isDirectory()) walk(full);
+      else if(f.endsWith('.html')){
+        let h=fs.readFileSync(full,'utf8'), n=h;
+        for(const old of known) if(n.includes('chunks/app/kik/proekty/'+old)) n=n.split(old).join(active);
+        if(n!==h){ writeBackup(full); writeAtomic(full,n); relinked.push(full.slice(SITE_ROOT.length)); }
+      }
+    }
+  })(SITE_ROOT);
+  // pages can be stale even when the link is right (restored from an old copy)
+  const b = readKikProjects();
+  const repaired = [];
+  if(b && b.name === active){
+    for(const p of [...b.arr, ...getSetting(KIK_HIDDEN_KEY, [])]){
+      try{ const r = syncKikProjectPages(p,p); if(r) repaired.push(...r.map(x=>x.page)); }catch{}
+    }
+  }
+  if(relinked.length || repaired.length){
+    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+    _chunksBlobCache.at = 0;
+    if(b) syncKikFallback(b.arr);
+    audit('system','kik_drift_healed',{ active, relinked, repaired });
+    console.log('[blueferret-admin] kik drift healed', { relinked, repaired });
+  }
+  return { relinked, repaired };
+}
+// First boot after this ships: remember the chunk the live catalog page uses.
+setTimeout(() => { try {
+  if(!getSetting(KIK_ACTIVE_CHUNK_KEY, null)){ const b = readKikProjects(); if(b) setSetting(KIK_ACTIVE_CHUNK_KEY, b.name); }
+  else healKikDrift();
+} catch(e){ console.error('[blueferret-admin] heal error:', e.message); } }, 3000);
+setInterval(() => { try { if(!publishWriteActive) healKikDrift(); } catch {} }, 5 * 60 * 1000).unref();
+
 
 // Port of the runtime Zod schema. Deliberately strict in the same places: it
 // is the only thing standing between a typo in the admin form and a blank

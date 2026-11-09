@@ -36,4 +36,12 @@ rsync -az \
 echo "→ Restarting pm2 process"
 $SSH "$VPS" "cd $REMOTE && npm install --production --silent && pm2 restart blueferret-admin"
 echo "$local_sha" > "$SHA_FILE"
+
+# Smoke check: the catalog page must load, link to a chunk that exists, and show a collected sum.
+sleep 8
+page=$(curl -fsS "https://blueferret.com.ua/kik/proekty/?c=$RANDOM") || { echo "✗ /kik/proekty/ does not load"; exit 1; }
+chunk=$(printf '%s' "$page" | grep -o '_next/static/chunks/app/kik/proekty/page-[0-9a-f]*\.js' | head -1)
+[ -n "$chunk" ] && curl -fsS -o /dev/null "https://blueferret.com.ua/$chunk" || { echo "✗ catalog links to a missing chunk"; exit 1; }
+printf '%s' "$page" | grep -q 'Зібрано' || echo "⚠ no 'Зібрано' on /kik/proekty/, check it"
+echo "$(printf '%s' "$page" | grep -o 'Зібрано[^<]*<[^>]*>[^<]*' | head -1 | sed 's/<[^>]*>//g')"
 echo "✓ Done"

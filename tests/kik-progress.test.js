@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { syncProgress } = require('../src/kik-progress');
 
-const SITE = path.join(__dirname, '..', 'site', 'kik', 'proekty');
+const SITE = path.join(__dirname, 'fixtures', 'kik', 'proekty');
 const page = n => {
   const d = path.join(SITE, String(n));
   return fs.readFileSync(path.join(d, fs.existsSync(path.join(d, 'index.bf-hidden.html')) ? 'index.bf-hidden.html' : 'index.html'), 'utf8');
