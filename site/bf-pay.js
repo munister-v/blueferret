@@ -253,7 +253,9 @@
     if (preOpener && preOpener.focus) try { preOpener.focus(); } catch (e) { /* ignore */ }
   }
   function onKey(e) { if (e.key === 'Escape') closePre(); }
+  function track(ev, p) { try { if (window.fbq) window.fbq('track', ev, p || {}); } catch (e) {} }
   function openPre(btn) {
+    track('InitiateCheckout');
     if (!preInfo || document.getElementById('bf-pre')) return;
     css();
     preOpener = btn; preAmount = amountOf(btn);
@@ -295,6 +297,7 @@
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (r) {
           if (r.ok) {
+            track('Lead');
             d.innerHTML = '<div class="bf-pre-done"><h3 style="margin:0 0 6px">Заявку прийнято</h3>' +
               '<p>Дякуємо! Рахунок на оплату надішлемо ближче до ' + esc(preInfo.invoiceDate) + '. Гроші зараз не списані.</p>' +
               '<button type="button" class="go">Закрити</button></div>';
