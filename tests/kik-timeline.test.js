@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { syncTimeline, syncStatusBadge } = require('../src/kik-timeline');
 
-const SITE = path.join(__dirname, '..', 'site', 'kik', 'proekty');
+const SITE = path.join(__dirname, 'fixtures', 'kik', 'proekty');
 const page = n => fs.readFileSync(path.join(SITE, String(n), fs.existsSync(path.join(SITE, String(n), 'index.bf-hidden.html')) ? 'index.bf-hidden.html' : 'index.html'), 'utf8');
 const rows = h => [...h.matchAll(/<div class="flex items-center justify-between rounded-xl border px-4 py-3 ([^"]*)"><span[^>]*>([^<]*)<\/span><svg[^>]*lucide-([\w-]+)/g)]
   .map(m => [m[2], m[3]]);

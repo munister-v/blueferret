@@ -2337,6 +2337,7 @@ app.put('/api/admin/site-content', requireAuth, (req,res)=>{
 // ════════════════════════════════════════════════════════
 const KIK_HIDDEN_KEY = 'kikHidden';
 const KIK_OVERFLOW_KEY = 'kikOverflow';
+const KIK_ACTIVE_CHUNK_KEY = 'kikActiveChunk';
 // Parked pages keep a .html name on purpose: every chunk-relink walker in this
 // file keys off .endsWith('.html'), so a page parked for weeks still gets its
 // chunk references rewritten as bundles are rehashed. Park it as .bak-style
@@ -2381,7 +2382,10 @@ function readKikProjects(){
   // rewrites can leave old files around after interrupted publishes, and a
   // filesystem-order scan could silently edit the wrong one.
   let active = null;
-  try {
+  // The chunk this server last wrote is the truth; the page's link can be stale
+  // after a foreign file push (see healKikDrift).
+  try { const k = getSetting(KIK_ACTIVE_CHUNK_KEY, null); if(k && files.includes(k)) active = k; } catch {}
+  if(!active) try {
     const html = fs.readFileSync(path.join(SITE_ROOT,'kik','proekty','index.html'),'utf8');
     const m = html.match(/_next\/static\/chunks\/app\/kik\/proekty\/(page-[\w-]+\.js)/);
     if(m) active = m[1];
@@ -2420,17 +2424,107 @@ function writeKikProjects(bundle, arr){
   })(SITE_ROOT);
   try{ execFileSync('restorecon',['-R',path.join(SITE_ROOT,'_next')],{stdio:'ignore',timeout:15000}); }catch{}
   _chunksBlobCache.at = 0;
+  try{ setSetting(KIK_ACTIVE_CHUNK_KEY, newName); }catch{}
+  syncKikSitemap(arr);
   syncKikFallback(arr);
   return { bundle:newName, htmlChanged };
 }
 
 // The catalog's HTML shows these cards until (or unless) the browser renders
 // the page itself; see src/kik-fallback.js.
+// sitemap.xml lists the visible projects' pages: a project added in the admin
+// shows up, a hidden or removed one drops out.
+function syncKikSitemap(arr){
+  try{
+    const f = path.join(SITE_ROOT,'sitemap.xml');
+    if(!fs.existsSync(f)) return;
+    const xml = fs.readFileSync(f,'utf8');
+    const origin = (xml.match(/<loc>(https?:\/\/[^/<]+)\//)||[])[1];
+    if(!origin) return;
+    const lines = xml.split('\n').filter(l=>!/<loc>[^<]*\/kik\/proekty\/[^/<]+\/(pidtrymaty\/)?<\/loc>/.test(l));
+    const idx = lines.findIndex(l=>/<loc>[^<]*\/kik\/proekty\/<\/loc>/.test(l));
+    if(idx<0) return;
+    const add = [];
+    for(const p of arr){
+      if(!KIK_SLUG_RE.test(String(p.id))) continue;
+      add.push(`  <url><loc>${origin}/kik/proekty/${p.id}/</loc></url>`, `  <url><loc>${origin}/kik/proekty/${p.id}/pidtrymaty/</loc></url>`);
+    }
+    lines.splice(idx+1, 0, ...add);
+    const out = lines.join('\n');
+    if(out !== xml) writeAtomic(f, out);
+  }catch(e){ try{ audit('system','kik_sitemap_failed',{ error:String(e.message).slice(0,200) }); }catch{} }
+}
 function syncKikFallback(arr){
   try { require('./src/kik-fallback').apply(SITE_ROOT, arr); }
   catch(e){ audit('system','kik_fallback_failed',{ error:String(e.message).slice(0,200) }); }
 }
 setTimeout(() => { try { const b = readKikProjects(); if (b) syncKikFallback(b.arr); } catch {} }, 2000);
+
+// Self-heal for catalog drift. The catalog chunk and the project pages are
+// owned by this server (writeKikProjects remembers the chunk it wrote). If
+// anything else puts stale copies on disk - a file push from a laptop, a restore
+// of an old backup - the pages end up pointing at an old chunk and the site
+// shows old "Зібрано"/goal/status. Detect that and put everything back: relink
+// every page to the remembered chunk, then re-enforce each project's pages
+// from the catalog (idempotent, same code path as an admin save).
+function healKikDrift(){
+  const active = getSetting(KIK_ACTIVE_CHUNK_KEY, null);
+  const dir = path.join(SITE_ROOT,'_next','static','chunks','app','kik','proekty');
+  if(!active || !fs.existsSync(path.join(dir, active))) return null;
+  const re = /page-[0-9a-f]{8,}\.js/;
+  const known = fs.readdirSync(dir).filter(f=>re.test(f) && f.endsWith('.js') && f!==active);
+  const relinked = [];
+  (function walk(d){
+    for(const f of fs.readdirSync(d)){
+      if(f.startsWith('.')||f==='_next'||f==='uploads'||f==='cdn-cgi') continue;
+      const full=path.join(d,f), st=fs.statSync(full);
+      if(st.isDirectory()) walk(full);
+      else if(f.endsWith('.html')){
+        let h=fs.readFileSync(full,'utf8'), n=h;
+        for(const old of known) if(n.includes('chunks/app/kik/proekty/'+old)) n=n.split(old).join(active);
+        if(n!==h){ writeBackup(full); writeAtomic(full,n); relinked.push(full.slice(SITE_ROOT.length)); }
+      }
+    }
+  })(SITE_ROOT);
+  // pages can be stale even when the link is right (restored from an old copy)
+  const b = readKikProjects();
+  const repaired = [];
+  if(b && b.name === active){
+    for(const p of [...b.arr, ...getSetting(KIK_HIDDEN_KEY, [])]){
+      try{ const r = syncKikProjectPages(p,p); if(r) repaired.push(...r.map(x=>x.page)); }catch{}
+      // a page reverted to an older description/name/update text: swap any
+      // value this project ever had back to the catalog's current one
+      try{
+        const hist = getSetting(KIK_TEXT_HISTORY_KEY, {})[p.id] || {};
+        const rel = String(p.link||'').replace(/^\/+/,'');
+        const pageFile = rel && path.join(PAGES_ROOT, rel, 'index.html');
+        const html = pageFile && fs.existsSync(pageFile) ? fs.readFileSync(pageFile,'utf8') : null;
+        for(const f of KIK_TEXT_FIELDS){
+          if(!html || !hist[f] || typeof p[f]!=='string' || html.includes(kikHtmlEnc(p[f]))) continue;
+          for(const oldV of hist[f]){
+            const r = syncKikProjectPages({ ...p, [f]: oldV }, p);
+            if(r) repaired.push(...r.map(x=>x.page));
+          }
+        }
+      }catch{}
+    }
+  }
+  if(relinked.length || repaired.length){
+    try{ execFileSync('restorecon',['-R',SITE_ROOT],{stdio:'ignore',timeout:15000}); }catch{}
+    _chunksBlobCache.at = 0;
+    if(b) syncKikFallback(b.arr);
+    audit('system','kik_drift_healed',{ active, relinked, repaired });
+    console.log('[blueferret-admin] kik drift healed', { relinked, repaired });
+  }
+  return { relinked, repaired };
+}
+// First boot after this ships: remember the chunk the live catalog page uses.
+setTimeout(() => { try {
+  if(!getSetting(KIK_ACTIVE_CHUNK_KEY, null)){ const b = readKikProjects(); if(b) setSetting(KIK_ACTIVE_CHUNK_KEY, b.name); }
+  else healKikDrift();
+} catch(e){ console.error('[blueferret-admin] heal error:', e.message); } }, 3000);
+setInterval(() => { try { if(!publishWriteActive) healKikDrift(); } catch {} }, 5 * 60 * 1000).unref();
+
 
 // Port of the runtime Zod schema. Deliberately strict in the same places: it
 // is the only thing standing between a typo in the admin form and a blank
@@ -2513,6 +2607,24 @@ function validateKikProject(p, idx){
 // file: once in the DOM and once in the RSC flight data hydration replays
 // from, so a plain replacement over the file updates both at once. Scoped to
 // the one project's own files, so a bad pair can never reach another page.
+
+const { kikHtmlEnc, kikFlightEnc, kikFlightEncU, textPairs, applyScopedPairs } = require('./src/kik-text');
+const KIK_TEXT_HISTORY_KEY = 'kikTextHistory';
+const KIK_TEXT_FIELDS = ['name','shortDescription','updatePreview'];
+function kikRememberText(oldP, newP){
+  try{
+    const all = getSetting(KIK_TEXT_HISTORY_KEY, {});
+    const mine = all[newP.id] || (all[newP.id] = {});
+    let changed = false;
+    for(const f of KIK_TEXT_FIELDS){
+      const v = oldP[f];
+      if(typeof v!=='string' || v.length<3 || v===newP[f]) continue;
+      const arr = mine[f] || (mine[f] = []);
+      if(!arr.includes(v)){ arr.push(v); if(arr.length>12) arr.shift(); changed = true; }
+    }
+    if(changed) setSetting(KIK_TEXT_HISTORY_KEY, all);
+  }catch{}
+}
 function kikMoney(n){ return new Intl.NumberFormat('uk-UA',{maximumFractionDigits:0}).format(n)+' ₴'; }
 function kikDate(iso){ const [y,m,d]=String(iso).split('-'); return `${d}.${m}.${y}`; }
 function kikPctExact(p){ return String(p.goal>0?Math.min(100,p.raised/p.goal*100):0); }
@@ -2535,16 +2647,27 @@ function syncKikProjectPages(oldP, newP, targetLink){
   // Text that is safe to swap verbatim. statusLabel is deliberately absent:
   // "Збір коштів" is also a stage name in the page's own timeline, so
   // replacing it would rewrite unrelated markup.
-  const safe = s => typeof s === 'string' && s.length >= 3 && !/["<>\\]/.test(s);
+  // Remember every earlier value of the text fields so healKikDrift can pull a
+  // page that was reverted to ANY of them back to the catalog's current text.
+  kikRememberText(oldP, newP);
   const pairs = [], namePairs = [];
-  const addText = (a,b,into) => { if(safe(a)&&safe(b)&&a!==b) (into||pairs).push([a,b]); };
+  // A text lives in the page in two encodings: HTML (DOM, <meta>) and the RSC
+  // flight string (JSON inside a JS string). Swap each in its own encoding, so
+  // quotes, <, >, & and ' in a description neither get skipped nor land raw in
+  // the markup. Plain text encodes identically everywhere, so it dedupes.
+  const addText = (a,b,into) => { (into||pairs).push(...textPairs(a,b, into||pairs)); };
   addText(oldP.name, newP.name, namePairs);
   addText(oldP.shortDescription, newP.shortDescription);
   addText(oldP.updatePreview, newP.updatePreview);
   if(oldP.coverImage && newP.coverImage && oldP.coverImage!==newP.coverImage)
     pairs.push([oldP.coverImage,newP.coverImage]);
+  // Links carry a delimiter: "/kik/proekty/6" is a prefix of "/kik/proekty/60".
+  // They apply to the support page too (its "back to the project" links),
+  // which matters when a new project is cloned from an existing one.
+  const linkPairs = [];
   if(oldP.link && newP.link && oldP.link!==newP.link)
-    pairs.push([oldP.link,newP.link]);
+    for(const d of ['/','"','\\"']) linkPairs.push([oldP.link+d, newP.link+d]);
+  pairs.push(...linkPairs);
   const supportPairs=[];
   if(oldP.support&&newP.support){
     const oldT=oldP.support.tiers||[],newT=newP.support.tiers||[];
@@ -2593,8 +2716,8 @@ function syncKikProjectPages(oldP, newP, targetLink){
   const targets = [
     { file: detail,                   use: pairs.concat(namePairs), timeline:true },
     { file: kikParkedPath(detail),    use: pairs.concat(namePairs), timeline:true },
-    { file: support,                  use: namePairs.concat(supportPairs), supportFlight:true },
-    { file: kikParkedPath(support),   use: namePairs.concat(supportPairs), supportFlight:true },
+    { file: support,                  use: namePairs.concat(linkPairs, supportPairs), supportFlight:true },
+    { file: kikParkedPath(support),   use: namePairs.concat(linkPairs, supportPairs), supportFlight:true },
   ];
   const touched = [];
   for(const t of targets){
@@ -2606,10 +2729,7 @@ function syncKikProjectPages(oldP, newP, targetLink){
       const a=kikSupportFlight(oldP),b=kikSupportFlight(newP);
       if(a&&b&&a!==b){const n=h.split(a).length-1;if(n){h=h.split(a).join(b);hits+=n;}}
     }
-    for(const [a,b] of t.use){
-      const n = h.split(a).length - 1;
-      if(n){ h = h.split(a).join(b); hits += n; }
-    }
+    { const r = applyScopedPairs(h, t.use); h = r.html; hits += r.hits; }
     // The stage list ("Підготовка / Збір коштів / Виробництво") follows the
     // status. Enforced on every save, not only when the status changed, so a
     // page that fell behind (the status was changed before this existed) is
