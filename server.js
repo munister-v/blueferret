@@ -2469,6 +2469,21 @@ function healKikDrift(){
   if(b && b.name === active){
     for(const p of [...b.arr, ...getSetting(KIK_HIDDEN_KEY, [])]){
       try{ const r = syncKikProjectPages(p,p); if(r) repaired.push(...r.map(x=>x.page)); }catch{}
+      // a page reverted to an older description/name/update text: swap any
+      // value this project ever had back to the catalog's current one
+      try{
+        const hist = getSetting(KIK_TEXT_HISTORY_KEY, {})[p.id] || {};
+        const rel = String(p.link||'').replace(/^\/+/,'');
+        const pageFile = rel && path.join(PAGES_ROOT, rel, 'index.html');
+        const html = pageFile && fs.existsSync(pageFile) ? fs.readFileSync(pageFile,'utf8') : null;
+        for(const f of KIK_TEXT_FIELDS){
+          if(!html || !hist[f] || typeof p[f]!=='string' || html.includes(kikHtmlEnc(p[f]))) continue;
+          for(const oldV of hist[f]){
+            const r = syncKikProjectPages({ ...p, [f]: oldV }, p);
+            if(r) repaired.push(...r.map(x=>x.page));
+          }
+        }
+      }catch{}
     }
   }
   if(relinked.length || repaired.length){
@@ -2569,6 +2584,24 @@ function validateKikProject(p, idx){
 // file: once in the DOM and once in the RSC flight data hydration replays
 // from, so a plain replacement over the file updates both at once. Scoped to
 // the one project's own files, so a bad pair can never reach another page.
+
+const { kikHtmlEnc, kikFlightEnc, kikFlightEncU, textPairs, applyScopedPairs } = require('./src/kik-text');
+const KIK_TEXT_HISTORY_KEY = 'kikTextHistory';
+const KIK_TEXT_FIELDS = ['name','shortDescription','updatePreview'];
+function kikRememberText(oldP, newP){
+  try{
+    const all = getSetting(KIK_TEXT_HISTORY_KEY, {});
+    const mine = all[newP.id] || (all[newP.id] = {});
+    let changed = false;
+    for(const f of KIK_TEXT_FIELDS){
+      const v = oldP[f];
+      if(typeof v!=='string' || v.length<3 || v===newP[f]) continue;
+      const arr = mine[f] || (mine[f] = []);
+      if(!arr.includes(v)){ arr.push(v); if(arr.length>12) arr.shift(); changed = true; }
+    }
+    if(changed) setSetting(KIK_TEXT_HISTORY_KEY, all);
+  }catch{}
+}
 function kikMoney(n){ return new Intl.NumberFormat('uk-UA',{maximumFractionDigits:0}).format(n)+' ₴'; }
 function kikDate(iso){ const [y,m,d]=String(iso).split('-'); return `${d}.${m}.${y}`; }
 function kikPctExact(p){ return String(p.goal>0?Math.min(100,p.raised/p.goal*100):0); }
@@ -2591,9 +2624,15 @@ function syncKikProjectPages(oldP, newP, targetLink){
   // Text that is safe to swap verbatim. statusLabel is deliberately absent:
   // "Збір коштів" is also a stage name in the page's own timeline, so
   // replacing it would rewrite unrelated markup.
-  const safe = s => typeof s === 'string' && s.length >= 3 && !/["<>\\]/.test(s);
+  // Remember every earlier value of the text fields so healKikDrift can pull a
+  // page that was reverted to ANY of them back to the catalog's current text.
+  kikRememberText(oldP, newP);
   const pairs = [], namePairs = [];
-  const addText = (a,b,into) => { if(safe(a)&&safe(b)&&a!==b) (into||pairs).push([a,b]); };
+  // A text lives in the page in two encodings: HTML (DOM, <meta>) and the RSC
+  // flight string (JSON inside a JS string). Swap each in its own encoding, so
+  // quotes, <, >, & and ' in a description neither get skipped nor land raw in
+  // the markup. Plain text encodes identically everywhere, so it dedupes.
+  const addText = (a,b,into) => { (into||pairs).push(...textPairs(a,b, into||pairs)); };
   addText(oldP.name, newP.name, namePairs);
   addText(oldP.shortDescription, newP.shortDescription);
   addText(oldP.updatePreview, newP.updatePreview);
@@ -2662,10 +2701,7 @@ function syncKikProjectPages(oldP, newP, targetLink){
       const a=kikSupportFlight(oldP),b=kikSupportFlight(newP);
       if(a&&b&&a!==b){const n=h.split(a).length-1;if(n){h=h.split(a).join(b);hits+=n;}}
     }
-    for(const [a,b] of t.use){
-      const n = h.split(a).length - 1;
-      if(n){ h = h.split(a).join(b); hits += n; }
-    }
+    { const r = applyScopedPairs(h, t.use); h = r.html; hits += r.hits; }
     // The stage list ("Підготовка / Збір коштів / Виробництво") follows the
     // status. Enforced on every save, not only when the status changed, so a
     // page that fell behind (the status was changed before this existed) is
