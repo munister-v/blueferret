@@ -1,19 +1,10 @@
 /* Blue Ferret Site Enhancements */
 
-// ── Missing-chunk workaround ──
-// Some route client bundles wait on webpack chunk ids 8441/7358 before they will
-// hydrate real content (e.O(0,[...,8441,...], cb)) — they were never captured
-// during the original site migration (source lost, see repo README) and no
-// shipped chunk anywhere actually imports from it (grepped every chunk file:
-// zero direct module calls for these ids). Routes whose main content is server-rendered are
-// unaffected, but any route that bails out to client-only rendering (uses
-// useSearchParams, e.g. /igry/) hangs forever on the loading fallback
-// waiting for a chunk that will never arrive. Since nothing consumes its
-// exports, satisfying the wait with an empty stub is safe — this just marks
-// those chunk ids "loaded" so webpack's pending callbacks can fire.
-(function () {
-  (self.webpackChunk_N_E = self.webpackChunk_N_E || []).push([[8441, 7358], {}]);
-})();
+// Chunk ids 8441 (react-dom) and 7358 (main-app) used to be marked "loaded" here
+// with an empty stub, on the belief that they were never shipped. They are shipped.
+// The stub made the route bundles start before react-dom had arrived, so on a slow
+// connection hydration threw "l[e] is not a function" and the page stayed in
+// Ukrainian for ~10 s (the hydration gate's safety timeout). Do not bring it back.
 
 // ── After hydration ──
 // Changing the server HTML before React has taken it over (inserting a node,
