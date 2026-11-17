@@ -76,6 +76,8 @@
     '.bf-box{width:150px;height:auto;max-width:60%;object-fit:contain;flex:none;filter:drop-shadow(0 14px 18px rgba(15,23,42,.22))}',
     '.bf-pre-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border-radius:12px;background:#0f172a;color:#fff!important;font-weight:700;text-decoration:none;box-shadow:0 10px 24px -14px rgba(15,23,42,.7)}',
     '.bf-pre-cta:hover{background:#1e293b}',
+    '.bf-game-link{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-weight:600;font-size:15px;color:var(--bf-accent,#2563eb)!important;text-decoration:none}',
+    '.bf-game-link:hover{text-decoration:underline}',
     '.bf-pre-cta-note{flex-basis:100%;margin:2px 0 0;font-size:13px;color:#64748b;text-align:center}',
     '#bf-pay-toast{position:fixed;left:12px;right:12px;bottom:20px;margin:0 auto;max-width:520px;display:flex;align-items:flex-start;gap:8px;z-index:80;background:#0f172a;color:#fff;border-radius:16px;padding:14px 18px;font-size:14px;line-height:1.5;box-shadow:0 18px 50px -12px rgba(15,23,42,.55)}',
     '#bf-pay-toast button{flex:none;margin:-6px -8px 0 0;width:40px;height:40px;background:none;border:0;color:#94a3b8;font-size:20px;cursor:pointer}'
@@ -111,6 +113,20 @@
   var pm = location.pathname.match(/^\/kik\/proekty\/([^/]+)\/?$/);
   if (pm) {
     var pid = decodeURIComponent(pm[1]);
+    // The project page says little about the game: link to the game's own page (the catalogue API has no such field, so the map is here).
+    var GAME_PAGES = { '6': '/igry/nuchka/' };
+    if (GAME_PAGES[pid]) (window.bfAfterHydration || function (f) { f(); })(function () {
+      var tries = 0, iv = setInterval(function () {
+        if (document.querySelector('main .bf-game-link') || ++tries > 20) return clearInterval(iv);
+        var h = document.querySelector('main h1'), p = h && h.nextElementSibling;
+        if (!p || p.tagName !== 'P') return;
+        css();
+        var a = document.createElement('a');
+        a.className = 'bf-game-link'; a.href = GAME_PAGES[pid]; a.textContent = 'Про гру →';
+        p.parentNode.insertBefore(a, p.nextSibling);
+        clearInterval(iv);
+      }, 500);
+    });
     getJSON('/api/preorder/info?project=' + encodeURIComponent(pid)).then(function (pi) {
       if (!pi || !pi.enabled) return;
       var href = '/kik/proekty/' + encodeURIComponent(pid) + '/pidtrymaty/';
@@ -121,7 +137,7 @@
         var spans = document.querySelectorAll('main span');
         for (var i = 0; i < spans.length; i++) {
           var sp = spans[i];
-          if (!/^\s*Підтримка скоро\s*$/.test(sp.textContent)) continue;
+          if (!/^\s*(Підтримка скоро|Support coming soon)\s*$/.test(sp.textContent)) continue;
           css();
           sp.style.display = 'none';
           var a = document.createElement('a');
@@ -144,7 +160,7 @@
   var id = decodeURIComponent(m[1]);
 
   function support(btns) {
-    for (var i = 0; i < btns.length; i++) if (/^\s*(Підтримати|Передзамовити)\s*$/.test(btns[i].textContent)) return btns[i];
+    for (var i = 0; i < btns.length; i++) if (/^\s*(Підтримати|Передзамовити|Support|Pre-order now)\s*$/.test(btns[i].textContent)) return btns[i];
     return null;
   }
 
@@ -173,7 +189,7 @@
       '<div class="bf-pay-head"><h2>Як працює збір</h2>' + chip + '</div>' + bar +
       (pre
         ? '<ol class="bf-pay-steps">' +
-          '<li><span class="n">1</span><b>Заявка</b>Обираєте набір, лишаєте ім’я, телефон і адресу.</li>' +
+          '<li><span class="n">1</span><b>Заявка</b>Обираєте набір, лишаєте ім’я та телефон.</li>' +
           '<li><span class="n">2</span><b>Без оплати</b>Зараз гроші не беремо і картку не просимо.</li>' +
           '<li><span class="n">3</span><b>Рахунок</b>Ближче до ' + esc(pre.invoiceDate) + ' надішлемо посилання на оплату в monobank.</li>' +
           '<li><span class="n">4</span><b>Гра</b>Ціль зібрана: робимо гру й відправляємо вам.</li>' +
@@ -204,7 +220,7 @@
     var btns = wrap.querySelectorAll('button');
     for (var i = 0; i < btns.length; i++) {
       var b = btns[i];
-      if (b.getAttribute('data-bf-lock') === '1' || !/^\s*Підтримати\s*$/.test(b.textContent)) continue;
+      if (b.getAttribute('data-bf-lock') === '1' || !/^\s*(Підтримати|Support)\s*$/.test(b.textContent)) continue;
       b.setAttribute('data-bf-lock', '1');
       b.disabled = true; // really inactive, not only styled so (React owns the attribute, but only rewrites it on a state change)
       b.setAttribute('aria-disabled', 'true');
@@ -227,7 +243,7 @@
     var btns = wrap.querySelectorAll('button');
     for (var i = 0; i < btns.length; i++) {
       var b = btns[i];
-      if (b.getAttribute('data-bf-pre') === '1' || !/^\s*(Підтримати|Скоро)\s*$/.test(b.textContent)) continue;
+      if (b.getAttribute('data-bf-pre') === '1' || !/^\s*(Підтримати|Скоро|Support|Soon)\s*$/.test(b.textContent)) continue;
       b.setAttribute('data-bf-pre', '1');
       b.disabled = false; b.removeAttribute('aria-disabled'); b.removeAttribute('title');
       b.textContent = 'Передзамовити';
@@ -274,8 +290,6 @@
       '<label>Ім’я та прізвище<input name="name" autocomplete="name" maxlength="80" required></label>' +
       '<label>Телефон<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0XX XXX XX XX" maxlength="20" required></label>' +
       '<label>Електронна пошта<input name="email" type="email" autocomplete="email" maxlength="120"></label>' +
-      '<label>Місто<input name="city" autocomplete="address-level2" maxlength="80"></label>' +
-      '<label>Адреса доставки<textarea name="address" autocomplete="street-address" maxlength="240" placeholder="Відділення Нової пошти" required></textarea></label>' +
       '<div class="hp" aria-hidden="true"><label>Сайт<input name="website" tabindex="-1" autocomplete="off"></label></div>' +
       '<p class="err" role="alert"></p>' +
       '<button type="submit" class="go">Надіслати заявку</button>' +
@@ -290,7 +304,7 @@
     f.addEventListener('input', function (e) { if (e.target.classList) e.target.classList.remove('bad'); err.textContent = ''; });
     f.addEventListener('submit', function (e) {
       e.preventDefault();
-      var v = {}; ['tierId', 'qty', 'name', 'phone', 'city', 'address', 'email', 'website'].forEach(function (k) { v[k] = f.elements[k].value; });
+      var v = {}; ['tierId', 'qty', 'name', 'phone', 'email', 'website'].forEach(function (k) { v[k] = f.elements[k].value; });
       v.projectId = id;
       go.disabled = true; go.textContent = 'Надсилаємо…';
       fetch('/api/preorder', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(v) })

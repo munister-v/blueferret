@@ -70,9 +70,9 @@ function createPreorders({ db, now = () => Date.now() }) {
     if (!phone) return { ok: false, error: 'Перевірте номер телефону: 0XX XXX XX XX.', field: 'phone' };
     const email = clean(body.email, 120);
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { ok: false, error: 'Перевірте пошту.', field: 'email' };
+    // 17.11.2026: the form no longer asks for a city or address (we ask when the invoice goes out); older pages may still send them
     const city = clean(body.city, 80);
     const address = clean(body.address, 240);
-    if (address.length < 5) return { ok: false, error: 'Вкажіть адресу доставки: місто та відділення або вулицю.', field: 'address' };
     const t = now();
     // the same person pressing twice in a day is one request
     if (q.dup.get(project.id, phone, tier.id, t - 24 * 3600 * 1000))
