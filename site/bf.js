@@ -244,7 +244,7 @@
     });
 
     // Close menu on outside tap (enhance existing behavior)
-    const closeBtn = document.querySelector('[aria-label="Відкрити меню"]');
+    const closeBtn = document.querySelector('[aria-label="Відкрити меню"], [aria-label="Open menu"]');
     if (closeBtn) {
       // Already has aria-expanded handling
     }
@@ -303,7 +303,7 @@
   function fixGamesNavButton() {
     document.querySelectorAll('header button').forEach((btn) => {
       if (btn.dataset.bfGamesFixed) return;
-      if (!btn.textContent.trim().startsWith('Наші ігри')) return;
+      if (!/^(Наші ігри|Our games)/.test(btn.textContent.trim())) return;
       btn.dataset.bfGamesFixed = '1';
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -389,7 +389,7 @@
   }
 
   function setHamburgerExpanded(expanded) {
-    document.querySelectorAll('button[aria-controls="mobile-site-nav"], button[aria-label="Відкрити меню"]').forEach((btn) => {
+    document.querySelectorAll('button[aria-controls="mobile-site-nav"], button[aria-label="Відкрити меню"], button[aria-label="Open menu"]').forEach((btn) => {
       btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     });
   }
@@ -421,7 +421,7 @@
   let menuDelegated = false;
   function initMobileMenuFallback() {
     installMenuDelegation();
-    document.querySelectorAll('button[aria-controls="mobile-site-nav"], button[aria-label="Відкрити меню"]').forEach((btn) => {
+    document.querySelectorAll('button[aria-controls="mobile-site-nav"], button[aria-label="Відкрити меню"], button[aria-label="Open menu"]').forEach((btn) => {
       if (btn.dataset.bfMobileFallback) return;
       btn.dataset.bfMobileFallback = '1';
       btn.setAttribute('aria-controls', 'bf-mobile-menu-fallback');
@@ -444,7 +444,7 @@
         if (!btn) return;
         const label = btn.getAttribute('aria-label') || '';
         const controls = btn.getAttribute('aria-controls') || '';
-        const isHamburger = label === 'Відкрити меню'
+        const isHamburger = label === 'Відкрити меню' || label === 'Open menu'
           || controls === 'mobile-site-nav'
           || controls === 'bf-mobile-menu-fallback';
         if (!isHamburger) return;
@@ -918,8 +918,14 @@
 
   if (/^\/kik\/proekty(\/|$)/.test(location.pathname)) {
     var s = document.createElement('script');
-    s.src = '/bf-pay.js?v=b1eefbeb';
+    s.src = '/bf-pay.js?v=gamelink1';
     s.defer = true;
     document.head.appendChild(s);
   }
+
+  // English version: the dictionary and the UA/EN switch live in /bf-en.js (built from scripts/i18n/en.json).
+  var en = document.createElement('script');
+  en.src = '/bf-en.js?v=5';
+  en.defer = true;
+  document.head.appendChild(en);
 })();

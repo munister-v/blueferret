@@ -24,16 +24,16 @@ test('a valid request is stored with the tier price taken from the server, not t
   assert.equal(row.amount, 900); assert.equal(row.qty, 2); assert.equal(row.phone, '+380671234567'); assert.equal(row.status, 'new');
 });
 
-test('validation: tier, qty, name, phone, address, email', () => {
+test('validation: tier, qty, name, phone, email; no city or address needed', () => {
   const p = mk();
   assert.equal(p.create(project, { ...good, tierId: 'nope' }).field, 'tier');
   assert.equal(p.create(project, { ...good, qty: 0 }).field, 'qty');
   assert.equal(p.create(project, { ...good, qty: 11 }).field, 'qty');
   assert.equal(p.create(project, { ...good, name: '1' }).field, 'name');
   assert.equal(p.create(project, { ...good, phone: '123' }).field, 'phone');
-  assert.equal(p.create(project, { ...good, address: 'ab' }).field, 'address');
   assert.equal(p.create(project, { ...good, email: 'x@y' }).field, 'email');
   assert.equal(p.list('6').length, 0);
+  assert.equal(p.create(project, { tierId: good.tierId, qty: 1, name: good.name, phone: '067 000 11 22' }).ok, true);   // no city, no address
 });
 
 test('the same phone and set within a day is a duplicate; a cancelled one may be redone', () => {
