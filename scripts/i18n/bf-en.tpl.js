@@ -15,7 +15,7 @@
 
   var MONTHS = { 'січня': 'January', 'лютого': 'February', 'березня': 'March', 'квітня': 'April', 'травня': 'May', 'червня': 'June', 'липня': 'July', 'серпня': 'August', 'вересня': 'September', 'жовтня': 'October', 'листопада': 'November', 'грудня': 'December' };
   function months(s) { return String(s).replace(/(\d+)\s+(січня|лютого|березня|квітня|травня|червня|липня|серпня|вересня|жовтня|листопада|грудня)/g, function (_, d, m) { return d + ' ' + MONTHS[m]; }); }
-  function name(s) { return String(s).replace(/Ничка/g, 'Nichka').replace(/Тримайся/g, 'Hold On'); }
+  function name(s) { return String(s).replace(/Ничка/g, 'Stash').replace(/Тримайся/g, 'Hold On'); }
   var RX = [
     [/^Оплата не потрібна\. Рахунок надішлемо ближче до (.+)\.$/, function (m) { return 'No payment needed. We will send the invoice closer to ' + months(m[1]) + '.'; }],
     [/^Дякуємо! Рахунок на оплату надішлемо ближче до (.+)\. Гроші зараз не списані\.$/, function (m) { return 'Thank you! We will send the invoice closer to ' + months(m[1]) + '. No money has been charged now.'; }],
