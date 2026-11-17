@@ -925,7 +925,7 @@
 
   // English version: the dictionary and the UA/EN switch live in /bf-en.js (built from scripts/i18n/en.json).
   var en = document.createElement('script');
-  en.src = '/bf-en.js?v=5';
+  en.src = '/bf-en.js?v=6';
   en.defer = true;
   document.head.appendChild(en);
 })();
