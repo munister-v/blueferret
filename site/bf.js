@@ -909,14 +909,14 @@
 
   if (/^\/kik\/proekty(\/|$)/.test(location.pathname)) {
     var s = document.createElement('script');
-    s.src = '/bf-pay.js?v=gamelink1';
+    s.src = '/bf-pay.js?v=gamelink2';
     s.defer = true;
     document.head.appendChild(s);
   }
 
   // English version: the dictionary and the UA/EN switch live in /bf-en.js (built from scripts/i18n/en.json).
   var en = document.createElement('script');
-  en.src = '/bf-en.js?v=6';
+  en.src = '/bf-en.js?v=8';
   en.defer = true;
   document.head.appendChild(en);
 })();
